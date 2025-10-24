@@ -1,1 +1,51 @@
+# ------------------------------------------
+# CORE FRAMEWORK (DJANGO + API + WEBSOCKETS)
+# ------------------------------------------
+Django
+djangorestframework
+django-cors-headers     # Esencial: Permite que React/Vue (otro dominio) llame a tu API
+django-environ
+daphne                  # Servidor ASGI para producción (reemplaza a gunicorn para WebSockets)
 
+# ------------------------------------------
+# DATABASE & STORAGE (POSTGRESQL + S3) # cambiar a mysql
+# ------------------------------------------
+psycopg2-binary         # Driver de PostgreSQL
+dj-database-url
+django-storages        # Para conectar con AWS S3 (para fotos de LEGO, etc.)
+boto3                  # SDK de AWS
+
+# ------------------------------------------
+# AUTH & SECURITY
+# ------------------------------------------
+djangorestframework-simplejwt  # Autenticación por Tokens (JWT) para React/Vue
+dj-rest-auth                   # Maneja los endpoints de login/logout/registro para DRF
+django-allauth                # Requerido por dj-rest-auth para lógicas de registro
+argon2-cffi                   # El mejor hasher de contraseñas
+django-axes                    # Protección contra fuerza bruta en la API de login
+django-environ
+
+# ------------------------------------------
+# REAL-TIME & ASYNC TASKS 
+channels                # Framework de Django para WebSockets (tiempo real)
+channels-redis          # Capa de "mensajería" para WebSockets
+celery                  # Tareas asíncronas (ej. procesar lista de alumnos)
+redis                   # Usado por Celery y Channels
+
+# ------------------------------------------
+# UTILIDADES Y HERRAMIENTAS
+# ------------------------------------------
+Pillow                 # Para procesar imágenes (prototipos LEGO)
+python-dotenv
+whitenoise              # Para servir archivos estáticos (del Admin de Django)
+requests
+drf-yasg               # Generar documentación Swagger (para el frontend)
+django-filter
+django-extensions
+
+# ------------------------------------------
+# TESTING & DESARROLLO
+# ------------------------------------------
+pytest
+pytest-django
+factory-boy
