@@ -1,0 +1,1 @@
+Para ejecutar el enterno viertual venv que esta en backend, luego instalar las librerias asociaciadas al backend, luego instalar node en la carpeta del frontend, luego conectar la BD al backend segun parametros del django
