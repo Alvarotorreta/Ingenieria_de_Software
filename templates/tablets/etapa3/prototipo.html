@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Misión Emprende - Prototipo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .header {
+            background: white;
+            border-radius: 15px;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .team-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .team-color {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 18px;
+            color: white;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .team-details h3 {
+            color: #333;
+            font-size: 18px;
+            margin-bottom: 2px;
+        }
+
+        .team-details p {
+            color: #666;
+            font-size: 12px;
+        }
+
+        .tokens-badge {
+            background: #667eea;
+            color: white;
+            padding: 8px 18px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .activity-title {
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .activity-subtitle {
+            color: #666;
+            font-size: 16px;
+            margin-bottom: 30px;
+        }
+
+        .timer-container {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+            border: 2px solid #ffc107;
+        }
+
+        .timer-container p {
+            margin: 0;
+            color: #856404;
+            font-weight: 600;
+            font-size: 18px;
+        }
+
+        .info-box {
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 4px solid;
+        }
+
+        .info-box-green {
+            background: #e8f5e9;
+            border-left-color: #4caf50;
+        }
+
+        .info-box-blue {
+            background: #f0f4ff;
+            border-left-color: #667eea;
+        }
+
+        .info-box h3 {
+            margin: 0 0 10px 0;
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .info-box p {
+            margin: 0;
+            color: #555;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        .info-box ul {
+            margin: 10px 0 0 20px;
+            color: #555;
+        }
+
+        .info-box li {
+            margin-bottom: 5px;
+        }
+
+        .upload-container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+            border: 2px dashed #ddd;
+        }
+
+        .btn {
+            background: #667eea;
+            color: white;
+            padding: 18px 40px;
+            border: none;
+            border-radius: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 18px;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 18px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .preview-container {
+            margin-top: 20px;
+        }
+
+        .preview-image {
+            max-width: 100%;
+            max-height: 400px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .uploaded-container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .uploaded-success {
+            background: #d4edda;
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #28a745;
+        }
+
+        .uploaded-success p {
+            margin: 0;
+            color: #155724;
+            font-weight: 600;
+            font-size: 18px;
+        }
+
+        .uploaded-image {
+            max-width: 100%;
+            max-height: 400px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+
+        .submit-btn {
+            background: #667eea;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 16px;
+        }
+
+        .submit-btn:hover {
+            background: #5568d3;
+        }
+
+        .submit-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert.show {
+            display: block;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="team-info">
+            <div class="team-color" id="teamColor" style="background: #667eea;">?</div>
+            <div class="team-details">
+                <h3 id="teamName">Equipo</h3>
+                <p id="teamInfo">Cargando...</p>
+            </div>
+        </div>
+        <div class="tokens-badge">
+            🪙 <span id="tokensCount">0</span> Tokens
+        </div>
+    </div>
+
+    <div class="container">
+        <div id="alertContainer"></div>
+
+        <h2 class="activity-title">1. Subida de Prototipo Lego</h2>
+        <p class="activity-subtitle">Construye físicamente tu prototipo con legos y súbelo aquí</p>
+        
+        <!-- Temporizador -->
+        <div class="timer-container" id="timerContainer">
+            <p>
+                ⏱️ Tiempo restante: <span id="timerDisplay">--:--</span>
+            </p>
+        </div>
+
+        <!-- Explicación sobre qué construir con legos -->
+        <div class="info-box info-box-green">
+            <h3 style="color: #2e7d32;">🧱 ¿Qué construir con legos?</h3>
+            <p>
+                Basándote en el desafío que seleccionaste en la Etapa 2 (Empatía), construye un <strong>prototipo físico con legos</strong> que represente tu solución al problema identificado.
+            </p>
+            <p style="margin-top: 10px;">
+                El prototipo debe ser una representación tangible de cómo tu equipo imagina que se podría resolver el desafío. Usa los legos para crear una maqueta, modelo o representación visual de tu solución.
+            </p>
+        </div>
+
+        <div class="info-box info-box-blue">
+            <h3 style="color: #667eea;">📋 Instrucciones para subir el prototipo:</h3>
+            <ul>
+                <li>Construye físicamente tu prototipo con legos</li>
+                <li>Toma una foto del prototipo con la cámara de la tablet</li>
+                <li>O sube una imagen desde la galería</li>
+                <li>Revisa la vista previa y confirma la subida</li>
+            </ul>
+        </div>
+
+        <!-- Contenedor para subir prototipo -->
+        <div id="prototypeUploadContainer" class="upload-container">
+            <input type="file" id="prototypeImageInput" accept="image/*" capture="environment" style="display: none;" onchange="handleImageSelect(event)">
+            <div style="margin-bottom: 20px;">
+                <p style="color: #666; font-size: 16px; margin-bottom: 20px; font-weight: 500;">Cuando hayas terminado de construir tu prototipo con legos, toma una foto o sube una imagen:</p>
+                <button type="button" class="btn" onclick="document.getElementById('prototypeImageInput').click()">
+                    📷 Tomar Foto o Seleccionar Imagen
+                </button>
+                <p style="color: #999; font-size: 13px; margin-top: 15px; font-style: italic;">Puedes usar la cámara de la tablet o seleccionar una imagen de la galería</p>
+            </div>
+            
+            <div id="prototypePreview" class="preview-container" style="display: none;">
+                <img id="prototypePreviewImage" src="" alt="Vista previa" class="preview-image">
+                <div>
+                    <button type="button" class="btn btn-danger" onclick="cancelImageSelection()" style="margin-right: 10px; padding: 10px 20px;">
+                        ✖️ Cancelar
+                    </button>
+                    <button type="button" class="submit-btn" onclick="uploadPrototype()">
+                        ✓ Subir Prototipo
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contenedor para mostrar prototipo subido -->
+        <div id="prototypeUploaded" class="uploaded-container" style="display: none;">
+            <div class="uploaded-success">
+                <p>✓ Prototipo subido exitosamente</p>
+                <img id="prototypeUploadedImage" src="" alt="Prototipo subido" class="uploaded-image">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8000/api';
+        
+        // Obtener connection_id de la URL o localStorage
+        const urlParams = new URLSearchParams(window.location.search);
+        let connectionId = urlParams.get('connection_id') || localStorage.getItem('tabletConnectionId');
+        
+        if (!connectionId) {
+            window.location.href = '/tablet/join/';
+        }
+
+        let myTeamId = null;
+        let gameSessionId = null;
+        let currentActivityId = null;
+        let previousActivityId = null; // Para detectar cambios y evitar loops
+        let currentSessionStageId = null;
+        let selectedPrototypeImage = null;
+        let timerInterval = null;
+        let timerStartTime = null;
+        let timerDuration = null;
+
+        // Función para obtener colores hex desde nombres
+        function getTeamColorHex(color) {
+            const colorMap = {
+                'Verde': '#28a745',
+                'Azul': '#007bff',
+                'Rojo': '#dc3545',
+                'Amarillo': '#ffc107',
+                'Naranja': '#fd7e14',
+                'Morado': '#6f42c1',
+                'Rosa': '#e83e8c',
+                'Cian': '#17a2b8',
+                'Gris': '#6c757d',
+                'Marrón': '#795548'
+            };
+            return colorMap[color] || '#667eea';
+        }
+
+        function showAlert(message, type = 'info') {
+            const alertContainer = document.getElementById('alertContainer');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type} show`;
+            alert.textContent = message;
+            alertContainer.innerHTML = '';
+            alertContainer.appendChild(alert);
+            
+            setTimeout(() => {
+                alert.classList.remove('show');
+            }, 5000);
+        }
+
+        function handleImageSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (!file.type.startsWith('image/')) {
+                showAlert('Por favor selecciona un archivo de imagen', 'error');
+                return;
+            }
+
+            if (file.size > 5 * 1024 * 1024) {
+                showAlert('La imagen es demasiado grande. Máximo 5MB', 'error');
+                return;
+            }
+
+            selectedPrototypeImage = file;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.getElementById('prototypePreviewImage').src = e.target.result;
+                document.getElementById('prototypePreview').style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function cancelImageSelection() {
+            selectedPrototypeImage = null;
+            document.getElementById('prototypeImageInput').value = '';
+            document.getElementById('prototypePreview').style.display = 'none';
+        }
+
+        async function uploadPrototype() {
+            if (!selectedPrototypeImage) {
+                showAlert('Por favor selecciona una imagen primero', 'error');
+                return;
+            }
+
+            if (!myTeamId || !currentActivityId) {
+                showAlert('Error: Faltan datos necesarios', 'error');
+                return;
+            }
+            
+            // Si no tenemos currentSessionStageId, obtenerlo ahora
+            if (!currentSessionStageId) {
+                console.log('⚠️ currentSessionStageId no está definido, obteniéndolo...');
+                try {
+                    const statusResponse = await fetch(`${API_BASE_URL}/sessions/tablet-connections/status/?connection_id=${connectionId}`);
+                    if (statusResponse.ok) {
+                        const statusData = await statusResponse.json();
+                        const gameSessionId = statusData.game_session.id;
+                        const stagesResponse = await fetch(`${API_BASE_URL}/sessions/session-stages/?game_session=${gameSessionId}`);
+                        if (stagesResponse.ok) {
+                            const stagesData = await stagesResponse.json();
+                            const stages = stagesData.results || stagesData;
+                            const stage3 = stages.find(s => s.stage_number === 3);
+                            if (stage3) {
+                                currentSessionStageId = stage3.id;
+                                console.log('✅ currentSessionStageId obtenido antes de subir:', currentSessionStageId);
+                            } else {
+                                showAlert('Error: No se pudo encontrar la etapa de sesión', 'error');
+                                return;
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error obteniendo session_stage:', error);
+                    showAlert('Error: No se pudo obtener la etapa de sesión', 'error');
+                    return;
+                }
+            }
+            
+            if (!currentSessionStageId) {
+                showAlert('Error: No se pudo identificar la etapa de sesión', 'error');
+                return;
+            }
+            
+            console.log('📤 Subiendo prototipo con:', {
+                team: myTeamId,
+                activity: currentActivityId,
+                session_stage: currentSessionStageId
+            });
+
+            try {
+                const formData = new FormData();
+                formData.append('team', myTeamId);
+                formData.append('activity', currentActivityId);
+                formData.append('session_stage', currentSessionStageId);
+                formData.append('image', selectedPrototypeImage);
+
+                const btn = document.querySelector('#prototypeUploadContainer .submit-btn');
+                btn.disabled = true;
+                btn.textContent = 'Subiendo...';
+
+                const response = await fetch(`${API_BASE_URL}/sessions/team-activity-progress/upload_prototype/`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Error al subir prototipo');
+                }
+
+                const responseData = await response.json();
+                console.log('✅ Prototipo subido exitosamente:', responseData);
+
+                if (responseData.prototype_image_url) {
+                    // Ocultar preview
+                    const preview = document.getElementById('prototypePreview');
+                    if (preview) {
+                        preview.style.display = 'none';
+                    }
+                    
+                    // Ocultar el contenedor de subida
+                    const uploadContainer = document.getElementById('prototypeUploadContainer');
+                    if (uploadContainer) {
+                        uploadContainer.style.display = 'none';
+                    }
+                    
+                    // Mostrar imagen subida
+                    const uploadedImage = document.getElementById('prototypeUploadedImage');
+                    const uploadedContainer = document.getElementById('prototypeUploaded');
+                    if (uploadedImage && uploadedContainer) {
+                        uploadedImage.src = responseData.prototype_image_url;
+                        uploadedContainer.style.display = 'block';
+                    }
+                    
+                    // Limpiar selección
+                    selectedPrototypeImage = null;
+                    const imageInput = document.getElementById('prototypeImageInput');
+                    if (imageInput) {
+                        imageInput.value = '';
+                    }
+                }
+
+                showAlert('✓ Prototipo subido exitosamente', 'success');
+                
+                // Recargar el estado del prototipo
+                try {
+                    const statusResponse = await fetch(`${API_BASE_URL}/sessions/tablet-connections/status/?connection_id=${connectionId}`);
+                    if (statusResponse.ok) {
+                        const statusData = await statusResponse.json();
+                        const gameSessionId = statusData.game_session.id;
+                        await loadPrototypeStatus(gameSessionId);
+                    }
+                } catch (error) {
+                    console.error('Error obteniendo gameSessionId:', error);
+                }
+                await loadGameState();
+            } catch (error) {
+                console.error('Error uploading prototype:', error);
+                showAlert('Error al subir prototipo: ' + error.message, 'error');
+                const btn = document.querySelector('#prototypeUploadContainer .submit-btn');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = '✓ Subir Prototipo';
+                }
+            }
+        }
+
+        async function loadPrototypeStatus(gameSessionId) {
+            try {
+                if (!myTeamId || !currentActivityId || !currentSessionStageId) {
+                    return;
+                }
+
+                const progressResponse = await fetch(
+                    `${API_BASE_URL}/sessions/team-activity-progress/?team=${myTeamId}&activity=${currentActivityId}&session_stage=${currentSessionStageId}`
+                );
+
+                if (progressResponse.ok) {
+                    const progressData = await progressResponse.json();
+                    const progress = Array.isArray(progressData) ? progressData[0] : progressData.results?.[0];
+                    
+                    if (progress && progress.prototype_image_url) {
+                        console.log('✅ Prototipo ya subido, mostrando imagen:', progress.prototype_image_url);
+                        
+                        // Ocultar contenedor de subida
+                        const uploadContainer = document.getElementById('prototypeUploadContainer');
+                        if (uploadContainer) {
+                            uploadContainer.style.display = 'none';
+                        }
+                        
+                        // Mostrar imagen subida
+                        const uploadedImage = document.getElementById('prototypeUploadedImage');
+                        const uploadedContainer = document.getElementById('prototypeUploaded');
+                        if (uploadedImage && uploadedContainer) {
+                            uploadedImage.src = progress.prototype_image_url;
+                            uploadedContainer.style.display = 'block';
+                        }
+                        
+                        // Ocultar preview
+                        const preview = document.getElementById('prototypePreview');
+                        if (preview) {
+                            preview.style.display = 'none';
+                        }
+                        
+                        // Limpiar selección
+                        selectedPrototypeImage = null;
+                        const imageInput = document.getElementById('prototypeImageInput');
+                        if (imageInput) {
+                            imageInput.value = '';
+                        }
+                    } else {
+                        // Si no hay prototipo, asegurar que los elementos estén visibles
+                        const uploadedContainer = document.getElementById('prototypeUploaded');
+                        const uploadContainer = document.getElementById('prototypeUploadContainer');
+                        if (uploadedContainer) {
+                            uploadedContainer.style.display = 'none';
+                        }
+                        if (uploadContainer) {
+                            uploadContainer.style.display = 'block';
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading prototype status:', error);
+            }
+        }
+
+        async function loadGameState() {
+            try {
+                const statusResponse = await fetch(`${API_BASE_URL}/sessions/tablet-connections/status/?connection_id=${connectionId}`);
+                
+                if (!statusResponse.ok) {
+                    if (statusResponse.status === 404) {
+                        showAlert('Conexión no encontrada. Por favor reconecta.', 'error');
+                        setTimeout(() => {
+                            window.location.href = '/tablet/join/';
+                        }, 3000);
+                    }
+                    return;
+                }
+
+                const statusData = await statusResponse.json();
+                myTeamId = statusData.team.id;
+                gameSessionId = statusData.game_session.id;
+                
+                // Actualizar header
+                const team = statusData.team;
+                document.getElementById('teamName').textContent = team.name;
+                document.getElementById('teamInfo').textContent = `Equipo ${team.color}`;
+                document.getElementById('teamColor').textContent = team.color.charAt(0).toUpperCase();
+                document.getElementById('teamColor').style.background = getTeamColorHex(team.color);
+                document.getElementById('tokensCount').textContent = team.tokens_total || 0;
+
+                // Verificar estado del juego
+                const gameResponse = await fetch(`${API_BASE_URL}/sessions/game-sessions/${gameSessionId}/`);
+                if (!gameResponse.ok) {
+                    console.error('Error al obtener estado del juego');
+                    return;
+                }
+
+                const gameData = await gameResponse.json();
+                
+                // Verificar si el juego ha finalizado
+                if (gameData.status === 'finished' || gameData.status === 'completed') {
+                    showAlert('El juego ha finalizado. Redirigiendo...', 'info');
+                    setTimeout(() => {
+                        window.location.href = '/tablet/join/';
+                    }, 2000);
+                    return;
+                }
+
+                // Verificar si el juego está en lobby
+                if (gameData.status === 'lobby') {
+                    window.location.href = `/tablet/lobby/?connection_id=${connectionId}`;
+                    return;
+                }
+
+                // Obtener actividad actual
+                const newActivityId = gameData.current_activity;
+                const currentActivityName = gameData.current_activity_name;
+                const currentStageNumber = gameData.current_stage_number;
+                
+                // Actualizar previousActivityId si es la primera vez
+                if (!previousActivityId && newActivityId) {
+                    previousActivityId = newActivityId;
+                }
+                
+                // Actualizar currentActivityId
+                currentActivityId = newActivityId;
+                
+                // Verificar si cambió el activity ID
+                const activityIdChanged = previousActivityId && previousActivityId !== currentActivityId;
+                
+                // Si la etapa terminó (no hay actividad actual en etapa 3), redirigir a resultados
+                if (currentStageNumber === 3 && (!currentActivityName || !currentActivityId)) {
+                    window.location.href = `/tablet/etapa3/resultados/?connection_id=${connectionId}`;
+                    return;
+                }
+                
+                // Si el profesor avanzó a otra etapa, redirigir
+                if (currentStageNumber > 3) {
+                    const normalizedName = currentActivityName.toLowerCase();
+                    if (currentStageNumber === 4) {
+                        if ((normalizedName.includes('pitch') && normalizedName.includes('formulario')) || 
+                            (normalizedName.includes('formulario') && normalizedName.includes('pitch'))) {
+                            window.location.href = `/tablet/etapa4/formulario-pitch/?connection_id=${connectionId}`;
+                        } else if ((normalizedName.includes('pitch') && normalizedName.includes('presentacion')) || 
+                                   (normalizedName.includes('presentación') && normalizedName.includes('pitch'))) {
+                            window.location.href = `/tablet/etapa4/presentacion-pitch/?connection_id=${connectionId}`;
+                        } else {
+                            window.location.href = `/tablet/game/?connection_id=${connectionId}`;
+                        }
+                    } else {
+                        window.location.href = `/tablet/game/?connection_id=${connectionId}`;
+                    }
+                    return;
+                }
+                
+                // Verificar si la actividad cambió
+                if (currentStageNumber === 3) {
+                    const normalizedActivityName = currentActivityName.toLowerCase();
+                    const isPrototypeActivity = normalizedActivityName.includes('prototipo');
+                    
+                    // Solo redirigir si REALMENTE cambió (no si ya estábamos en prototipo)
+                    if (!isPrototypeActivity && activityIdChanged) {
+                        // La actividad cambió y ya no es prototipo
+                        console.log('⚠️ [loadGameState] Actividad cambió de prototipo a otra:', normalizedActivityName);
+                        // Redirigir a resultados si no hay actividad
+                        if (!currentActivityName) {
+                            window.location.href = `/tablet/etapa3/resultados/?connection_id=${connectionId}`;
+                        } else {
+                            // Actividad desconocida, mantener en prototipo
+                            console.log('⚠️ [loadGameState] Actividad desconocida, manteniendo en prototipo');
+                        }
+                        return;
+                    }
+                    
+                    // Actualizar previousActivityId si estamos en prototipo
+                    if (currentActivityId && isPrototypeActivity) {
+                        previousActivityId = currentActivityId;
+                    }
+                }
+
+                // Obtener session_stage de Etapa 3
+                if (!currentSessionStageId) {
+                    const stagesResponse = await fetch(`${API_BASE_URL}/sessions/session-stages/?game_session=${gameSessionId}`);
+                    if (stagesResponse.ok) {
+                        const stagesData = await stagesResponse.json();
+                        const stages = stagesData.results || stagesData;
+                        const stage3 = stages.find(s => s.stage_number === 3);
+                        if (stage3) {
+                            currentSessionStageId = stage3.id;
+                            console.log('✅ currentSessionStageId para Etapa 3 actualizado:', currentSessionStageId);
+                        }
+                    }
+                }
+
+                // Cargar prototipo y temporizador
+                if (currentActivityId && currentSessionStageId) {
+                    await loadPrototypeStatus(gameSessionId);
+                    await startTimer(currentActivityId, gameSessionId);
+                }
+            } catch (error) {
+                console.error('Error loading game state:', error);
+                showAlert('Error de conexión: ' + error.message, 'error');
+            }
+        }
+
+        async function startTimer(activityId, gameSessionId) {
+            try {
+                const storedTimerStart = sessionStorage.getItem(`timerStartTime_${connectionId}_${activityId}`);
+                const storedTimerDuration = sessionStorage.getItem(`timerDuration_${connectionId}_${activityId}`);
+                
+                if (storedTimerStart && storedTimerDuration) {
+                    timerStartTime = parseInt(storedTimerStart);
+                    timerDuration = parseInt(storedTimerDuration);
+                    console.log('✅ Temporizador restaurado desde sessionStorage');
+                } else {
+                    const timerResponse = await fetch(`${API_BASE_URL}/sessions/game-sessions/${gameSessionId}/activity_timer/`);
+                    if (!timerResponse.ok) {
+                        console.error('Error al obtener información del temporizador');
+                        return;
+                    }
+                    
+                    const timerData = await timerResponse.json();
+                    
+                    if (timerData.error) {
+                        console.error('Error del servidor:', timerData.error);
+                        return;
+                    }
+                    
+                    timerDuration = timerData.timer_duration;
+                    
+                    if (timerDuration === null || timerDuration === undefined) {
+                        console.warn('⚠️ La actividad no tiene timer_duration configurado');
+                        return;
+                    }
+                    
+                    if (timerData.started_at) {
+                        timerStartTime = new Date(timerData.started_at).getTime();
+                    } else {
+                        timerStartTime = new Date(timerData.current_time).getTime();
+                    }
+                    
+                    sessionStorage.setItem(`timerStartTime_${connectionId}_${activityId}`, timerStartTime.toString());
+                    sessionStorage.setItem(`timerDuration_${connectionId}_${activityId}`, timerDuration.toString());
+                    
+                    console.log('✅ Temporizador sincronizado desde servidor');
+                }
+                
+                if (!timerDuration || timerDuration <= 0) {
+                    console.warn('⚠️ No se puede iniciar el temporizador: timerDuration no es válido');
+                    return;
+                }
+                
+                const updateTimer = () => {
+                    if (!timerStartTime || !timerDuration) return;
+                    
+                    const now = Date.now();
+                    const elapsed = Math.floor((now - timerStartTime) / 1000);
+                    const remaining = Math.max(0, timerDuration - elapsed);
+                    
+                    const minutes = Math.floor(remaining / 60);
+                    const seconds = remaining % 60;
+                    const timerDisplay = document.getElementById('timerDisplay');
+                    if (timerDisplay) {
+                        timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                    }
+                    
+                    if (remaining <= 0) {
+                        clearInterval(timerInterval);
+                        timerInterval = null;
+                        if (timerDisplay) {
+                            timerDisplay.textContent = '00:00';
+                        }
+                        showAlert('⏱️ ¡Tiempo agotado!', 'error');
+                    }
+                };
+                
+                updateTimer();
+                timerInterval = setInterval(updateTimer, 1000);
+                
+            } catch (error) {
+                console.error('Error iniciando temporizador:', error);
+            }
+        }
+
+        // Cargar información inicial
+        loadGameState();
+
+        // Polling para actualizar estado y sincronizar temporizador
+        setInterval(async () => {
+            if (gameSessionId) {
+                try {
+                    const gameResponse = await fetch(`${API_BASE_URL}/sessions/game-sessions/${gameSessionId}/`);
+                    if (gameResponse.ok) {
+                        const gameData = await gameResponse.json();
+                        
+                        if (gameData.status === 'finished' || gameData.status === 'completed') {
+                            showAlert('El juego ha finalizado. Redirigiendo...', 'info');
+                            setTimeout(() => {
+                                window.location.href = '/tablet/join/';
+                            }, 1000);
+                            return;
+                        }
+                        
+                        if (gameData.status === 'lobby') {
+                            window.location.href = `/tablet/lobby/?connection_id=${connectionId}`;
+                            return;
+                        }
+
+                        const currentActivityName = gameData.current_activity_name;
+                        const currentActivityId = gameData.current_activity;
+                        const currentStageNumber = gameData.current_stage_number;
+                        
+                        // Si la etapa terminó, redirigir a resultados
+                        if (currentStageNumber === 3 && (!currentActivityName || !currentActivityId)) {
+                            window.location.href = `/tablet/etapa3/resultados/?connection_id=${connectionId}`;
+                            return;
+                        }
+
+                        // Verificar si REALMENTE cambió la actividad (solo si cambió el ID)
+                        if (currentStageNumber === 3 && currentActivityName && currentActivityId) {
+                            const normalizedName = currentActivityName.toLowerCase();
+                            const activityIdChanged = previousActivityId && previousActivityId !== currentActivityId;
+                            const isStillPrototype = normalizedName.includes('prototipo');
+                            
+                            // Solo redirigir si REALMENTE cambió el ID Y cambió a otra actividad
+                            if (activityIdChanged && !isStillPrototype && !currentActivityName) {
+                                console.log('✅ [Polling] Etapa 3 sin actividad, redirigiendo a resultados');
+                                previousActivityId = currentActivityId;
+                                window.location.href = `/tablet/etapa3/resultados/?connection_id=${connectionId}`;
+                                return;
+                            }
+                            
+                            // Actualizar el activity ID anterior SOLO si no hubo redirección
+                            if (currentActivityId && !activityIdChanged) {
+                                previousActivityId = currentActivityId;
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error verificando estado del juego:', error);
+                }
+            }
+            
+            await loadGameState();
+            
+            // Sincronizar temporizador
+            if (currentActivityId && gameSessionId) {
+                try {
+                    const timerResponse = await fetch(`${API_BASE_URL}/sessions/game-sessions/${gameSessionId}/activity_timer/`);
+                    if (timerResponse.ok) {
+                        const timerData = await timerResponse.json();
+                        if (timerData.started_at && !timerData.error) {
+                            const serverStartTime = new Date(timerData.started_at).getTime();
+                            const currentStartTime = timerStartTime;
+                            
+                            if (!currentStartTime || Math.abs(serverStartTime - currentStartTime) > 2000) {
+                                timerStartTime = serverStartTime;
+                                sessionStorage.setItem(`timerStartTime_${connectionId}_${currentActivityId}`, timerStartTime.toString());
+                                
+                                if (timerData.timer_duration !== timerDuration) {
+                                    timerDuration = timerData.timer_duration;
+                                    sessionStorage.setItem(`timerDuration_${connectionId}_${currentActivityId}`, timerDuration.toString());
+                                }
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error sincronizando temporizador:', error);
+                }
+            }
+        }, 3000);
+    </script>
+</body>
+</html>
+

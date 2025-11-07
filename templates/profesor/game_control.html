@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Misión Emprende - Control de Juego</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-danger {
+            background: #dc3545;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .btn-success {
+            background: #28a745;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .stage-info {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .stage-icon {
+            font-size: 60px;
+            margin-bottom: 15px;
+        }
+
+        .stage-title {
+            color: #667eea;
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .stage-description {
+            color: #666;
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+
+        .activity-info {
+            background: #f0f4ff;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+
+        .activity-title {
+            color: #667eea;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .progress-stats {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 15px;
+        }
+
+        .stat {
+            padding: 15px 25px;
+            background: white;
+            border-radius: 10px;
+            text-align: center;
+            min-width: 150px;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .teams-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .teams-section h2 {
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+
+        .teams-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+        }
+
+        .team-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 5px solid #667eea;
+            transition: all 0.3s;
+        }
+
+        .team-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .team-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 15px;
+        }
+
+        .team-name-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .team-color {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 20px;
+            color: white;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .team-info h3 {
+            color: #333;
+            font-size: 20px;
+            margin-bottom: 5px;
+        }
+
+        .team-info p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .status-badge {
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-badge.in-progress {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-badge.completed {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-badge.pending {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .personalization-details {
+            margin-top: 15px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+        }
+
+        .personalization-details h4 {
+            color: #333;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+
+        .detail-item {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .detail-label {
+            color: #666;
+            font-size: 14px;
+            font-weight: 600;
+            min-width: 120px;
+        }
+
+        .detail-value {
+            color: #333;
+            font-size: 14px;
+        }
+
+        .know-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .know-badge.yes {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .know-badge.no {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert.show {
+            display: block;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            display: none;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>🎮 Control de Juego</h1>
+                <p id="roomCodeDisplay">Sala: <strong id="roomCode">---</strong></p>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn-danger" onclick="finalizeSession()">
+                    🏁 Finalizar Sala
+                </button>
+                <button class="btn" onclick="window.location.href='/panel/'">
+                    ← Volver al Panel
+                </button>
+            </div>
+        </div>
+
+        <div id="alertContainer"></div>
+
+        <!-- Información de Etapa -->
+        <div class="stage-info">
+            <div class="stage-icon" id="stageIcon">👥</div>
+            <h2 class="stage-title" id="stageTitle">Etapa 1: Trabajo en Equipo</h2>
+            <p class="stage-description" id="stageDescription">
+                Los equipos están personalizando su nombre e indicando si se conocen
+            </p>
+            
+            <div class="activity-info">
+                <div class="activity-title">Actividad Actual: Personalización</div>
+                <div class="progress-stats">
+                    <div class="stat">
+                        <div class="stat-value" id="completedTeams">0</div>
+                        <div class="stat-label">Completados</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value" id="inProgressTeams">0</div>
+                        <div class="stat-label">En Progreso</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value" id="totalTeams">0</div>
+                        <div class="stat-label">Total Equipos</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn btn-success" id="nextActivityBtn" onclick="nextActivity()" style="display: none;">
+                    Continuar a Siguiente Actividad
+                </button>
+            </div>
+        </div>
+
+        <!-- Equipos -->
+        <div class="teams-section">
+            <h2>👥 Estado de Equipos</h2>
+            <div class="teams-grid" id="teamsGrid">
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <p>Cargando equipos...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8000/api';
+        let authToken = localStorage.getItem('authToken');
+        let currentSessionId = null;
+
+        // Obtener session_id de la URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const pathParts = window.location.pathname.split('/').filter(p => p);
+        const gameControlIndex = pathParts.indexOf('game-control');
+        
+        if (gameControlIndex !== -1 && pathParts[gameControlIndex + 1]) {
+            currentSessionId = parseInt(pathParts[gameControlIndex + 1]);
+        } else {
+            currentSessionId = urlParams.get('session_id') ? parseInt(urlParams.get('session_id')) : null;
+        }
+        
+        console.log('Current Session ID:', currentSessionId, 'from path:', window.location.pathname); // Debug
+
+        if (!authToken) {
+            window.location.href = '/login/';
+        }
+
+        if (!currentSessionId || isNaN(currentSessionId)) {
+            console.error('Session ID no válido:', currentSessionId); // Debug
+            // Mostrar alerta antes de redirigir
+            setTimeout(() => {
+                window.location.href = '/panel/';
+            }, 2000);
+            return;
+        }
+
+        function showAlert(message, type = 'error') {
+            const alertContainer = document.getElementById('alertContainer');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type} show`;
+            alert.textContent = message;
+            alertContainer.innerHTML = '';
+            alertContainer.appendChild(alert);
+            
+            setTimeout(() => {
+                alert.classList.remove('show');
+            }, 5000);
+        }
+
+        function getTeamColorHex(color) {
+            const colorMap = {
+                'Verde': '#28a745',
+                'Azul': '#007bff',
+                'Rojo': '#dc3545',
+                'Amarillo': '#ffc107',
+                'Naranja': '#fd7e14',
+                'Morado': '#6f42c1',
+                'Rosa': '#e83e8c',
+                'Cian': '#17a2b8',
+                'Gris': '#6c757d',
+                'Marrón': '#795548'
+            };
+            return colorMap[color] || '#667eea';
+        }
+
+        async function loadGameControl() {
+            try {
+                // Obtener información de la sesión
+                const sessionResponse = await fetch(`${API_BASE_URL}/sessions/game-sessions/${currentSessionId}/`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (!sessionResponse.ok) {
+                    showAlert('Error al cargar la sesión');
+                    return;
+                }
+
+                const sessionData = await sessionResponse.json();
+                
+                // Actualizar código de sala
+                document.getElementById('roomCode').textContent = sessionData.room_code;
+                
+                // Actualizar información de etapa y actividad
+                if (sessionData.current_stage_name) {
+                    const stageNumber = sessionData.current_stage_number || '?';
+                    document.getElementById('stageTitle').textContent = `Etapa ${stageNumber}: ${sessionData.current_stage_name}`;
+                } else {
+                    document.getElementById('stageTitle').textContent = 'Etapa: No iniciada';
+                }
+                
+                if (sessionData.current_activity_name) {
+                    document.getElementById('stageDescription').textContent = `Actividad Actual: ${sessionData.current_activity_name}`;
+                } else {
+                    document.getElementById('stageDescription').textContent = 'Actividad: No iniciada';
+                }
+
+                // Obtener equipos con personalización
+                const teamsResponse = await fetch(`${API_BASE_URL}/sessions/teams/?game_session=${currentSessionId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (!teamsResponse.ok) {
+                    showAlert('Error al cargar los equipos');
+                    return;
+                }
+
+                const teamsData = await teamsResponse.json();
+                const teams = teamsData.results || teamsData;
+
+                // Obtener personalizaciones de todos los equipos
+                const personalizations = {};
+                for (const team of teams) {
+                    try {
+                        const persResponse = await fetch(`${API_BASE_URL}/sessions/team-personalizations/?team=${team.id}`, {
+                            headers: {
+                                'Authorization': `Bearer ${authToken}`
+                            }
+                        });
+                        
+                        if (persResponse.ok) {
+                            const persData = await persResponse.json();
+                            const persResults = persData.results || persData;
+                            if (persResults.length > 0) {
+                                personalizations[team.id] = persResults[0];
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Error loading personalization for team', team.id, error);
+                    }
+                }
+
+                // Renderizar equipos
+                renderTeams(teams, personalizations);
+
+                document.getElementById('loading').classList.remove('show');
+            } catch (error) {
+                console.error('Error loading game control:', error);
+                showAlert('Error de conexión: ' + error.message);
+            }
+        }
+
+        function renderTeams(teams, personalizations) {
+            const teamsGrid = document.getElementById('teamsGrid');
+            
+            let completedCount = 0;
+            let inProgressCount = 0;
+
+            teamsGrid.innerHTML = teams.map(team => {
+                const personalization = personalizations[team.id] || null;
+                const isCompleted = personalization && 
+                                   personalization.team_name && 
+                                   personalization.team_name.trim() !== '' &&
+                                   personalization.team_members_know_each_other !== null;
+                
+                if (isCompleted) {
+                    completedCount++;
+                } else if (personalization) {
+                    inProgressCount++;
+                }
+
+                const status = isCompleted ? 'completed' : (personalization ? 'in-progress' : 'pending');
+                const statusText = isCompleted ? 'Listo' : (personalization ? 'En Progreso' : 'Pendiente');
+
+                return `
+                    <div class="team-card" style="border-left-color: ${getTeamColorHex(team.color)};">
+                        <div class="team-header">
+                            <div class="team-name-section">
+                                <div class="team-color" style="background: ${getTeamColorHex(team.color)};">
+                                    ${team.color.charAt(0).toUpperCase()}
+                                </div>
+                                <div class="team-info">
+                                    <h3>${team.name}</h3>
+                                    <p>${team.students_count} estudiantes</p>
+                                </div>
+                            </div>
+                            <div class="status-badge ${status}">
+                                ${statusText}
+                            </div>
+                        </div>
+
+                        <div class="personalization-details">
+                            <h4>📝 Personalización</h4>
+                            ${personalization ? `
+                                <div class="detail-item">
+                                    <span class="detail-label">Nombre del Equipo:</span>
+                                    <span class="detail-value">
+                                        ${personalization.team_name || '<em style="color: #999;">No definido</em>'}
+                                    </span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">¿Se conocen?:</span>
+                                    <span class="detail-value">
+                                        ${personalization.team_members_know_each_other !== null ? 
+                                            (personalization.team_members_know_each_other ? 
+                                                '<span class="know-badge yes">✅ Sí, ya se conocen</span>' : 
+                                                '<span class="know-badge no">❌ No se conocen</span>') : 
+                                            '<em style="color: #999;">No indicado</em>'}
+                                    </span>
+                                </div>
+                            ` : `
+                                <div class="detail-item">
+                                    <span class="detail-value" style="color: #999;">Aún no ha iniciado la personalización</span>
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Actualizar estadísticas
+            document.getElementById('completedTeams').textContent = completedCount;
+            document.getElementById('inProgressTeams').textContent = inProgressCount;
+            document.getElementById('totalTeams').textContent = teams.length;
+
+            // Mostrar botón de continuar si todos están completos
+            const nextBtn = document.getElementById('nextActivityBtn');
+            if (completedCount === teams.length && teams.length > 0) {
+                nextBtn.style.display = 'block';
+            } else {
+                nextBtn.style.display = 'none';
+            }
+        }
+
+        function nextActivity() {
+            // TODO: Implementar siguiente actividad
+            showAlert('Funcionalidad de siguiente actividad en desarrollo', 'error');
+        }
+
+        async function finalizeSession() {
+            if (!confirm('¿Estás seguro de que deseas finalizar esta sesión? Se desconectarán todas las tablets y no podrás acceder al lobby nuevamente.')) {
+                return;
+            }
+            
+            if (!confirm('⚠️ ADVERTENCIA: Esta acción no se puede deshacer. ¿Continuar?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/sessions/game-sessions/${currentSessionId}/end/`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    showAlert(`¡Sesión finalizada exitosamente! Se desconectaron ${data.tablets_disconnected || 0} tablets.`, 'success');
+                    // Redirigir al panel después de 2 segundos
+                    setTimeout(() => {
+                        window.location.href = '/panel/';
+                    }, 2000);
+                } else {
+                    const errorData = await response.json();
+                    showAlert(errorData.error || 'Error al finalizar la sesión');
+                }
+            } catch (error) {
+                showAlert('Error de conexión: ' + error.message);
+            }
+        }
+
+        // Cargar estado inicial
+        document.getElementById('loading').classList.add('show');
+        loadGameControl();
+
+        // Polling cada 3 segundos para actualizar estado
+        const pollInterval = setInterval(() => {
+            loadGameControl();
+        }, 3000);
+
+        // Limpiar intervalo cuando se cierra la página
+        window.addEventListener('beforeunload', () => {
+            if (pollInterval) {
+                clearInterval(pollInterval);
+            }
+        });
+    </script>
+</body>
+</html>
+

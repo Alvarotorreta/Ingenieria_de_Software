@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Misión Emprende - Formulario de Pitch</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-success {
+            background: #28a745;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .stage-info {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .stage-icon {
+            font-size: 60px;
+            margin-bottom: 15px;
+        }
+
+        .stage-title {
+            color: #667eea;
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .timer-container {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            border: 2px solid #ffc107;
+            text-align: center;
+        }
+
+        .timer-display {
+            color: #856404;
+            font-weight: 600;
+            font-size: 18px;
+        }
+
+        .teams-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+            gap: 20px;
+        }
+
+        .team-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s;
+        }
+
+        .team-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .team-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .team-name {
+            font-size: 20px;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .team-status {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-pending {
+            background: #ffc107;
+            color: #856404;
+        }
+
+        .status-in-progress {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .status-completed {
+            background: #28a745;
+            color: white;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 25px;
+            background: #e9ecef;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .pitch-field {
+            margin-bottom: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .pitch-field-label {
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .pitch-field-content {
+            color: #333;
+            font-size: 14px;
+            line-height: 1.6;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+
+        .pitch-field-empty {
+            color: #999;
+            font-style: italic;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: white;
+            font-size: 18px;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1 id="stageTitle">Etapa 4: Comunicación</h1>
+                <p id="stageDescription">Actividad: Formulario de Pitch</p>
+            </div>
+            <div>
+                <button class="btn btn-success" onclick="nextActivity()">Continuar</button>
+            </div>
+        </div>
+
+        <div class="stage-info">
+            <div class="stage-icon">📝</div>
+            <h2 class="stage-title">Formulario de Pitch</h2>
+            <p style="color: #666; margin-top: 10px;">Los equipos están completando el formulario de pitch con intro-problema, solución y cierre.</p>
+            
+            <!-- Temporizador -->
+            <div class="timer-container" id="timerContainerProf" style="display: none;">
+                <span class="timer-display">⏱️ Tiempo restante: <span id="timerDisplayProf">--:--</span></span>
+            </div>
+        </div>
+
+        <div id="loading" class="loading">Cargando equipos...</div>
+        <div id="teamsContainer" class="teams-grid" style="display: none;"></div>
+    </div>
+
+    <script>
+        const API_BASE_URL = '/api';
+        const currentSessionId = {{ session_id }};
+        let timerIntervalProf = null;
+        let timerStartTimeProf = null;
+        let timerDurationProf = null;
+
+        setTimeout(() => {
+            loadGameControl();
+        }, 100);
+
+        setInterval(() => {
+            loadGameControl();
+        }, 2000);
+
+        async function loadGameControl() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/sessions/game-sessions/${currentSessionId}/`);
+                if (!response.ok) {
+                    throw new Error('Error al cargar sesión');
+                }
+
+                const gameData = await response.json();
+                
+                // Validar que estamos en la Etapa 4
+                const currentStageNumber = gameData.current_stage_number || 0;
+                if (currentStageNumber !== 4) {
+                    console.warn('⚠️ Esta vista es para Etapa 4, pero la sesión está en Etapa', currentStageNumber);
+                    // Redirigir a la vista correcta
+                    if (currentStageNumber === 1) {
+                        window.location.replace(`/profesor/etapa1/personalizacion/${currentSessionId}/`);
+                    } else if (currentStageNumber === 2) {
+                        window.location.replace(`/profesor/etapa2/seleccionar-tema/${currentSessionId}/`);
+                    } else if (currentStageNumber === 3) {
+                        window.location.replace(`/profesor/etapa3/prototipo/${currentSessionId}/`);
+                    }
+                    return;
+                }
+
+                // Actualizar título
+                document.getElementById('stageTitle').textContent = 'Etapa 4: Comunicación';
+                if (gameData.current_activity_name) {
+                    document.getElementById('stageDescription').textContent = `Actividad: ${gameData.current_activity_name}`;
+                }
+
+                if (gameData.current_activity && !timerIntervalProf) {
+                    await startTimerProf(gameData.current_activity, currentSessionId);
+                }
+
+                await loadTeamsPitch();
+            } catch (error) {
+                console.error('Error loading game control:', error);
+            }
+        }
+
+        async function loadTeamsPitch() {
+            try {
+                const teamsResponse = await fetch(`${API_BASE_URL}/sessions/game-sessions/${currentSessionId}/teams/`);
+                if (!teamsResponse.ok) {
+                    throw new Error('Error al cargar equipos');
+                }
+                const teams = await teamsResponse.json();
+
+                const sessionResponse = await fetch(`${API_BASE_URL}/sessions/game-sessions/${currentSessionId}/`);
+                const sessionData = await sessionResponse.json();
+                
+                if (!sessionData.current_stage) {
+                    return;
+                }
+
+                // Obtener session_stage para la Etapa 4
+                const sessionStagesResponse = await fetch(`${API_BASE_URL}/sessions/session-stages/?game_session=${currentSessionId}`);
+                const sessionStagesData = await sessionStagesResponse.json();
+                const sessionStages = Array.isArray(sessionStagesData) ? sessionStagesData : sessionStagesData.results || [];
+                
+                const sessionStage = sessionStages.find(s => s.stage_number === 4) || sessionStages.find(s => s.stage === sessionData.current_stage);
+                
+                if (!sessionStage) {
+                    console.warn('⚠️ No se encontró session_stage para Etapa 4');
+                    return;
+                }
+
+                const activityResponse = await fetch(`${API_BASE_URL}/challenges/activities/${sessionData.current_activity}/`);
+                const activity = await activityResponse.json();
+
+                const progressPromises = teams.map(async (team) => {
+                    try {
+                        let progressResponse = await fetch(
+                            `${API_BASE_URL}/sessions/team-activity-progress/?team=${team.id}&activity=${activity.id}&session_stage=${sessionStage.id}`
+                        );
+                        
+                        if (!progressResponse.ok) {
+                            progressResponse = await fetch(
+                                `${API_BASE_URL}/sessions/team-activity-progress/?team=${team.id}&activity=${activity.id}`
+                            );
+                        }
+                        
+                        if (!progressResponse.ok) {
+                            return { team, progress: null };
+                        }
+                        
+                        const progressData = await progressResponse.json();
+                        const progressArray = Array.isArray(progressData) ? progressData : progressData.results || [];
+                        
+                        let progress = null;
+                        if (progressArray.length > 0) {
+                            progress = progressArray.find(p => p.session_stage === sessionStage.id) || progressArray[0];
+                        }
+                        
+                        return { team, progress };
+                    } catch (error) {
+                        console.error(`Error al obtener progreso para equipo ${team.name}:`, error);
+                        return { team, progress: null };
+                    }
+                });
+
+                const teamsWithProgress = await Promise.all(progressPromises);
+                renderTeams(teamsWithProgress);
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('teamsContainer').style.display = 'grid';
+            } catch (error) {
+                console.error('Error loading teams pitch:', error);
+            }
+        }
+
+        function renderTeams(teamsWithProgress) {
+            const container = document.getElementById('teamsContainer');
+            container.innerHTML = '';
+
+            teamsWithProgress.forEach(({ team, progress }) => {
+                const card = document.createElement('div');
+                card.className = 'team-card';
+
+                const status = progress?.status || 'pending';
+                const statusClass = `status-${status}`;
+                const statusText = {
+                    'pending': 'Pendiente',
+                    'in_progress': 'En Progreso',
+                    'completed': 'Completado'
+                }[status] || 'Pendiente';
+
+                const progressPercentage = progress?.progress_percentage || 0;
+
+                const hasIntro = progress?.pitch_intro_problem && progress.pitch_intro_problem.trim() !== '';
+                const hasSolution = progress?.pitch_solution && progress.pitch_solution.trim() !== '';
+                const hasClosing = progress?.pitch_closing && progress.pitch_closing.trim() !== '';
+
+                card.innerHTML = `
+                    <div class="team-header">
+                        <div class="team-name">${team.name}</div>
+                        <div class="team-status ${statusClass}">${statusText}</div>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${progressPercentage}%;">
+                            ${progressPercentage}%
+                        </div>
+                    </div>
+                    <div class="pitch-field">
+                        <div class="pitch-field-label">📋 Introducción del Problema</div>
+                        <div class="pitch-field-content ${hasIntro ? '' : 'pitch-field-empty'}">
+                            ${hasIntro ? (progress.pitch_intro_problem.length > 150 ? progress.pitch_intro_problem.substring(0, 150) + '...' : progress.pitch_intro_problem) : 'Pendiente'}
+                        </div>
+                    </div>
+                    <div class="pitch-field">
+                        <div class="pitch-field-label">💡 Solución</div>
+                        <div class="pitch-field-content ${hasSolution ? '' : 'pitch-field-empty'}">
+                            ${hasSolution ? (progress.pitch_solution.length > 150 ? progress.pitch_solution.substring(0, 150) + '...' : progress.pitch_solution) : 'Pendiente'}
+                        </div>
+                    </div>
+                    <div class="pitch-field">
+                        <div class="pitch-field-label">🎯 Cierre</div>
+                        <div class="pitch-field-content ${hasClosing ? '' : 'pitch-field-empty'}">
+                            ${hasClosing ? (progress.pitch_closing.length > 150 ? progress.pitch_closing.substring(0, 150) + '...' : progress.pitch_closing) : 'Pendiente'}
+                        </div>
+                    </div>
+                `;
+
+                container.appendChild(card);
+            });
+        }
+
+        async function startTimerProf(activityId, sessionId) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/sessions/game-sessions/${sessionId}/activity_timer/`);
+                if (!response.ok) {
+                    throw new Error('Error al obtener temporizador');
+                }
+
+                const timerData = await response.json();
+                
+                if (!timerData.timer_duration) {
+                    console.warn('⚠️ No hay temporizador configurado para esta actividad');
+                    return;
+                }
+
+                timerDurationProf = timerData.timer_duration;
+                const startedAt = timerData.started_at ? new Date(timerData.started_at) : null;
+                const currentTime = timerData.current_time ? new Date(timerData.current_time) : new Date();
+
+                // Restaurar desde sessionStorage si existe
+                const storageKey = `timer_${sessionId}_${activityId}`;
+                const storedData = sessionStorage.getItem(storageKey);
+                
+                if (storedData) {
+                    try {
+                        const parsed = JSON.parse(storedData);
+                        if (parsed.duration === timerDurationProf && parsed.startTime) {
+                            timerStartTimeProf = new Date(parsed.startTime);
+                            timerDurationProf = parsed.duration;
+                        } else if (startedAt) {
+                            timerStartTimeProf = startedAt;
+                        } else {
+                            timerStartTimeProf = currentTime;
+                        }
+                    } catch (e) {
+                        if (startedAt) {
+                            timerStartTimeProf = startedAt;
+                        } else {
+                            timerStartTimeProf = currentTime;
+                        }
+                    }
+                } else if (startedAt) {
+                    timerStartTimeProf = startedAt;
+                } else {
+                    timerStartTimeProf = currentTime;
+                }
+
+                // Guardar en sessionStorage
+                sessionStorage.setItem(storageKey, JSON.stringify({
+                    startTime: timerStartTimeProf.toISOString(),
+                    duration: timerDurationProf
+                }));
+
+                document.getElementById('timerContainerProf').style.display = 'block';
+                updateTimerDisplayProf();
+
+                if (timerIntervalProf) {
+                    clearInterval(timerIntervalProf);
+                }
+
+                timerIntervalProf = setInterval(() => {
+                    updateTimerDisplayProf();
+                }, 1000);
+
+            } catch (error) {
+                console.error('Error starting timer:', error);
+            }
+        }
+
+        function updateTimerDisplayProf() {
+            if (!timerStartTimeProf || !timerDurationProf) {
+                document.getElementById('timerDisplayProf').textContent = '--:--';
+                return;
+            }
+
+            const now = new Date();
+            const elapsed = Math.floor((now - timerStartTimeProf) / 1000);
+            const remaining = Math.max(0, timerDurationProf - elapsed);
+
+            if (remaining <= 0) {
+                document.getElementById('timerDisplayProf').textContent = '00:00';
+                if (timerIntervalProf) {
+                    clearInterval(timerIntervalProf);
+                    timerIntervalProf = null;
+                }
+                return;
+            }
+
+            const minutes = Math.floor(remaining / 60);
+            const seconds = remaining % 60;
+            document.getElementById('timerDisplayProf').textContent = 
+                `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }
+
+        async function nextActivity() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/sessions/game-sessions/${currentSessionId}/next_activity/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    alert('Error: ' + (error.error || 'No se pudo avanzar'));
+                    return;
+                }
+
+                const data = await response.json();
+                
+                if (data.stage_completed) {
+                    window.location.href = `/profesor/resultados/${currentSessionId}/?stage_id=${data.stage_id}`;
+                } else {
+                    // Si hay más actividades, redirigir a la siguiente
+                    // Para Etapa 4, después de "Formulario de Pitch" (order_number=1) viene la confirmación del orden
+                    const sessionResponse = await fetch(`${API_BASE_URL}/sessions/game-sessions/${currentSessionId}/`);
+                    const sessionData = await sessionResponse.json();
+                    
+                    // Si estamos en Etapa 4 y avanzamos, redirigir a confirmar orden de presentación
+                    if (sessionData.current_stage_number === 4) {
+                        window.location.href = `/profesor/etapa4/confirmar-orden-pitch/${currentSessionId}/`;
+                    } else if (data.current_activity_name && (
+                        data.current_activity_name.toLowerCase().includes('presentacion') ||
+                        data.current_activity_name.toLowerCase().includes('presentación')
+                    )) {
+                        // Si no estamos en Etapa 4 pero el nombre incluye "presentación", verificar si es Etapa 4
+                        if (sessionData.current_stage_number === 4) {
+                            window.location.href = `/profesor/etapa4/confirmar-orden-pitch/${currentSessionId}/`;
+                        } else {
+                            window.location.href = `/profesor/etapa4/presentacion-pitch/${currentSessionId}/`;
+                        }
+                    } else {
+                        // Por defecto, recargar la página
+                        window.location.reload();
+                    }
+                }
+            } catch (error) {
+                console.error('Error advancing activity:', error);
+                alert('Error al avanzar: ' + error.message);
+            }
+        }
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    </script>
+</body>
+</html>
+

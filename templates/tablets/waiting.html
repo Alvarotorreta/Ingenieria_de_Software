@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Misión Emprende - Esperando</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .header {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .team-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .team-color {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 20px;
+            color: white;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .team-details h2 {
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .team-details p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .tokens-badge {
+            background: #667eea;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-size: 18px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .status-section {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .status-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .status-title {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .status-message {
+            color: #666;
+            font-size: 18px;
+            margin-bottom: 30px;
+        }
+
+        .connection-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .connection-indicator.connected {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .connection-indicator.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .connection-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            animation: blink 1.5s infinite;
+        }
+
+        .connection-indicator.connected .connection-dot {
+            background: #28a745;
+        }
+
+        .connection-indicator.disconnected .connection-dot {
+            background: #dc3545;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .team-members {
+            margin-top: 30px;
+        }
+
+        .team-members h3 {
+            color: #333;
+            font-size: 20px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .members-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .member-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            border: 2px solid #e0e0e0;
+            transition: all 0.3s;
+        }
+
+        .member-card:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
+        }
+
+        .member-card h4 {
+            color: #333;
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+
+        .member-card p {
+            color: #666;
+            font-size: 12px;
+        }
+
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 30px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert.show {
+            display: block;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .room-code {
+            text-align: center;
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .room-code p {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        .room-code strong {
+            color: #667eea;
+            font-size: 24px;
+            letter-spacing: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="team-info">
+            <div class="team-color" id="teamColor" style="background: #667eea;">
+                ?
+            </div>
+            <div class="team-details">
+                <h2 id="teamName">Equipo</h2>
+                <p id="teamInfo">Cargando información...</p>
+            </div>
+        </div>
+        <div class="tokens-badge">
+            🪙 <span id="tokensCount">0</span> Tokens
+        </div>
+    </div>
+
+    <div class="container">
+        <div id="alertContainer"></div>
+
+        <div class="status-section">
+            <div class="status-icon" id="statusIcon">⏳</div>
+            <h2 class="status-title" id="statusTitle">Esperando</h2>
+            <p class="status-message" id="statusMessage">El profesor iniciará el juego pronto</p>
+            
+            <div class="connection-indicator connected" id="connectionIndicator">
+                <div class="connection-dot"></div>
+                <span>Conectado</span>
+            </div>
+        </div>
+
+        <div class="team-members">
+            <h3>👥 Miembros del Equipo</h3>
+            <div class="members-list" id="membersList">
+                <div class="loading-spinner"></div>
+            </div>
+        </div>
+
+        <div class="room-code">
+            <p>Código de Sala:</p>
+            <strong id="roomCode">---</strong>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8000/api';
+        
+        // Obtener connection_id de la URL o localStorage
+        const urlParams = new URLSearchParams(window.location.search);
+        let connectionId = urlParams.get('connection_id') || localStorage.getItem('tabletConnectionId');
+        
+        if (!connectionId) {
+            // Si no hay connection_id, redirigir a join
+            window.location.href = '/tablet/join/';
+        }
+
+        let pollInterval = null;
+        let gameStarted = false;
+
+        // Función para obtener colores hex desde nombres
+        function getTeamColorHex(color) {
+            const colorMap = {
+                'Verde': '#28a745',
+                'Azul': '#007bff',
+                'Rojo': '#dc3545',
+                'Amarillo': '#ffc107',
+                'Naranja': '#fd7e14',
+                'Morado': '#6f42c1',
+                'Rosa': '#e83e8c',
+                'Cian': '#17a2b8',
+                'Gris': '#6c757d',
+                'Marrón': '#795548'
+            };
+            return colorMap[color] || '#667eea';
+        }
+
+        function showAlert(message, type = 'info') {
+            const alertContainer = document.getElementById('alertContainer');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type} show`;
+            alert.textContent = message;
+            alertContainer.innerHTML = '';
+            alertContainer.appendChild(alert);
+            
+            setTimeout(() => {
+                alert.classList.remove('show');
+            }, 5000);
+        }
+
+        async function loadConnectionStatus() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/sessions/tablet-connections/status/?connection_id=${connectionId}`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    renderWaitingScreen(data);
+                    
+                    // Si el juego ha comenzado, redirigir
+                    if (data.game_session.status === 'running' && !gameStarted) {
+                        gameStarted = true;
+                        showAlert('¡El juego ha comenzado!', 'info');
+                        setTimeout(() => {
+                            // Redirigir a la pantalla del juego
+                            window.location.href = `/tablet/game/?connection_id=${connectionId}`;
+                        }, 2000);
+                    }
+                } else if (response.status === 404) {
+                    showAlert('Conexión no encontrada. Por favor reconecta.', 'error');
+                    setTimeout(() => {
+                        window.location.href = '/tablet/join/';
+                    }, 3000);
+                } else {
+                    updateConnectionStatus(false);
+                }
+            } catch (error) {
+                console.error('Error loading status:', error);
+                updateConnectionStatus(false);
+            }
+        }
+
+        function renderWaitingScreen(data) {
+            const team = data.team;
+            const gameSession = data.game_session;
+            
+            // Actualizar información del equipo
+            document.getElementById('teamName').textContent = team.name;
+            document.getElementById('teamInfo').textContent = `Equipo ${team.color}`;
+            document.getElementById('teamColor').textContent = team.color.charAt(0).toUpperCase();
+            document.getElementById('teamColor').style.background = getTeamColorHex(team.color);
+            
+            // Actualizar tokens
+            document.getElementById('tokensCount').textContent = team.tokens_total || 0;
+            
+            // Actualizar código de sala
+            document.getElementById('roomCode').textContent = gameSession.room_code;
+            
+            // Actualizar estado según el estado de la sesión
+            const statusIcon = document.getElementById('statusIcon');
+            const statusTitle = document.getElementById('statusTitle');
+            const statusMessage = document.getElementById('statusMessage');
+            
+            if (gameSession.status === 'lobby') {
+                statusIcon.textContent = '⏳';
+                statusTitle.textContent = 'Esperando';
+                statusMessage.textContent = 'El profesor iniciará el juego pronto';
+            } else if (gameSession.status === 'running') {
+                statusIcon.textContent = '🚀';
+                statusTitle.textContent = '¡Juego Iniciado!';
+                statusMessage.textContent = 'Redirigiendo al juego...';
+            } else {
+                statusIcon.textContent = '❌';
+                statusTitle.textContent = 'Sesión Finalizada';
+                statusMessage.textContent = 'Esta sesión ha terminado';
+            }
+            
+            // Renderizar miembros del equipo
+            const membersList = document.getElementById('membersList');
+            if (team.students && team.students.length > 0) {
+                membersList.innerHTML = team.students.map(student => {
+                    // Extraer primer nombre y apellido paterno
+                    const nameParts = student.full_name ? student.full_name.trim().split(/\s+/) : [];
+                    const firstName = nameParts[0] || '';
+                    let lastName = '';
+                    if (nameParts.length === 2) {
+                        lastName = nameParts[1];
+                    } else if (nameParts.length >= 3) {
+                        lastName = nameParts[nameParts.length - 2];
+                    }
+                    const shortName = lastName ? `${firstName} ${lastName}`.trim() : firstName || student.full_name || 'Sin nombre';
+                    
+                    return `
+                        <div class="member-card">
+                            <h4>${shortName}</h4>
+                            <p>${student.full_name || ''}</p>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                membersList.innerHTML = '<p style="text-align: center; color: #666; grid-column: 1 / -1;">No hay miembros asignados</p>';
+            }
+            
+            // Actualizar indicador de conexión
+            updateConnectionStatus(true);
+        }
+
+        function updateConnectionStatus(connected) {
+            const indicator = document.getElementById('connectionIndicator');
+            if (connected) {
+                indicator.className = 'connection-indicator connected';
+                indicator.innerHTML = '<div class="connection-dot"></div><span>Conectado</span>';
+            } else {
+                indicator.className = 'connection-indicator disconnected';
+                indicator.innerHTML = '<div class="connection-dot"></div><span>Desconectado</span>';
+            }
+        }
+
+        // Cargar estado inicial
+        loadConnectionStatus();
+
+        // Polling cada 3 segundos para verificar estado
+        pollInterval = setInterval(loadConnectionStatus, 3000);
+
+        // Limpiar intervalo cuando se cierra la página
+        window.addEventListener('beforeunload', () => {
+            if (pollInterval) {
+                clearInterval(pollInterval);
+            }
+        });
+    </script>
+</body>
+</html>
+

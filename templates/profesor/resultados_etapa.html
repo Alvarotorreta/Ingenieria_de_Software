@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Misión Emprende - Resultados Etapa</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-success {
+            background: #28a745;
+            font-size: 18px;
+            padding: 15px 30px;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .stage-info {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .stage-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+        }
+
+        .stage-title {
+            color: #667eea;
+            font-size: 32px;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .stage-description {
+            color: #666;
+            font-size: 18px;
+            margin-bottom: 30px;
+        }
+
+        .results-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .results-section h2 {
+            color: #667eea;
+            font-size: 24px;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+
+        .teams-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .team-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            border-left: 5px solid #667eea;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .team-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .team-card.rank-1 {
+            border-left-color: #ffd700;
+            background: linear-gradient(135deg, #fff9e6 0%, #ffffff 100%);
+        }
+
+        .team-card.rank-2 {
+            border-left-color: #c0c0c0;
+            background: linear-gradient(135deg, #f0f0f0 0%, #ffffff 100%);
+        }
+
+        .team-card.rank-3 {
+            border-left-color: #cd7f32;
+            background: linear-gradient(135deg, #f5e6d3 0%, #ffffff 100%);
+        }
+
+        .team-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .team-name-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .team-color {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 20px;
+            color: white;
+        }
+
+        .team-info h3 {
+            color: #333;
+            font-size: 20px;
+            margin-bottom: 5px;
+        }
+
+        .rank-badge {
+            background: #667eea;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 18px;
+        }
+
+        .rank-badge.rank-1 {
+            background: #ffd700;
+            color: #333;
+        }
+
+        .rank-badge.rank-2 {
+            background: #c0c0c0;
+            color: #333;
+        }
+
+        .rank-badge.rank-3 {
+            background: #cd7f32;
+            color: white;
+        }
+
+        .tokens-section {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+            padding: 15px;
+            background: white;
+            border-radius: 10px;
+        }
+
+        .token-item {
+            text-align: center;
+        }
+
+        .token-label {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        .token-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #28a745;
+        }
+
+        .token-value-stage {
+            color: #667eea;
+        }
+
+        .activities-list {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 2px solid #e9ecef;
+        }
+
+        .activity-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            margin-bottom: 8px;
+            background: white;
+            border-radius: 8px;
+        }
+
+        .activity-name {
+            color: #333;
+            font-size: 14px;
+        }
+
+        .activity-status {
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .activity-status.completed {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .activity-status.pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .action-buttons {
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: white;
+            font-size: 18px;
+        }
+
+        .loading-spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        #alertContainer {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .alert {
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            min-width: 300px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border-left: 4px solid #28a745;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border-left: 4px solid #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="loading" class="loading">
+            <div class="loading-spinner"></div>
+            <p>Cargando resultados...</p>
+        </div>
+
+        <div id="content" style="display: none;">
+            <div class="header">
+                <div>
+                    <h1>🏆 Resultados de la Etapa</h1>
+                    <p id="roomCode">Código de sala: --</p>
+                </div>
+                <button class="btn btn-danger" onclick="finalizeSession()">Finalizar Sala</button>
+            </div>
+
+            <div class="stage-info">
+                <div class="stage-icon" id="stageIcon">👥</div>
+                <h2 class="stage-title" id="stageTitle">Etapa 1: Trabajo en Equipo</h2>
+                <p class="stage-description" id="stageDescription">
+                    Resultados finales de la etapa
+                </p>
+            </div>
+
+            <div class="results-section">
+                <h2>📊 Clasificación de Equipos</h2>
+                <div class="teams-grid" id="teamsGrid">
+                    <!-- Los equipos se cargarán aquí -->
+                </div>
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn btn-success" id="nextStageBtn" onclick="nextStage()" style="display: none;">
+                    ➡️ Avanzar a Etapa 2
+                </button>
+            </div>
+        </div>
+
+        <div id="alertContainer"></div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8000/api';
+        const authToken = localStorage.getItem('authToken');
+        const currentSessionId = {{ session_id }};
+        const urlParams = new URLSearchParams(window.location.search);
+        const stageId = urlParams.get('stage_id') || null;
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        function showAlert(message, type = 'success') {
+            const alertContainer = document.getElementById('alertContainer');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            alertContainer.appendChild(alert);
+            setTimeout(() => {
+                alert.remove();
+            }, 5000);
+        }
+
+        function getTeamColorHex(color) {
+            const colors = {
+                'verde': '#28a745',
+                'azul': '#007bff',
+                'rojo': '#dc3545',
+                'amarillo': '#ffc107',
+                'naranja': '#fd7e14',
+                'morado': '#6f42c1',
+                'rosa': '#e83e8c',
+                'cyan': '#17a2b8'
+            };
+            return colors[color.toLowerCase()] || '#667eea';
+        }
+
+        async function loadResults() {
+            try {
+                // Verificar si estamos en modo "resultados finales"
+                const urlParams = new URLSearchParams(window.location.search);
+                const isFinalResults = urlParams.get('final') === 'true';
+                
+                // Obtener información de la sesión
+                const sessionResponse = await fetch(`${API_BASE_URL}/sessions/game-sessions/${currentSessionId}/`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!sessionResponse.ok) {
+                    throw new Error('Error al cargar la sesión');
+                }
+
+                const sessionData = await sessionResponse.json();
+                document.getElementById('roomCode').textContent = `Código de sala: ${sessionData.room_code}`;
+
+                // Si estamos viendo resultados de la etapa 4 y la etapa aún no está completada, completarla automáticamente
+                // Esto asegura que las tablets detecten que deben redirigir a resultados
+                if (stageId === '4' && !isFinalResults && sessionData.current_stage_number === 4 && sessionData.current_activity) {
+                    try {
+                        console.log('🔄 Profesor - Completando etapa 4 automáticamente para sincronizar tablets...');
+                        const completeResponse = await fetch(`${API_BASE_URL}/sessions/game-sessions/${currentSessionId}/complete_stage/`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${authToken}`,
+                                'X-CSRFToken': getCookie('csrftoken')
+                            },
+                            body: JSON.stringify({
+                                stage_number: 4
+                            })
+                        });
+                        
+                        if (completeResponse.ok) {
+                            console.log('✅ Profesor - Etapa 4 completada automáticamente');
+                        }
+                    } catch (error) {
+                        console.warn('⚠️ Profesor - No se pudo completar la etapa automáticamente:', error);
+                    }
+                }
+
+                // Actualizar información de etapa
+                if (isFinalResults) {
+                    // Mostrar título de resultados finales
+                    document.getElementById('stageTitle').textContent = '🏆 Resultados Finales';
+                    document.getElementById('stageIcon').textContent = '🏆';
+                } else {
+                    const stageNumber = sessionData.current_stage_number || 1;
+                    const stageName = sessionData.current_stage_name || 'Trabajo en Equipo';
+                    document.getElementById('stageTitle').textContent = `Etapa ${stageNumber}: ${stageName}`;
+                }
+
+                // Obtener resultados de la etapa o resultados finales
+                let resultsUrl = `${API_BASE_URL}/sessions/game-sessions/${currentSessionId}/stage_results/`;
+                if (isFinalResults) {
+                    // Para resultados finales, no pasamos stage_id para obtener todos los resultados
+                    resultsUrl += `?final=true`;
+                } else if (stageId) {
+                    resultsUrl += `?stage_id=${stageId}`;
+                }
+
+                const resultsResponse = await fetch(resultsUrl, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!resultsResponse.ok) {
+                    throw new Error('Error al cargar los resultados');
+                }
+
+                const resultsData = await resultsResponse.json();
+                renderResults(resultsData);
+
+                // Mostrar botón según el contexto
+                if (isFinalResults) {
+                    // Si estamos en resultados finales, mostrar botón para ir a reflexión
+                    document.getElementById('nextStageBtn').textContent = '🧠 Ir a Reflexión';
+                    document.getElementById('nextStageBtn').onclick = goToReflection;
+                    document.getElementById('nextStageBtn').style.display = 'block';
+                } else {
+                    // Mostrar botón para avanzar a siguiente etapa solo si es Etapa 1
+                    // Mostrar botón de avanzar según la etapa
+                    if (resultsData.stage_number === 1) {
+                        document.getElementById('nextStageBtn').textContent = '➡️ Avanzar a Etapa 2';
+                        document.getElementById('nextStageBtn').style.display = 'block';
+                    } else if (resultsData.stage_number === 2) {
+                        document.getElementById('nextStageBtn').textContent = '➡️ Avanzar a Etapa 3';
+                        document.getElementById('nextStageBtn').style.display = 'block';
+                    } else if (resultsData.stage_number === 3) {
+                        document.getElementById('nextStageBtn').textContent = '➡️ Avanzar a Etapa 4';
+                        document.getElementById('nextStageBtn').style.display = 'block';
+                    } else if (resultsData.stage_number === 4) {
+                        // Etapa 4: mostrar botón para ir a resultados finales, luego a reflexión
+                        document.getElementById('nextStageBtn').textContent = '🏆 Ver Resultados Finales';
+                        document.getElementById('nextStageBtn').onclick = goToFinalResults;
+                        document.getElementById('nextStageBtn').style.display = 'block';
+                    }
+                }
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('content').style.display = 'block';
+            } catch (error) {
+                console.error('Error cargando resultados:', error);
+                showAlert('Error al cargar los resultados: ' + error.message, 'error');
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        function renderResults(data) {
+            const teamsGrid = document.getElementById('teamsGrid');
+            
+            if (!data.teams_results || data.teams_results.length === 0) {
+                teamsGrid.innerHTML = '<p style="text-align: center; color: #666; grid-column: 1/-1;">No hay resultados disponibles</p>';
+                return;
+            }
+
+            teamsGrid.innerHTML = data.teams_results.map((team, index) => {
+                const rank = index + 1;
+                const rankClass = rank <= 3 ? `rank-${rank}` : '';
+                const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `${rank}°`;
+                
+                return `
+                    <div class="team-card ${rankClass}">
+                        <div class="team-header">
+                            <div class="team-name-section">
+                                <div class="team-color" style="background: ${getTeamColorHex(team.team_color)};">
+                                    ${team.team_color.charAt(0).toUpperCase()}
+                                </div>
+                                <div class="team-info">
+                                    <h3>${team.team_name}</h3>
+                                </div>
+                            </div>
+                            <div class="rank-badge ${rankClass}">
+                                ${medal}
+                            </div>
+                        </div>
+
+                        <div class="tokens-section">
+                            <div class="token-item">
+                                <div class="token-label">Tokens en esta etapa</div>
+                                <div class="token-value token-value-stage">+${team.tokens_stage}</div>
+                            </div>
+                            <div class="token-item">
+                                <div class="token-label">Tokens totales</div>
+                                <div class="token-value">${team.tokens_total}</div>
+                            </div>
+                        </div>
+
+                        <div class="activities-list">
+                            <strong style="color: #333; font-size: 14px; margin-bottom: 10px; display: block;">Actividades completadas:</strong>
+                            ${team.activities_progress.map(activity => `
+                                <div class="activity-item">
+                                    <span class="activity-name">${activity.activity_name}</span>
+                                    <span class="activity-status ${activity.status === 'completed' ? 'completed' : 'pending'}">
+                                        ${activity.status === 'completed' ? '✓ Completada' : '⏳ Pendiente'}
+                                    </span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function nextStage() {
+            const sessionResponse = await fetch(`${API_BASE_URL}/sessions/game-sessions/${currentSessionId}/`);
+            const sessionData = await sessionResponse.json();
+            const currentStage = sessionData.current_stage_number || 1;
+            const nextStageNumber = currentStage + 1;
+            
+            if (!confirm(`¿Avanzar a la Etapa ${nextStageNumber}? Esto iniciará la siguiente etapa del juego.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/sessions/game-sessions/${currentSessionId}/next_stage/`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    showAlert(`¡Avanzando a ${data.message}!`, 'success');
+                    setTimeout(() => {
+                        const nextStage = data.next_stage_number || nextStageNumber;
+                        if (nextStage === 1) {
+                            window.location.replace(`/profesor/etapa1/personalizacion/${currentSessionId}/`);
+                        } else if (nextStage === 2) {
+                            window.location.replace(`/profesor/etapa2/seleccionar-tema/${currentSessionId}/`);
+                        } else if (nextStage === 3) {
+                            window.location.replace(`/profesor/etapa3/prototipo/${currentSessionId}/`);
+                        } else if (nextStage === 4) {
+                            window.location.replace(`/profesor/etapa4/formulario-pitch/${currentSessionId}/`);
+                        } else {
+                            window.location.replace(`/profesor/etapa1/personalizacion/${currentSessionId}/`);
+                        }
+                    }, 1500);
+                } else {
+                    const errorData = await response.json();
+                    showAlert(errorData.error || 'Error al avanzar a la siguiente etapa', 'error');
+                }
+            } catch (error) {
+                console.error('Error avanzando etapa:', error);
+                showAlert('Error al avanzar: ' + error.message, 'error');
+            }
+        }
+
+        async function goToFinalResults() {
+            try {
+                // Ir a resultados finales (misma página pero con final=true)
+                window.location.href = `/profesor/resultados/${currentSessionId}/?final=true`;
+            } catch (error) {
+                console.error('Error yendo a resultados finales:', error);
+                window.location.href = `/profesor/resultados/${currentSessionId}/?final=true`;
+            }
+        }
+
+        async function goToReflection() {
+            try {
+                // Llamar a endpoint para marcar que estamos en reflexión
+                // Esto permitirá que las tablets detecten que deben ir a reflexión
+                const response = await fetch(`${API_BASE_URL}/sessions/game-sessions/${currentSessionId}/start_reflection/`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                // Redirigir a la página de reflexión (incluso si el endpoint falla)
+                window.location.href = `/profesor/reflexion/${currentSessionId}/`;
+            } catch (error) {
+                console.error('Error iniciando reflexión:', error);
+                // Redirigir de todas formas
+                window.location.href = `/profesor/reflexion/${currentSessionId}/`;
+            }
+        }
+
+        async function finalizeSession() {
+            if (!confirm('¿Estás seguro de que deseas finalizar esta sesión? Se desconectarán todas las tablets.')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/sessions/game-sessions/${currentSessionId}/end/`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    showAlert('Sesión finalizada correctamente', 'success');
+                    setTimeout(() => {
+                        window.location.replace('/panel/');
+                    }, 1500);
+                } else {
+                    const errorData = await response.json();
+                    showAlert(errorData.error || 'Error al finalizar la sesión', 'error');
+                }
+            } catch (error) {
+                showAlert('Error de conexión: ' + error.message, 'error');
+            }
+        }
+
+        // Cargar resultados al iniciar
+        if (authToken) {
+            loadResults();
+        } else {
+            window.location.replace('/login/');
+        }
+    </script>
+</body>
+</html>
+

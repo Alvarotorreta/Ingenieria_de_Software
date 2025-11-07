@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Misión Emprende - Conectar Tablet</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .logo h1 {
+            color: #667eea;
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .logo p {
+            color: #666;
+            font-size: 16px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 18px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: all 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+
+        .btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert.show {
+            display: block;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .info-text {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-top: 20px;
+        }
+
+        .info-text a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .qr-section {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 2px solid #e0e0e0;
+        }
+
+        .qr-section h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .qr-section p {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <h1>🎮 Misión Emprende</h1>
+            <p>Conectar Tablet a la Sala</p>
+        </div>
+
+        <div id="alertContainer"></div>
+
+        <form id="connectForm" onsubmit="handleConnect(event)">
+            <div class="form-group">
+                <label for="roomCode">Código de Sala</label>
+                <input 
+                    type="text" 
+                    id="roomCode" 
+                    name="roomCode" 
+                    placeholder="Ej: ABC123" 
+                    maxlength="6"
+                    required
+                    autocomplete="off"
+                    autofocus
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="tabletCode">Código de Tablet</label>
+                <input 
+                    type="text" 
+                    id="tabletCode" 
+                    name="tabletCode" 
+                    placeholder="Ej: TAB1, TAB2, TAB3..." 
+                    required
+                    autocomplete="off"
+                    style="text-transform: uppercase;"
+                >
+            </div>
+
+            <button type="submit" class="btn" id="connectBtn">
+                Conectar
+            </button>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p style="margin-top: 10px; color: #666;">Conectando...</p>
+            </div>
+        </form>
+
+        <div class="qr-section">
+            <h3>📱 Código QR</h3>
+            <p>Si tienes un código QR, escanéalo con tu dispositivo para acceder directamente</p>
+            <p style="color: #666; font-size: 12px; margin-top: 10px;">
+                El código QR redirige directamente a esta página con el código de sala
+            </p>
+        </div>
+
+        <div class="info-text">
+            <p>¿Necesitas ayuda? Contacta al profesor</p>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8000/api';
+        let qrScanner = null;
+
+        function showAlert(message, type = 'error') {
+            const alertContainer = document.getElementById('alertContainer');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type} show`;
+            alert.textContent = message;
+            alertContainer.innerHTML = '';
+            alertContainer.appendChild(alert);
+            
+            setTimeout(() => {
+                alert.classList.remove('show');
+            }, 5000);
+        }
+
+        async function handleConnect(event) {
+            event.preventDefault();
+            
+            const roomCode = document.getElementById('roomCode').value.trim().toUpperCase();
+            const tabletCode = document.getElementById('tabletCode').value.trim().toUpperCase();
+            const btn = document.getElementById('connectBtn');
+            const loading = document.getElementById('loading');
+
+            if (!roomCode || !tabletCode) {
+                showAlert('Por favor completa todos los campos');
+                return;
+            }
+
+            btn.disabled = true;
+            loading.classList.add('show');
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/sessions/tablet-connections/connect/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        room_code: roomCode,
+                        tablet_code: tabletCode
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Guardar información de conexión en localStorage
+                    localStorage.setItem('tabletConnectionId', data.connection.id);
+                    localStorage.setItem('teamId', data.team.id);
+                    localStorage.setItem('gameSessionId', data.game_session.id);
+                    localStorage.setItem('roomCode', data.game_session.room_code);
+                    
+                    showAlert(data.message || '¡Conectado exitosamente!', 'success');
+                    
+                    // Redirigir al lobby después de 1 segundo
+                    setTimeout(() => {
+                        window.location.href = `/tablet/lobby/?connection_id=${data.connection.id}`;
+                    }, 1000);
+                } else {
+                    showAlert(data.error || 'Error al conectar');
+                }
+            } catch (error) {
+                showAlert('Error de conexión: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                loading.classList.remove('show');
+            }
+        }
+
+        // Verificar si hay un código de sala en la URL (desde QR o parámetro)
+        const urlParams = new URLSearchParams(window.location.search);
+        const roomCodeFromUrl = urlParams.get('room_code');
+        if (roomCodeFromUrl) {
+            document.getElementById('roomCode').value = roomCodeFromUrl.toUpperCase();
+        }
+        
+        // También verificar si viene en el path (para /tablet/join/ABC123)
+        const pathParts = window.location.pathname.split('/');
+        const roomCodeIndex = pathParts.indexOf('join');
+        if (roomCodeIndex !== -1 && pathParts.length > roomCodeIndex + 1) {
+            const roomCodeFromPath = pathParts[roomCodeIndex + 1];
+            if (roomCodeFromPath && roomCodeFromPath.length === 6) {
+                document.getElementById('roomCode').value = roomCodeFromPath.toUpperCase();
+            }
+        }
+
+    </script>
+</body>
+</html>
+

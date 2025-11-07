@@ -1,0 +1,1478 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Misión Emprende - Login/Registro</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 450px;
+            width: 100%;
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .logo h1 {
+            color: #667eea;
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .logo p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .tabs {
+            display: flex;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-size: 16px;
+            font-weight: 600;
+            color: #999;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .tab.active {
+            color: #667eea;
+        }
+
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: #667eea;
+        }
+
+        .form-container {
+            display: none;
+        }
+
+        .form-container.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .alert {
+            padding: 12px 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .alert.show {
+            display: block;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .panel {
+            display: none;
+        }
+
+        .panel.active {
+            display: block;
+        }
+
+        .panel-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .panel-header h2 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .panel-content {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-card h3 {
+            color: #667eea;
+            font-size: 32px;
+            margin-bottom: 5px;
+        }
+
+        .stat-card p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .nav-menu {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .nav-btn {
+            flex: 1;
+            min-width: 150px;
+            padding: 12px;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .nav-btn:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+            transform: translateY(-2px);
+        }
+
+        .nav-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: #667eea;
+        }
+
+        .content-section {
+            display: none;
+            animation: fadeIn 0.3s;
+        }
+
+        .content-section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .session-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .session-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .session-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .session-status {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-lobby { background: #fff3cd; color: #856404; }
+        .status-running { background: #d4edda; color: #155724; }
+        .status-completed { background: #d1ecf1; color: #0c5460; }
+
+        .stage-list {
+            list-style: none;
+            padding: 0;
+            margin: 15px 0;
+        }
+
+        .stage-item {
+            padding: 10px;
+            margin: 5px 0;
+            background: #f8f9fa;
+            border-radius: 5px;
+            border-left: 4px solid #667eea;
+        }
+
+        .accordion {
+            background: white;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .accordion-header {
+            padding: 15px 20px;
+            background: #f8f9fa;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .accordion-header:hover {
+            background: #e9ecef;
+        }
+
+        .accordion-content {
+            padding: 20px;
+            display: none;
+        }
+
+        .accordion.active .accordion-content {
+            display: block;
+        }
+
+        .checklist-item {
+            padding: 10px;
+            margin: 5px 0;
+            background: #f8f9fa;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .checklist-item input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <!-- Login/Register Container -->
+    <div class="container" id="authContainer">
+        <div class="logo">
+            <h1>🎯 Misión Emprende</h1>
+            <p>Sistema de Juego Educativo</p>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('login')">Iniciar Sesión</button>
+            <button class="tab" onclick="switchTab('register')">Registrarse</button>
+        </div>
+
+        <!-- Alert Messages -->
+        <div id="alertContainer"></div>
+
+        <!-- Login Form -->
+        <div id="loginForm" class="form-container active">
+            <form onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label for="loginEmail">Correo UDD</label>
+                    <input type="email" id="loginEmail" required placeholder="nombre@udd.cl">
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">Contraseña</label>
+                    <input type="password" id="loginPassword" required placeholder="••••••••">
+                </div>
+                <button type="submit" class="btn" id="loginBtn">
+                    Iniciar Sesión
+                </button>
+                <div class="loading" id="loginLoading">
+                    <div class="spinner"></div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Register Form -->
+        <div id="registerForm" class="form-container">
+            <form onsubmit="handleRegister(event)">
+                <div class="form-group">
+                    <label for="registerEmail">Correo UDD</label>
+                    <input type="email" id="registerEmail" required placeholder="nombre@udd.cl">
+                </div>
+                <div class="form-group">
+                    <label for="registerFirstName">Nombre</label>
+                    <input type="text" id="registerFirstName" required placeholder="Juan">
+                </div>
+                <div class="form-group">
+                    <label for="registerLastName">Apellido</label>
+                    <input type="text" id="registerLastName" required placeholder="Pérez">
+                </div>
+                <div class="form-group">
+                    <label for="registerAccessCode">Código de Acceso (Numérico)</label>
+                    <input type="text" id="registerAccessCode" pattern="[0-9]+" placeholder="123456" maxlength="20">
+                </div>
+                <div class="form-group">
+                    <label for="registerPassword">Contraseña</label>
+                    <input type="password" id="registerPassword" required placeholder="••••••••" minlength="8">
+                </div>
+                <div class="form-group">
+                    <label for="registerPasswordConfirm">Confirmar Contraseña</label>
+                    <input type="password" id="registerPasswordConfirm" required placeholder="••••••••" minlength="8">
+                </div>
+                <button type="submit" class="btn" id="registerBtn">
+                    Registrarse
+                </button>
+                <div class="loading" id="registerLoading">
+                    <div class="spinner"></div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Professor Panel -->
+    <div class="container panel" id="professorPanel" style="max-width: 900px;">
+        <div class="panel-header">
+            <h2>👨‍🏫 Panel del Profesor</h2>
+            <p id="professorName"></p>
+            <button class="btn" onclick="handleLogout()" style="margin-top: 10px; background: #dc3545; max-width: 200px;">
+                Cerrar Sesión
+            </button>
+        </div>
+
+        <div class="panel-content">
+            <!-- Métricas -->
+            <div class="stats">
+                <div class="stat-card">
+                    <h3 id="sessionsCount">0</h3>
+                    <p>Sesiones Realizadas</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="studentsCount">0</h3>
+                    <p>Estudiantes Participantes</p>
+                </div>
+            </div>
+
+            <!-- Menú de Navegación -->
+            <div class="nav-menu">
+                <button class="nav-btn active" onclick="showSection('dashboard')">
+                    📊 Dashboard
+                </button>
+                <button class="nav-btn" onclick="showSection('create-session')">
+                    ➕ Crear Sala
+                </button>
+                <button class="nav-btn" onclick="showSection('history')">
+                    📜 Historial
+                </button>
+                <button class="nav-btn" onclick="showSection('learning-objectives')">
+                    🎯 Objetivos de Aprendizaje
+                </button>
+                <button class="nav-btn" onclick="showSection('tutorial')">
+                    📚 Tutorial
+                </button>
+            </div>
+
+            <!-- Sección: Dashboard -->
+            <div id="dashboard-section" class="content-section active">
+                <h3 style="margin-bottom: 20px; color: #333;">Resumen de Actividad</h3>
+                <div id="recentSessions"></div>
+            </div>
+
+            <!-- Sección: Crear Sala -->
+            <div id="create-session-section" class="content-section">
+                <h3 style="margin-bottom: 20px; color: #333;">Crear Nueva Sala</h3>
+                <form onsubmit="handleCreateSession(event)" style="background: white; padding: 20px; border-radius: 10px;">
+                    <div class="form-group">
+                        <label for="facultySelect">Facultad</label>
+                        <select id="facultySelect" required class="form-group input" style="width: 100%; padding: 12px 15px; border: 2px solid #e0e0e0; border-radius: 10px;">
+                            <option value="">Seleccionar Facultad...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="careerSelect">Carrera</label>
+                        <select id="careerSelect" required class="form-group input" style="width: 100%; padding: 12px 15px; border: 2px solid #e0e0e0; border-radius: 10px;" disabled>
+                            <option value="">Primero selecciona una Facultad</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="courseSelect">Curso</label>
+                        <select id="courseSelect" required class="form-group input" style="width: 100%; padding: 12px 15px; border: 2px solid #e0e0e0; border-radius: 10px;" disabled>
+                            <option value="">Primero selecciona una Carrera</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="excelFile">Archivo Excel con Estudiantes (XLSX)</label>
+                        <input type="file" id="excelFile" accept=".xlsx,.xls" required style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 10px;">
+                        <small style="color: #666; display: block; margin-top: 5px;">
+                            Columnas requeridas: Nombre completo, Correo UDD, RUT
+                        </small>
+                    </div>
+                    <button type="submit" class="btn" id="createSessionBtn">
+                        Crear Sala
+                    </button>
+                    <div class="loading" id="createSessionLoading">
+                        <div class="spinner"></div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Sección: Historial -->
+            <div id="history-section" class="content-section">
+                <h3 style="margin-bottom: 20px; color: #333;">Historial de Sesiones</h3>
+                <div id="historyList">
+                    <p>Cargando historial...</p>
+                </div>
+            </div>
+
+            <!-- Sección: Objetivos de Aprendizaje -->
+            <div id="learning-objectives-section" class="content-section">
+                <h3 style="margin-bottom: 20px; color: #333;">Objetivos de Aprendizaje</h3>
+                <div id="learningObjectivesContent">
+                    <p>Cargando objetivos de aprendizaje...</p>
+                </div>
+            </div>
+
+            <!-- Sección: Tutorial -->
+            <div id="tutorial-section" class="content-section">
+                <h3 style="margin-bottom: 20px; color: #333;">Tutorial y Guía</h3>
+                <div id="tutorialContent">
+                    <div class="accordion active">
+                        <div class="accordion-header" onclick="toggleAccordion(this)">
+                            <span>📋 Checklist Previo a la Sesión</span>
+                            <span>▼</span>
+                        </div>
+                        <div class="accordion-content">
+                            <div class="checklist-item">
+                                <input type="checkbox" id="check1">
+                                <label for="check1">Archivo XLSX con estudiantes correcto (Nombre, Correo UDD, RUT)</label>
+                            </div>
+                            <div class="checklist-item">
+                                <input type="checkbox" id="check2">
+                                <label for="check2">Tablets listas y cargadas (1 por cada equipo)</label>
+                            </div>
+                            <div class="checklist-item">
+                                <input type="checkbox" id="check3">
+                                <label for="check3">Códigos QR generados para acceso de tablets</label>
+                            </div>
+                            <div class="checklist-item">
+                                <input type="checkbox" id="check4">
+                                <label for="check4">Material físico preparado (Legos para prototipos, etc.)</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion">
+                        <div class="accordion-header" onclick="toggleAccordion(this)">
+                            <span>📹 Guía Paso a Paso</span>
+                            <span>▼</span>
+                        </div>
+                        <div class="accordion-content">
+                            <ol style="line-height: 2;">
+                                <li><strong>Crear Sala:</strong> Selecciona Facultad, Carrera, Curso y sube el archivo XLSX con estudiantes</li>
+                                <li><strong>Lobby:</strong> Revisa los equipos generados automáticamente, espera que todas las tablets se conecten</li>
+                                <li><strong>Iniciar Juego:</strong> Una vez todas las tablets conectadas, presiona "Iniciar Juego"</li>
+                                <li><strong>Control de Etapas:</strong> Controla cada etapa y actividad, puedes avanzar cuando todos terminen o el temporizador expire</li>
+                                <li><strong>Validar Retos:</strong> En cada ruleta, valida los retos completados por los equipos</li>
+                                <li><strong>Ver Resultados:</strong> Al finalizar, revisa los resultados y métricas de cada equipo</li>
+                            </ol>
+                        </div>
+                    </div>
+
+                    <div class="accordion">
+                        <div class="accordion-header" onclick="toggleAccordion(this)">
+                            <span>❓ FAQ y Soluciones Rápidas</span>
+                            <span>▼</span>
+                        </div>
+                        <div class="accordion-content">
+                            <div style="margin-bottom: 15px;">
+                                <strong>Q: ¿Qué hacer si una tablet no se conecta?</strong>
+                                <p style="margin-top: 5px; color: #666;">A: Verifica que el código QR sea correcto. Puedes desconectar y reconectar la tablet desde el lobby.</p>
+                            </div>
+                            <div style="margin-bottom: 15px;">
+                                <strong>Q: ¿Qué hacer si falta un equipo?</strong>
+                                <p style="margin-top: 5px; color: #666;">A: Puedes reorganizar los equipos manualmente desde el lobby antes de iniciar el juego.</p>
+                            </div>
+                            <div style="margin-bottom: 15px;">
+                                <strong>Q: ¿Cómo interpretar las métricas?</strong>
+                                <p style="margin-top: 5px; color: #666;">A: Los tokens reflejan participación y completitud. Los tiempos muestran eficiencia. La participación mide el compromiso del equipo.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8000/api';
+        let authToken = localStorage.getItem('authToken');
+        let refreshToken = localStorage.getItem('refreshToken');
+
+        // Check if already logged in
+        if (authToken) {
+            checkAuth();
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.form-container').forEach(f => f.classList.remove('active'));
+            
+            if (tab === 'login') {
+                document.querySelectorAll('.tab')[0].classList.add('active');
+                document.getElementById('loginForm').classList.add('active');
+            } else {
+                document.querySelectorAll('.tab')[1].classList.add('active');
+                document.getElementById('registerForm').classList.add('active');
+            }
+            clearAlerts();
+        }
+
+        function showAlert(message, type = 'error') {
+            const alertContainer = document.getElementById('alertContainer');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type} show`;
+            alert.textContent = message;
+            alertContainer.innerHTML = '';
+            alertContainer.appendChild(alert);
+            
+            setTimeout(() => {
+                alert.classList.remove('show');
+            }, 5000);
+        }
+
+        function clearAlerts() {
+            document.getElementById('alertContainer').innerHTML = '';
+        }
+
+        async function handleLogin(event) {
+            event.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            const btn = document.getElementById('loginBtn');
+            const loading = document.getElementById('loginLoading');
+
+            btn.disabled = true;
+            loading.classList.add('show');
+
+            try {
+                // Extraer username del email (parte antes del @)
+                // Si el usuario ingresa email@udd.cl, usar solo la parte antes del @
+                // Si ingresa solo el username, usarlo tal cual
+                const username = email.includes('@') ? email.split('@')[0] : email;
+                
+                const response = await fetch(`${API_BASE_URL}/auth/token/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    authToken = data.access;
+                    refreshToken = data.refresh;
+                    localStorage.setItem('authToken', authToken);
+                    localStorage.setItem('refreshToken', refreshToken);
+                    
+                    showAlert('Inicio de sesión exitoso', 'success');
+                    setTimeout(() => {
+                        loadProfessorPanel();
+                    }, 1000);
+                } else {
+                    showAlert(data.detail || 'Error al iniciar sesión');
+                }
+            } catch (error) {
+                showAlert('Error de conexión: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                loading.classList.remove('show');
+            }
+        }
+
+        async function handleRegister(event) {
+            event.preventDefault();
+            const email = document.getElementById('registerEmail').value;
+            const firstName = document.getElementById('registerFirstName').value;
+            const lastName = document.getElementById('registerLastName').value;
+            const accessCode = document.getElementById('registerAccessCode').value;
+            const password = document.getElementById('registerPassword').value;
+            const passwordConfirm = document.getElementById('registerPasswordConfirm').value;
+            const btn = document.getElementById('registerBtn');
+            const loading = document.getElementById('registerLoading');
+
+            if (password !== passwordConfirm) {
+                showAlert('Las contraseñas no coinciden');
+                return;
+            }
+
+            btn.disabled = true;
+            loading.classList.add('show');
+
+            try {
+                // Crear usuario primero (usar email como username)
+                const username = email.split('@')[0];
+                
+                const response = await fetch(`${API_BASE_URL}/auth/professors/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        email: email,
+                        password: password,
+                        first_name: firstName,
+                        last_name: lastName,
+                        access_code: accessCode || ''  // Enviar cadena vacía en lugar de null
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok || response.status === 201) {
+                    showAlert('Registro exitoso. Iniciando sesión...', 'success');
+                    
+                    // Auto login después de registro
+                    setTimeout(async () => {
+                        const loginResponse = await fetch(`${API_BASE_URL}/auth/token/`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                username: username,
+                                password: password
+                            })
+                        });
+
+                        const loginData = await loginResponse.json();
+                        if (loginResponse.ok) {
+                            authToken = loginData.access;
+                            refreshToken = loginData.refresh;
+                            localStorage.setItem('authToken', authToken);
+                            localStorage.setItem('refreshToken', refreshToken);
+                            loadProfessorPanel();
+                        } else {
+                            showAlert('Registro exitoso pero error al iniciar sesión: ' + (loginData.detail || 'Error desconocido'));
+                        }
+                    }, 1000);
+                } else {
+                    // Mostrar errores específicos del API
+                    let errorMsg = 'Error al registrar: ';
+                    if (data.email) {
+                        errorMsg += 'Email: ' + (Array.isArray(data.email) ? data.email[0] : data.email);
+                    } else if (data.username) {
+                        errorMsg += 'Usuario: ' + (Array.isArray(data.username) ? data.username[0] : data.username);
+                    } else if (data.access_code) {
+                        errorMsg += 'Código: ' + (Array.isArray(data.access_code) ? data.access_code[0] : data.access_code);
+                    } else if (data.password) {
+                        errorMsg += 'Contraseña: ' + (Array.isArray(data.password) ? data.password[0] : data.password);
+                    } else if (data.detail) {
+                        errorMsg = data.detail;
+                    } else if (data.non_field_errors) {
+                        errorMsg = Array.isArray(data.non_field_errors) ? data.non_field_errors[0] : data.non_field_errors;
+                    } else {
+                        errorMsg = 'Error desconocido. Revisa la consola del navegador.';
+                        console.error('Error completo:', data);
+                    }
+                    showAlert(errorMsg);
+                }
+            } catch (error) {
+                showAlert('Error de conexión: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                loading.classList.remove('show');
+            }
+        }
+
+        async function checkAuth() {
+            if (!authToken) return;
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/auth/professors/me/`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    loadProfessorPanel();
+                } else {
+                    // Token inválido, limpiar
+                    localStorage.removeItem('authToken');
+                    localStorage.removeItem('refreshToken');
+                    authToken = null;
+                }
+            } catch (error) {
+                console.error('Error checking auth:', error);
+            }
+        }
+
+        async function loadProfessorPanel() {
+            try {
+                // Obtener información del profesor
+                const professorResponse = await fetch(`${API_BASE_URL}/auth/professors/me/`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (professorResponse.ok) {
+                    const professor = await professorResponse.json();
+                    document.getElementById('professorName').textContent = 
+                        professor.full_name || professor.user?.username || 'Profesor';
+                    
+                    // Obtener estadísticas
+                    const sessionsResponse = await fetch(`${API_BASE_URL}/sessions/game-sessions/`, {
+                        headers: {
+                            'Authorization': `Bearer ${authToken}`
+                        }
+                    });
+
+                    if (sessionsResponse.ok) {
+                        const data = await sessionsResponse.json();
+                        const sessions = data.results || data;
+                        const count = data.count || sessions.length || 0;
+                        document.getElementById('sessionsCount').textContent = count;
+                        
+                        // Calcular estudiantes únicos
+                        let studentsSet = new Set();
+                        sessions.forEach(session => {
+                            // Aquí se calcularían los estudiantes únicos de todas las sesiones
+                            // Por ahora solo mostramos 0
+                        });
+                        document.getElementById('studentsCount').textContent = studentsSet.size || 0;
+
+                        // Mostrar sesiones recientes en dashboard
+                        if (sessions.length > 0) {
+                            const recentSessions = sessions.slice(0, 5);
+                            const recentHtml = recentSessions.map(session => `
+                                <div class="session-card" onclick="viewSessionDetail(${session.id})">
+                                    <div class="session-header">
+                                        <h4 style="margin: 0; color: #667eea;">Sala: ${session.room_code}</h4>
+                                        <span class="session-status status-${session.status}">${getStatusText(session.status)}</span>
+                                    </div>
+                                    <p style="margin: 5px 0; color: #666;">${session.course_name || 'Curso'}</p>
+                                    ${session.status === 'lobby' ? '<p style="margin: 5px 0; color: #999; font-size: 12px;">Click para ver lobby</p>' : ''}
+                                </div>
+                            `).join('');
+                            document.getElementById('recentSessions').innerHTML = 
+                                '<h4 style="margin-bottom: 15px; color: #333;">Sesiones Recientes</h4>' + recentHtml;
+                        } else {
+                            document.getElementById('recentSessions').innerHTML = 
+                                '<p style="text-align: center; color: #666; padding: 20px;">No hay sesiones aún. Crea tu primera sala para comenzar.</p>';
+                        }
+                    }
+
+                    // Cargar facultades para el formulario de crear sala
+                    loadFaculties();
+                }
+
+                // Ocultar auth container y mostrar panel
+                document.getElementById('authContainer').style.display = 'none';
+                document.getElementById('professorPanel').classList.add('active');
+            } catch (error) {
+                console.error('Error loading panel:', error);
+                showAlert('Error al cargar el panel');
+            }
+        }
+
+        // Event listeners para selects
+        document.addEventListener('DOMContentLoaded', function() {
+            const facultySelect = document.getElementById('facultySelect');
+            const careerSelect = document.getElementById('careerSelect');
+            const courseSelect = document.getElementById('courseSelect');
+
+            if (facultySelect) {
+                facultySelect.addEventListener('change', function() {
+                    if (this.value) {
+                        loadCareers(this.value);
+                        courseSelect.disabled = true;
+                        courseSelect.innerHTML = '<option value="">Primero selecciona una Carrera</option>';
+                    } else {
+                        careerSelect.disabled = true;
+                        careerSelect.innerHTML = '<option value="">Primero selecciona una Facultad</option>';
+                        courseSelect.disabled = true;
+                        courseSelect.innerHTML = '<option value="">Primero selecciona una Carrera</option>';
+                    }
+                });
+            }
+
+            if (careerSelect) {
+                careerSelect.addEventListener('change', function() {
+                    if (this.value) {
+                        loadCourses(this.value);
+                    } else {
+                        courseSelect.disabled = true;
+                        courseSelect.innerHTML = '<option value="">Primero selecciona una Carrera</option>';
+                    }
+                });
+            }
+        });
+
+        function handleLogout() {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('refreshToken');
+            authToken = null;
+            refreshToken = null;
+            
+            document.getElementById('authContainer').style.display = 'block';
+            document.getElementById('professorPanel').classList.remove('active');
+            clearAlerts();
+        }
+
+        function showSection(sectionId) {
+            // Ocultar todas las secciones
+            document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            
+            // Mostrar sección seleccionada
+            document.getElementById(sectionId + '-section').classList.add('active');
+            event.target.classList.add('active');
+            
+            // Cargar contenido según la sección
+            if (sectionId === 'history') {
+                loadHistory();
+            } else if (sectionId === 'learning-objectives') {
+                loadLearningObjectives();
+            }
+        }
+
+        function toggleAccordion(header) {
+            const accordion = header.parentElement;
+            accordion.classList.toggle('active');
+        }
+
+        async function loadHistory() {
+            const historyList = document.getElementById('historyList');
+            try {
+                const response = await fetch(`${API_BASE_URL}/sessions/game-sessions/?ordering=-created_at`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const sessions = data.results || data;
+                    
+                    if (sessions.length === 0) {
+                        historyList.innerHTML = '<p style="text-align: center; color: #666; padding: 40px;">No hay sesiones registradas aún.</p>';
+                    } else {
+                        historyList.innerHTML = sessions.map(session => `
+                            <div class="session-card" onclick="viewSessionDetail(${session.id})">
+                                <div class="session-header">
+                                    <h4 style="margin: 0; color: #667eea;">Sala: ${session.room_code}</h4>
+                                    <span class="session-status status-${session.status}">${getStatusText(session.status)}</span>
+                                </div>
+                                <p style="margin: 5px 0; color: #666;">${session.course_name || 'Curso'}</p>
+                                <p style="margin: 5px 0; color: #999; font-size: 12px;">
+                                    ${session.started_at ? 'Iniciada: ' + new Date(session.started_at).toLocaleDateString('es-CL') : session.status === 'lobby' ? 'En lobby - Click para ver' : 'No iniciada'}
+                                </p>
+                            </div>
+                        `).join('');
+                    }
+                } else {
+                    historyList.innerHTML = '<p style="color: #dc3545;">Error al cargar el historial</p>';
+                }
+            } catch (error) {
+                historyList.innerHTML = '<p style="color: #dc3545;">Error de conexión</p>';
+            }
+        }
+
+        function getStatusText(status) {
+            const statusMap = {
+                'lobby': 'Lobby',
+                'running': 'En Curso',
+                'completed': 'Completada',
+                'cancelled': 'Cancelada'
+            };
+            return statusMap[status] || status;
+        }
+
+        async function loadLearningObjectives() {
+            const content = document.getElementById('learningObjectivesContent');
+            try {
+                const response = await fetch(`${API_BASE_URL}/challenges/learning-objectives/`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const objectives = data.results || data;
+                    
+                    // Agrupar por etapa
+                    const byStage = {};
+                    objectives.forEach(obj => {
+                        const stageName = obj.stage_name || 'General';
+                        if (!byStage[stageName]) byStage[stageName] = [];
+                        byStage[stageName].push(obj);
+                    });
+
+                    content.innerHTML = Object.keys(byStage).map(stageName => `
+                        <div class="accordion ${stageName !== 'General' ? 'active' : ''}">
+                            <div class="accordion-header" onclick="toggleAccordion(this)">
+                                <span>${getStageName(stageName)}</span>
+                                <span>▼</span>
+                            </div>
+                            <div class="accordion-content">
+                                ${byStage[stageName].map(obj => `
+                                    <div style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 5px;">
+                                        <h4 style="color: #667eea; margin-bottom: 10px;">${obj.title}</h4>
+                                        ${obj.description ? `<p style="color: #666; margin-bottom: 10px;">${obj.description}</p>` : ''}
+                                        ${obj.evaluation_criteria ? `<p><strong>Criterios de Evaluación:</strong> ${obj.evaluation_criteria}</p>` : ''}
+                                        ${obj.pedagogical_recommendations ? `<p><strong>Recomendaciones:</strong> ${obj.pedagogical_recommendations}</p>` : ''}
+                                        ${obj.estimated_time ? `<p><strong>Tiempo Estimado:</strong> ${obj.estimated_time} minutos</p>` : ''}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    content.innerHTML = '<p style="color: #dc3545;">Error al cargar objetivos de aprendizaje</p>';
+                }
+            } catch (error) {
+                content.innerHTML = '<p style="color: #dc3545;">Error de conexión</p>';
+            }
+        }
+
+        function getStageName(stageName) {
+            const stageMap = {
+                'Etapa 1': '🎯 Etapa 1: Trabajo en Equipo',
+                'Etapa 2': '💡 Etapa 2: Empatía',
+                'Etapa 3': '🧩 Etapa 3: Creatividad',
+                'Etapa 4': '📢 Etapa 4: Comunicación',
+                'General': '📖 Objetivos Generales'
+            };
+            return stageMap[stageName] || stageName;
+        }
+
+        async function loadFaculties() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/academic/faculties/`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const faculties = data.results || data;
+                    const select = document.getElementById('facultySelect');
+                    select.innerHTML = '<option value="">Seleccionar Facultad...</option>' + 
+                        faculties.map(f => `<option value="${f.id}">${f.name}</option>`).join('');
+                }
+            } catch (error) {
+                console.error('Error loading faculties:', error);
+            }
+        }
+
+        async function loadCareers(facultyId) {
+            const careerSelect = document.getElementById('careerSelect');
+            careerSelect.disabled = true;
+            careerSelect.innerHTML = '<option value="">Cargando...</option>';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/academic/careers/?faculty=${facultyId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const careers = data.results || data;
+                    careerSelect.innerHTML = '<option value="">Seleccionar Carrera...</option>' + 
+                        careers.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+                    careerSelect.disabled = false;
+                }
+            } catch (error) {
+                console.error('Error loading careers:', error);
+                careerSelect.innerHTML = '<option value="">Error al cargar</option>';
+            }
+        }
+
+        async function loadCourses(careerId) {
+            const courseSelect = document.getElementById('courseSelect');
+            courseSelect.disabled = true;
+            courseSelect.innerHTML = '<option value="">Cargando...</option>';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/academic/courses/?career=${careerId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const courses = data.results || data;
+                    courseSelect.innerHTML = '<option value="">Seleccionar Curso...</option>' + 
+                        courses.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+                    courseSelect.disabled = false;
+                }
+            } catch (error) {
+                console.error('Error loading courses:', error);
+                courseSelect.innerHTML = '<option value="">Error al cargar</option>';
+            }
+        }
+
+        async function handleCreateSession(event) {
+            event.preventDefault();
+            
+            const facultySelect = document.getElementById('facultySelect');
+            const careerSelect = document.getElementById('careerSelect');
+            const courseSelect = document.getElementById('courseSelect');
+            const excelFile = document.getElementById('excelFile');
+            const btn = document.getElementById('createSessionBtn');
+            const loading = document.getElementById('createSessionLoading');
+
+            // Validar formulario
+            if (!facultySelect.value || !careerSelect.value || !courseSelect.value) {
+                showAlert('Por favor completa todos los campos: Facultad, Carrera y Curso');
+                return;
+            }
+
+            if (!excelFile.files || !excelFile.files[0]) {
+                showAlert('Por favor selecciona un archivo Excel');
+                return;
+            }
+
+            btn.disabled = true;
+            loading.classList.add('show');
+
+            try {
+                // Crear sesión con Excel y asignación automática de equipos
+                const formData = new FormData();
+                formData.append('file', excelFile.files[0]);
+                formData.append('course_id', courseSelect.value);
+                formData.append('min_team_size', '3');
+                formData.append('max_team_size', '8');
+
+                const createResponse = await fetch(`${API_BASE_URL}/sessions/game-sessions/create_with_excel/`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: formData
+                });
+
+                const createData = await createResponse.json();
+
+                if (!createResponse.ok) {
+                    showAlert(createData.error || 'Error al crear la sesión');
+                    return;
+                }
+
+                // Mostrar resultado exitoso
+                showAlert(
+                    `¡Sala creada exitosamente! ` +
+                    `Código: ${createData.game_session.room_code}. ` +
+                    `${createData.students_processed} estudiantes procesados, ` +
+                    `${createData.teams_created} equipos creados automáticamente.`,
+                    'success'
+                );
+
+                // Redirigir al lobby después de 2 segundos
+                setTimeout(() => {
+                    viewSessionDetail(createData.game_session.id);
+                }, 2000);
+
+            } catch (error) {
+                showAlert('Error de conexión: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                loading.classList.remove('show');
+            }
+        }
+
+        async function viewSessionDetail(sessionId) {
+            // Cargar información del lobby
+            try {
+                const response = await fetch(`${API_BASE_URL}/sessions/game-sessions/${sessionId}/lobby/`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    const lobbyData = await response.json();
+                    showLobby(lobbyData);
+                } else {
+                    showAlert('Error al cargar el lobby de la sesión');
+                }
+            } catch (error) {
+                showAlert('Error de conexión: ' + error.message);
+            }
+        }
+
+        function showLobby(lobbyData) {
+            // Ocultar panel principal y mostrar lobby
+            document.getElementById('professorPanel').classList.remove('active');
+            
+            // Crear o mostrar sección de lobby
+            let lobbySection = document.getElementById('lobbySection');
+            if (!lobbySection) {
+                lobbySection = document.createElement('div');
+                lobbySection.id = 'lobbySection';
+                lobbySection.className = 'container panel';
+                lobbySection.style.maxWidth = '1000px';
+                document.body.appendChild(lobbySection);
+            }
+            
+            const session = lobbyData.game_session;
+            const teams = lobbyData.teams;
+            
+            // Crear HTML del lobby
+            lobbySection.innerHTML = `
+                <div class="panel-header">
+                    <h2>🎮 Lobby de Sala: ${session.room_code}</h2>
+                    <button class="btn" onclick="closeLobby()" style="background: #dc3545; margin-top: 10px;">
+                        ← Volver al Panel
+                    </button>
+                </div>
+                
+                <div class="panel-content">
+                    <!-- Código y QR -->
+                    <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; text-align: center;">
+                        <h3 style="color: #667eea; margin-bottom: 10px;">Código de Sala</h3>
+                        <div style="font-size: 48px; font-weight: bold; color: #333; margin: 20px 0; letter-spacing: 5px;">
+                            ${session.room_code}
+                        </div>
+                        ${session.qr_code ? `
+                            <div style="margin: 20px 0;">
+                                <img src="${session.qr_code}" alt="QR Code" style="max-width: 200px; border: 2px solid #e0e0e0; border-radius: 10px;">
+                            </div>
+                            <p style="color: #666; font-size: 14px;">Escanea el código QR con la tablet para conectarse</p>
+                        ` : ''}
+                    </div>
+                    
+                    <!-- Estado de conexiones -->
+                    <div style="background: ${lobbyData.all_teams_connected ? '#d4edda' : '#fff3cd'}; padding: 15px; border-radius: 10px; margin-bottom: 20px; text-align: center;">
+                        <h4 style="margin: 0; color: ${lobbyData.all_teams_connected ? '#155724' : '#856404'};">
+                            ${lobbyData.all_teams_connected ? '✅ Todas las tablets conectadas' : `⚠️ ${lobbyData.connected_teams}/${lobbyData.total_teams} equipos conectados`}
+                        </h4>
+                    </div>
+                    
+                    <!-- Equipos -->
+                    <div style="margin-bottom: 20px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <h3 style="margin: 0; color: #333;">Equipos (${teams.length})</h3>
+                            <button class="btn" onclick="shuffleAllTeams(${session.id})" style="background: #28a745; font-size: 14px; padding: 8px 15px;">
+                                🔀 Reorganizar Todos Aleatoriamente
+                            </button>
+                        </div>
+                        <div id="teamsList"></div>
+                    </div>
+                    
+                    <!-- Botón Iniciar Juego -->
+                    <div style="text-align: center; margin-top: 30px;">
+                        <button 
+                            class="btn" 
+                            onclick="startGame(${session.id})" 
+                            style="background: ${lobbyData.all_teams_connected ? '#28a745' : '#6c757d'}; 
+                                   font-size: 18px; 
+                                   padding: 15px 40px;
+                                   ${!lobbyData.all_teams_connected ? 'cursor: not-allowed;' : ''}"
+                            ${!lobbyData.all_teams_connected ? 'disabled' : ''}>
+                            ${lobbyData.all_teams_connected ? '🚀 Iniciar Juego' : '⏳ Esperando conexión de tablets...'}
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            // Renderizar equipos
+            const teamsList = document.getElementById('teamsList');
+            teamsList.innerHTML = teams.map(team => {
+                const tabletConnection = lobbyData.tablet_connections.find(tc => tc.team === team.id);
+                const isConnected = tabletConnection && tabletConnection.is_connected;
+                
+                return `
+                    <div class="team-card" style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 15px; border-left: 5px solid ${getTeamColorHex(team.color)};">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
+                            <div>
+                                <h4 style="margin: 0; color: ${getTeamColorHex(team.color)};">
+                                    ${team.name} 
+                                    <span style="font-size: 14px; color: #666;">(${team.students_count} estudiantes)</span>
+                                </h4>
+                            </div>
+                            <div style="text-align: right;">
+                                <span style="padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: 600; background: ${isConnected ? '#d4edda' : '#f8d7da'}; color: ${isConnected ? '#155724' : '#721c24'};">
+                                    ${isConnected ? '✅ Tablet Conectada' : '❌ Sin Tablet'}
+                                </span>
+                                ${tabletConnection ? `
+                                    <button class="btn" onclick="disconnectTablet(${tabletConnection.id})" style="background: #dc3545; font-size: 12px; padding: 5px 10px; margin-top: 5px;">
+                                        Desconectar
+                                    </button>
+                                ` : ''}
+                            </div>
+                        </div>
+                        
+                        <div style="margin-top: 15px;">
+                            <strong style="color: #666; font-size: 14px;">Estudiantes:</strong>
+                            <div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 10px;">
+                                ${team.students ? team.students.map(student => `
+                                    <div style="background: #f8f9fa; padding: 8px 12px; border-radius: 5px; font-size: 14px; display: flex; align-items: center; gap: 8px;">
+                                        <span>${student.full_name}</span>
+                                        <button class="btn" onclick="showMoveStudentModal(${student.id}, ${team.id}, ${session.id})" style="background: #667eea; font-size: 12px; padding: 4px 8px;">
+                                            Mover
+                                        </button>
+                                    </div>
+                                `).join('') : 'Sin estudiantes'}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            lobbySection.classList.add('active');
+        }
+
+        function getTeamColorHex(color) {
+            const colorMap = {
+                'Verde': '#28a745',
+                'Azul': '#007bff',
+                'Rojo': '#dc3545',
+                'Amarillo': '#ffc107',
+                'Naranja': '#fd7e14',
+                'Morado': '#6f42c1',
+                'Rosa': '#e83e8c',
+                'Cian': '#17a2b8',
+                'Gris': '#6c757d',
+                'Marrón': '#795548'
+            };
+            return colorMap[color] || '#667eea';
+        }
+
+        function closeLobby() {
+            document.getElementById('lobbySection').classList.remove('active');
+            document.getElementById('professorPanel').classList.add('active');
+        }
+
+        function showMoveStudentModal(studentId, currentTeamId, sessionId) {
+            // TODO: Implementar modal para mover estudiante
+            showAlert('Función de mover estudiante - En desarrollo', 'success');
+        }
+
+        async function disconnectTablet(connectionId) {
+            if (!confirm('¿Desconectar esta tablet?')) return;
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/sessions/tablet-connections/${connectionId}/disconnect/`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    showAlert('Tablet desconectada exitosamente', 'success');
+                    // Recargar lobby
+                    const sessionId = document.querySelector('.panel-header h2').textContent.match(/Sala: (\w+)/)?.[1];
+                    if (sessionId) {
+                        // Obtener ID de sesión desde el lobby actual
+                        const lobbySection = document.getElementById('lobbySection');
+                        // Por ahora, recargar manualmente
+                        location.reload();
+                    }
+                } else {
+                    const data = await response.json();
+                    showAlert(data.error || 'Error al desconectar tablet');
+                }
+            } catch (error) {
+                showAlert('Error de conexión: ' + error.message);
+            }
+        }
+
+        async function shuffleAllTeams(sessionId) {
+            if (!confirm('¿Reorganizar todos los estudiantes aleatoriamente?')) return;
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/sessions/teams/shuffle_all/`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ game_session_id: sessionId })
+                });
+
+                if (response.ok) {
+                    showAlert('Estudiantes reorganizados exitosamente', 'success');
+                    // Recargar lobby
+                    viewSessionDetail(sessionId);
+                } else {
+                    const data = await response.json();
+                    showAlert(data.error || 'Error al reorganizar estudiantes');
+                }
+            } catch (error) {
+                showAlert('Error de conexión: ' + error.message);
+            }
+        }
+
+        async function startGame(sessionId) {
+            if (!confirm('¿Iniciar el juego? Todos los equipos deben tener su tablet conectada.')) return;
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/sessions/game-sessions/${sessionId}/start/`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    showAlert('¡Juego iniciado exitosamente!', 'success');
+                    // TODO: Redirigir a la vista de control del juego
+                    setTimeout(() => {
+                        closeLobby();
+                        loadHistory();
+                    }, 2000);
+                } else {
+                    const data = await response.json();
+                    showAlert(data.error || 'Error al iniciar el juego');
+                }
+            } catch (error) {
+                showAlert('Error de conexión: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Misión Emprende - Reflexión</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .content-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .reflection-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .reflection-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+        }
+
+        .reflection-title {
+            color: #667eea;
+            font-size: 32px;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .reflection-description {
+            color: #666;
+            font-size: 18px;
+            margin-bottom: 30px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .teams-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .team-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            border-left: 5px solid #667eea;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .team-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .team-card.rank-1 {
+            border-left-color: #ffd700;
+            background: linear-gradient(135deg, #fff9e6 0%, #ffffff 100%);
+        }
+
+        .team-card.rank-2 {
+            border-left-color: #c0c0c0;
+            background: linear-gradient(135deg, #f0f0f0 0%, #ffffff 100%);
+        }
+
+        .team-card.rank-3 {
+            border-left-color: #cd7f32;
+            background: linear-gradient(135deg, #f5e6d3 0%, #ffffff 100%);
+        }
+
+        .team-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .team-name-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .team-color {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 20px;
+            color: white;
+        }
+
+        .team-info h3 {
+            color: #333;
+            font-size: 20px;
+            margin-bottom: 5px;
+        }
+
+        .rank-badge {
+            background: #667eea;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 18px;
+        }
+
+        .rank-badge.rank-1 {
+            background: #ffd700;
+            color: #333;
+        }
+
+        .rank-badge.rank-2 {
+            background: #c0c0c0;
+            color: #333;
+        }
+
+        .rank-badge.rank-3 {
+            background: #cd7f32;
+            color: white;
+        }
+
+        .team-tokens {
+            text-align: center;
+            padding: 15px;
+            background: white;
+            border-radius: 10px;
+            margin-top: 10px;
+        }
+
+        .token-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #28a745;
+        }
+
+        .action-buttons {
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+            margin: 10px;
+        }
+
+        .btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-danger {
+            background: #dc3545;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: white;
+            font-size: 18px;
+        }
+
+        .loading-spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="loading" class="loading">
+            <div class="loading-spinner"></div>
+            <p>Cargando estadísticas finales...</p>
+        </div>
+
+        <div id="content" style="display: none;">
+            <div class="header">
+                <div>
+                    <h1>🧠 Reflexión y Cierre</h1>
+                    <p id="roomCode">Código de sala: --</p>
+                </div>
+                <button class="btn btn-danger" onclick="finalizeSession()">Finalizar Sesión</button>
+            </div>
+
+            <div class="content-section">
+                <div class="reflection-header">
+                    <div class="reflection-icon">🧠</div>
+                    <h2 class="reflection-title">Reflexión Final del Juego</h2>
+                    <p class="reflection-description">
+                        Resumen completo de la sesión y estadísticas finales de todos los equipos
+                    </p>
+                </div>
+
+                <div class="stats-grid" id="statsGrid">
+                    <!-- Estadísticas se cargarán aquí -->
+                </div>
+
+                <h2 style="color: #667eea; font-size: 24px; margin-bottom: 20px; text-align: center;">
+                    🏆 Ranking Final
+                </h2>
+                <div class="teams-grid" id="teamsGrid">
+                    <!-- Los equipos se cargarán aquí -->
+                </div>
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn btn-danger" onclick="finalizeSession()">
+                    🏁 Finalizar Sesión
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8000/api';
+        const authToken = localStorage.getItem('authToken');
+        const currentSessionId = {{ session_id }};
+
+        function getTeamColorHex(color) {
+            const colors = {
+                'verde': '#28a745',
+                'azul': '#007bff',
+                'rojo': '#dc3545',
+                'amarillo': '#ffc107',
+                'naranja': '#fd7e14',
+                'morado': '#6f42c1',
+                'rosa': '#e83e8c',
+                'cyan': '#17a2b8'
+            };
+            return colors[color.toLowerCase()] || '#667eea';
+        }
+
+        async function loadReflectionData() {
+            try {
+                // Obtener información de la sesión
+                const sessionResponse = await fetch(`${API_BASE_URL}/sessions/game-sessions/${currentSessionId}/`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!sessionResponse.ok) {
+                    throw new Error('Error al cargar la sesión');
+                }
+
+                const sessionData = await sessionResponse.json();
+                document.getElementById('roomCode').textContent = `Código de sala: ${sessionData.room_code}`;
+
+                // Obtener resultados de la etapa 4 (final)
+                const stageId = sessionData.current_stage?.id || null;
+                let resultsUrl = `${API_BASE_URL}/sessions/game-sessions/${currentSessionId}/stage_results/`;
+                if (stageId) {
+                    resultsUrl += `?stage_id=${stageId}`;
+                }
+
+                const resultsResponse = await fetch(resultsUrl, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!resultsResponse.ok) {
+                    throw new Error('Error al cargar los resultados');
+                }
+
+                const resultsData = await resultsResponse.json();
+                renderReflectionData(sessionData, resultsData);
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('content').style.display = 'block';
+            } catch (error) {
+                console.error('Error cargando datos de reflexión:', error);
+                alert('Error al cargar los datos: ' + error.message);
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        function renderReflectionData(sessionData, resultsData) {
+            const teams = resultsData.teams_results || [];
+            
+            // Calcular estadísticas
+            const totalTeams = teams.length;
+            const totalTokens = teams.reduce((sum, team) => sum + (team.tokens_total || 0), 0);
+            const avgTokens = totalTeams > 0 ? Math.round(totalTokens / totalTeams) : 0;
+            const maxTokens = teams.length > 0 ? Math.max(...teams.map(t => t.tokens_total || 0)) : 0;
+
+            // Renderizar estadísticas
+            const statsGrid = document.getElementById('statsGrid');
+            statsGrid.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-value">${totalTeams}</div>
+                    <div class="stat-label">Equipos Participantes</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${totalTokens}</div>
+                    <div class="stat-label">Tokens Totales</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${avgTokens}</div>
+                    <div class="stat-label">Promedio de Tokens</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${maxTokens}</div>
+                    <div class="stat-label">Máximo de Tokens</div>
+                </div>
+            `;
+
+            // Renderizar ranking
+            const teamsGrid = document.getElementById('teamsGrid');
+            if (teams.length === 0) {
+                teamsGrid.innerHTML = '<p style="text-align: center; color: #666; grid-column: 1/-1;">No hay equipos disponibles</p>';
+                return;
+            }
+
+            teamsGrid.innerHTML = teams.map((team, index) => {
+                const rank = index + 1;
+                const rankClass = rank <= 3 ? `rank-${rank}` : '';
+                const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `${rank}°`;
+                
+                return `
+                    <div class="team-card ${rankClass}">
+                        <div class="team-header">
+                            <div class="team-name-section">
+                                <div class="team-color" style="background: ${getTeamColorHex(team.team_color)};">
+                                    ${team.team_color.charAt(0).toUpperCase()}
+                                </div>
+                                <div class="team-info">
+                                    <h3>${team.team_name}</h3>
+                                </div>
+                            </div>
+                            <div class="rank-badge ${rankClass}">
+                                ${medal}
+                            </div>
+                        </div>
+                        <div class="team-tokens">
+                            <div class="token-value">${team.tokens_total}</div>
+                            <div style="color: #666; font-size: 14px; margin-top: 5px;">Tokens Totales</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function finalizeSession() {
+            if (!confirm('¿Estás seguro de que deseas finalizar esta sesión? Se desconectarán todas las tablets.')) {
+                return;
+            }
+
+            if (!confirm('⚠️ ADVERTENCIA: Esta acción no se puede deshacer. ¿Continuar?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/sessions/game-sessions/${currentSessionId}/end/`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    alert(`¡Sesión finalizada exitosamente! Se desconectaron ${data.tablets_disconnected || 0} tablets.`);
+                    setTimeout(() => {
+                        window.location.replace('/panel/');
+                    }, 1500);
+                } else {
+                    const errorData = await response.json();
+                    alert(errorData.error || 'Error al finalizar la sesión');
+                }
+            } catch (error) {
+                alert('Error de conexión: ' + error.message);
+            }
+        }
+
+        // Cargar datos al iniciar
+        if (authToken) {
+            loadReflectionData();
+        } else {
+            window.location.replace('/login/');
+        }
+    </script>
+</body>
+</html>

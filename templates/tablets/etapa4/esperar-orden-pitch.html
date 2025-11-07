@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Misión Emprende - Preparándose para Presentar</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+            background: white;
+            border-radius: 20px;
+            padding: 50px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+
+        .icon-large {
+            font-size: 100px;
+            margin-bottom: 30px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.1);
+            }
+        }
+
+        .header {
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 32px;
+            margin-bottom: 15px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 18px;
+            line-height: 1.6;
+        }
+
+        .info-box {
+            background: #e7f3ff;
+            padding: 25px;
+            border-radius: 15px;
+            border-left: 4px solid #2196F3;
+            margin-top: 30px;
+        }
+
+        .info-box h3 {
+            color: #1976D2;
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+
+        .info-box p {
+            color: #555;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        .team-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 15px;
+            margin-top: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .team-color {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 20px;
+            color: white;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .team-details h3 {
+            color: #333;
+            font-size: 20px;
+            margin-bottom: 5px;
+        }
+
+        .team-details p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .tokens-badge {
+            background: #667eea;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 20px;
+        }
+
+        .loading-dots {
+            display: inline-block;
+            margin-top: 20px;
+        }
+
+        .loading-dots span {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #667eea;
+            margin: 0 5px;
+            animation: loading 1.4s infinite ease-in-out both;
+        }
+
+        .loading-dots span:nth-child(1) {
+            animation-delay: -0.32s;
+        }
+
+        .loading-dots span:nth-child(2) {
+            animation-delay: -0.16s;
+        }
+
+        @keyframes loading {
+            0%, 80%, 100% {
+                transform: scale(0);
+            }
+            40% {
+                transform: scale(1);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon-large">🎤</div>
+        
+        <div class="header">
+            <h1>¡Prepárense para Presentar!</h1>
+            <p>El profesor está confirmando el orden de presentación de los pitches.</p>
+        </div>
+
+        <div class="info-box">
+            <h3>📋 ¿Qué está pasando?</h3>
+            <p>
+                El profesor está organizando el orden en que cada equipo presentará su pitch. 
+                Una vez que confirme el orden, las presentaciones comenzarán.
+            </p>
+        </div>
+
+        <div class="team-info">
+            <div class="team-color" id="teamColor" style="background: #667eea;">?</div>
+            <div class="team-details">
+                <h3 id="teamName">Equipo</h3>
+                <p id="teamInfo">Cargando...</p>
+            </div>
+        </div>
+
+        <div class="tokens-badge">
+            🪙 <span id="tokensCount">0</span> Tokens
+        </div>
+
+        <div class="loading-dots">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8000/api';
+        
+        // Obtener connection_id de la URL o localStorage
+        const urlParams = new URLSearchParams(window.location.search);
+        let connectionId = urlParams.get('connection_id') || localStorage.getItem('tabletConnectionId');
+        
+        if (!connectionId) {
+            window.location.href = '/tablet/join/';
+        }
+
+        let myTeamId = null;
+        let gameSessionId = null;
+
+        // Función para obtener colores hex desde nombres
+        function getTeamColorHex(color) {
+            const colorMap = {
+                'Verde': '#28a745',
+                'Azul': '#007bff',
+                'Rojo': '#dc3545',
+                'Amarillo': '#ffc107',
+                'Naranja': '#fd7e14',
+                'Morado': '#6f42c1',
+                'Rosa': '#e83e8c',
+                'Cian': '#17a2b8',
+                'Gris': '#6c757d',
+                'Marrón': '#795548'
+            };
+            return colorMap[color] || '#667eea';
+        }
+
+        async function loadGameState() {
+            try {
+                const statusResponse = await fetch(`${API_BASE_URL}/sessions/tablet-connections/status/?connection_id=${connectionId}`);
+                
+                if (!statusResponse.ok) {
+                    if (statusResponse.status === 404) {
+                        setTimeout(() => {
+                            window.location.href = '/tablet/join/';
+                        }, 3000);
+                    }
+                    return;
+                }
+
+                const statusData = await statusResponse.json();
+                myTeamId = statusData.team.id;
+                gameSessionId = statusData.game_session.id;
+                
+                // Actualizar header
+                const team = statusData.team;
+                document.getElementById('teamName').textContent = team.name;
+                document.getElementById('teamInfo').textContent = `Equipo ${team.color}`;
+                document.getElementById('teamColor').textContent = team.color.charAt(0).toUpperCase();
+                document.getElementById('teamColor').style.background = getTeamColorHex(team.color);
+                document.getElementById('tokensCount').textContent = team.tokens_total || 0;
+
+                // Verificar estado del juego
+                const gameResponse = await fetch(`${API_BASE_URL}/sessions/game-sessions/${gameSessionId}/`);
+                if (!gameResponse.ok) {
+                    console.error('Error al obtener estado del juego');
+                    return;
+                }
+
+                const gameData = await gameResponse.json();
+                
+                // Verificar si el juego ha finalizado
+                if (gameData.status === 'finished' || gameData.status === 'completed') {
+                    setTimeout(() => {
+                        window.location.href = '/tablet/join/';
+                    }, 2000);
+                    return;
+                }
+
+                // Verificar si el juego está en lobby
+                if (gameData.status === 'lobby') {
+                    window.location.href = `/tablet/lobby/?connection_id=${connectionId}`;
+                    return;
+                }
+
+                // Verificar si el profesor ya confirmó el orden (presentaciones iniciadas)
+                const sessionStagesResponse = await fetch(`${API_BASE_URL}/sessions/session-stages/?game_session=${gameSessionId}`);
+                if (sessionStagesResponse.ok) {
+                    const sessionStagesData = await sessionStagesResponse.json();
+                    const sessionStages = Array.isArray(sessionStagesData) ? sessionStagesData : sessionStagesData.results || [];
+                    const sessionStage = sessionStages.find(s => s.stage_number === 4);
+                    
+                    if (sessionStage && sessionStage.current_presentation_team_id) {
+                        // El profesor ya confirmó el orden, redirigir a presentación
+                        window.location.href = `/tablet/etapa4/presentacion-pitch/?connection_id=${connectionId}`;
+                        return;
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading game state:', error);
+            }
+        }
+
+        // Cargar información inicial
+        loadGameState();
+
+        // Polling para verificar si el profesor confirmó el orden
+        setInterval(async () => {
+            if (gameSessionId) {
+                try {
+                    const sessionStagesResponse = await fetch(`${API_BASE_URL}/sessions/session-stages/?game_session=${gameSessionId}`);
+                    if (sessionStagesResponse.ok) {
+                        const sessionStagesData = await sessionStagesResponse.json();
+                        const sessionStages = Array.isArray(sessionStagesData) ? sessionStagesData : sessionStagesData.results || [];
+                        const sessionStage = sessionStages.find(s => s.stage_number === 4);
+                        
+                        if (sessionStage && sessionStage.current_presentation_team_id) {
+                            // El profesor confirmó el orden, redirigir a presentación
+                            window.location.href = `/tablet/etapa4/presentacion-pitch/?connection_id=${connectionId}`;
+                            return;
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error verificando estado:', error);
+                }
+            }
+            
+            await loadGameState();
+        }, 3000);
+    </script>
+</body>
+</html>
+

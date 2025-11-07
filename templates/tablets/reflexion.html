@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Misión Emprende - Reflexión</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .header {
+            background: white;
+            border-radius: 15px;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .team-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .team-color {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 18px;
+            color: white;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .team-details h3 {
+            color: #333;
+            font-size: 18px;
+            margin-bottom: 2px;
+        }
+
+        .team-details p {
+            color: #666;
+            font-size: 12px;
+        }
+
+        .tokens-badge {
+            background: #667eea;
+            color: white;
+            padding: 8px 18px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .reflection-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f0f4ff;
+            border-radius: 15px;
+        }
+
+        .reflection-icon {
+            font-size: 70px;
+            margin-bottom: 15px;
+        }
+
+        .reflection-title {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .reflection-description {
+            color: #666;
+            font-size: 16px;
+        }
+
+        .summary-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+        }
+
+        .summary-title {
+            color: #667eea;
+            font-size: 20px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .summary-item {
+            text-align: center;
+            padding: 15px;
+            background: white;
+            border-radius: 10px;
+        }
+
+        .summary-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .summary-label {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .ranking-section {
+            margin-bottom: 30px;
+        }
+
+        .ranking-title {
+            color: #667eea;
+            font-size: 20px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .team-ranking-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid transparent;
+        }
+
+        .team-ranking-item.my-team {
+            background: #e7f3ff;
+            border-left-color: #2196F3;
+            border: 2px solid #2196F3;
+        }
+
+        .rank-medal {
+            font-size: 24px;
+            margin-right: 15px;
+            min-width: 40px;
+            text-align: center;
+        }
+
+        .team-info-ranking {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .team-color-small {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+        }
+
+        .team-name-ranking {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .team-tokens-ranking {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .qr-section {
+            text-align: center;
+            padding: 30px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+
+        .qr-title {
+            color: #667eea;
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+
+        .qr-description {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        #qrImage {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            display: inline-block;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            max-width: 250px;
+            width: 100%;
+            height: auto;
+        }
+
+        .closing-message {
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            margin-top: 30px;
+        }
+
+        .closing-message h3 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .closing-message p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert.show {
+            display: block;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="team-info">
+            <div class="team-color" id="teamColor" style="background: #667eea;">?</div>
+            <div class="team-details">
+                <h3 id="teamName">Equipo</h3>
+                <p id="teamInfo">Cargando...</p>
+            </div>
+        </div>
+        <div class="tokens-badge">
+            🪙 <span id="tokensCount">0</span> Tokens
+        </div>
+    </div>
+
+    <div class="container">
+        <div id="alertContainer"></div>
+
+        <div class="reflection-header">
+            <div class="reflection-icon">🧠</div>
+            <h2 class="reflection-title">Reflexión Final</h2>
+            <p class="reflection-description">¡Gracias por participar en Misión Emprende!</p>
+        </div>
+
+        <div class="summary-section">
+            <h3 class="summary-title">📊 Tu Resumen Final</h3>
+            <div class="summary-grid">
+                <div class="summary-item">
+                    <div class="summary-value" id="finalPosition">-</div>
+                    <div class="summary-label">Posición Final</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-value" id="finalTokens">0</div>
+                    <div class="summary-label">Tokens Totales</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="ranking-section">
+            <h3 class="ranking-title">🏆 Ranking Final</h3>
+            <div id="rankingList">
+                <!-- Ranking se cargará aquí -->
+            </div>
+        </div>
+
+        <div class="qr-section">
+            <h3 class="qr-title">📝 Encuesta de Feedback</h3>
+            <p class="qr-description">
+                Escanea este código QR con tu dispositivo personal para acceder a la encuesta de feedback
+            </p>
+            <img id="qrImage" alt="QR Code para encuesta" />
+            <p style="color: #666; font-size: 12px; margin-top: 15px;">
+                URL: <span id="surveyUrl" style="color: #667eea; word-break: break-all;">https://forms.google.com/...</span>
+            </p>
+        </div>
+
+        <div class="closing-message">
+            <h3>¡Gracias por Participar! 🎉</h3>
+            <p>Esperamos que hayas disfrutado la experiencia de emprendimiento.</p>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8000/api';
+        
+        // Obtener connection_id de la URL o localStorage
+        const urlParams = new URLSearchParams(window.location.search);
+        let connectionId = urlParams.get('connection_id') || localStorage.getItem('tabletConnectionId');
+        
+        if (!connectionId) {
+            window.location.href = '/tablet/join/';
+        }
+
+        let myTeamId = null;
+        let gameSessionId = null;
+
+        // URL de la encuesta (puede ser configurable)
+        const SURVEY_URL = 'https://forms.google.com/your-survey-link-here';
+
+        // Función para obtener colores hex desde nombres
+        function getTeamColorHex(color) {
+            const colorMap = {
+                'Verde': '#28a745',
+                'Azul': '#007bff',
+                'Rojo': '#dc3545',
+                'Amarillo': '#ffc107',
+                'Naranja': '#fd7e14',
+                'Morado': '#6f42c1',
+                'Rosa': '#e83e8c',
+                'Cian': '#17a2b8',
+                'Gris': '#6c757d',
+                'Marrón': '#795548'
+            };
+            return colorMap[color] || '#667eea';
+        }
+
+        function showAlert(message, type = 'info') {
+            const alertContainer = document.getElementById('alertContainer');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type} show`;
+            alert.textContent = message;
+            alertContainer.innerHTML = '';
+            alertContainer.appendChild(alert);
+            
+            setTimeout(() => {
+                alert.classList.remove('show');
+            }, 5000);
+        }
+
+        async function loadReflectionData() {
+            try {
+                const statusResponse = await fetch(`${API_BASE_URL}/sessions/tablet-connections/status/?connection_id=${connectionId}`);
+                
+                if (!statusResponse.ok) {
+                    if (statusResponse.status === 404) {
+                        showAlert('Conexión no encontrada. Por favor reconecta.', 'error');
+                        setTimeout(() => {
+                            window.location.href = '/tablet/join/';
+                        }, 3000);
+                    }
+                    return;
+                }
+
+                const statusData = await statusResponse.json();
+                myTeamId = statusData.team.id;
+                gameSessionId = statusData.game_session.id;
+                
+                // Actualizar header
+                const team = statusData.team;
+                document.getElementById('teamName').textContent = team.name;
+                document.getElementById('teamInfo').textContent = `Equipo ${team.color}`;
+                document.getElementById('teamColor').textContent = team.color.charAt(0).toUpperCase();
+                document.getElementById('teamColor').style.background = getTeamColorHex(team.color);
+                document.getElementById('finalTokens').textContent = team.tokens_total || 0;
+                document.getElementById('tokensCount').textContent = team.tokens_total || 0;
+
+                // Verificar estado del juego
+                const gameResponse = await fetch(`${API_BASE_URL}/sessions/game-sessions/${gameSessionId}/`);
+                if (!gameResponse.ok) {
+                    console.error('Error al obtener estado del juego');
+                    return;
+                }
+
+                const gameData = await gameResponse.json();
+                
+                // Si el juego volvió a lobby o finalizó, redirigir
+                if (gameData.status === 'lobby') {
+                    window.location.href = `/tablet/lobby/?connection_id=${connectionId}`;
+                    return;
+                }
+
+                // Obtener resultados finales de la etapa 4
+                const stageId = gameData.current_stage?.id || null;
+                let resultsUrl = `${API_BASE_URL}/sessions/game-sessions/${gameSessionId}/stage_results/`;
+                if (stageId) {
+                    resultsUrl += `?stage_id=${stageId}`;
+                }
+
+                const resultsResponse = await fetch(resultsUrl);
+                if (!resultsResponse.ok) {
+                    throw new Error('Error al cargar resultados');
+                }
+
+                const resultsData = await resultsResponse.json();
+                renderReflectionData(resultsData);
+                generateQRCode();
+
+            } catch (error) {
+                console.error('Error loading reflection data:', error);
+                showAlert('Error de conexión: ' + error.message, 'error');
+            }
+        }
+
+        function renderReflectionData(data) {
+            const teams = data.teams_results || [];
+            
+            // Encontrar posición del equipo
+            const myTeamIndex = teams.findIndex(team => team.team_id === myTeamId);
+            const myRank = myTeamIndex !== -1 ? myTeamIndex + 1 : '-';
+            const medal = myRank === 1 ? '🥇' : myRank === 2 ? '🥈' : myRank === 3 ? '🥉' : `${myRank}°`;
+            
+            document.getElementById('finalPosition').textContent = medal;
+
+            // Renderizar ranking
+            const rankingList = document.getElementById('rankingList');
+            if (teams.length === 0) {
+                rankingList.innerHTML = '<p style="text-align: center; color: #666;">No hay equipos disponibles</p>';
+                return;
+            }
+
+            rankingList.innerHTML = teams.map((team, index) => {
+                const rank = index + 1;
+                const rankMedal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `${rank}°`;
+                const isMyTeam = team.team_id === myTeamId;
+                
+                return `
+                    <div class="team-ranking-item ${isMyTeam ? 'my-team' : ''}">
+                        <div class="rank-medal">${rankMedal}</div>
+                        <div class="team-info-ranking">
+                            <div class="team-color-small" style="background: ${getTeamColorHex(team.team_color)};"></div>
+                            <div style="flex: 1;">
+                                <div class="team-name-ranking">
+                                    ${team.team_name} ${isMyTeam ? '(Tu equipo)' : ''}
+                                </div>
+                                <div class="team-tokens-ranking">
+                                    ${team.tokens_total} tokens totales
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function generateQRCode() {
+            const qrImage = document.getElementById('qrImage');
+            const surveyUrl = document.getElementById('surveyUrl');
+            
+            // Mostrar URL
+            surveyUrl.textContent = SURVEY_URL;
+            
+            // Usar API externa para generar QR code como imagen
+            // Usando qr-server.com que es gratuito y no requiere librerías
+            const encodedUrl = encodeURIComponent(SURVEY_URL);
+            const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodedUrl}`;
+            
+            qrImage.src = qrApiUrl;
+            qrImage.onerror = function() {
+                console.error('Error cargando QR code');
+                qrImage.style.display = 'none';
+                showAlert('Error al generar código QR. Por favor, usa el enlace de texto para acceder a la encuesta.', 'error');
+            };
+        }
+
+        // Cargar datos al iniciar
+        loadReflectionData();
+
+        // Polling para detectar cambios (si el profesor vuelve a resultados o finaliza)
+        setInterval(async () => {
+            if (gameSessionId) {
+                try {
+                    const gameResponse = await fetch(`${API_BASE_URL}/sessions/game-sessions/${gameSessionId}/`);
+                    if (gameResponse.ok) {
+                        const gameData = await gameResponse.json();
+                        
+                        // Si el juego finalizó, mantener en reflexión
+                        if (gameData.status === 'finished' || gameData.status === 'completed') {
+                            // Mantener en reflexión
+                            return;
+                        }
+                        
+                        // Si el juego volvió a lobby, redirigir
+                        if (gameData.status === 'lobby') {
+                            window.location.href = `/tablet/lobby/?connection_id=${connectionId}`;
+                            return;
+                        }
+                        
+                        // Verificar si seguimos en fase de reflexión
+                        // Si el profesor volvió a resultados, el flag _reflection debería estar presente
+                        // Si no está presente, significa que el profesor volvió a resultados
+                        if (gameData.current_stage_number === 4 && !gameData.current_activity) {
+                            try {
+                                const sessionStagesResponse = await fetch(`${API_BASE_URL}/sessions/session-stages/?game_session=${gameSessionId}`);
+                                if (sessionStagesResponse.ok) {
+                                    const sessionStagesData = await sessionStagesResponse.json();
+                                    const sessionStages = Array.isArray(sessionStagesData) ? sessionStagesData : sessionStagesData.results || [];
+                                    const etapa4Stage = sessionStages.find(s => s.stage_number === 4);
+                                    
+                                    // Si NO hay flag de reflexión, el profesor volvió a resultados
+                                    if (!etapa4Stage || !etapa4Stage.presentation_timestamps || !etapa4Stage.presentation_timestamps._reflection) {
+                                        window.location.href = `/tablet/resultados/?connection_id=${connectionId}`;
+                                        return;
+                                    }
+                                }
+                            } catch (error) {
+                                console.error('Error verificando fase de reflexión:', error);
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error verificando estado del juego:', error);
+                }
+            }
+        }, 3000);
+    </script>
+</body>
+</html>
+

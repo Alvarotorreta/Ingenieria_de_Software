@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Misión Emprende - Resultados Etapa 2</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .header {
+            background: white;
+            border-radius: 15px;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .team-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .team-color {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 18px;
+            color: white;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .team-details h3 {
+            color: #333;
+            font-size: 18px;
+            margin-bottom: 2px;
+        }
+
+        .team-details p {
+            color: #666;
+            font-size: 12px;
+        }
+
+        .tokens-badge {
+            background: #667eea;
+            color: white;
+            padding: 8px 18px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .stage-info-box {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f0f4ff;
+            border-radius: 15px;
+        }
+
+        .stage-icon-large {
+            font-size: 70px;
+            margin-bottom: 15px;
+        }
+
+        .results-summary {
+            margin-top: 20px;
+        }
+
+        .waiting-next-stage {
+            text-align: center;
+            padding: 40px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            margin-top: 20px;
+        }
+
+        .waiting-icon {
+            font-size: 60px;
+            margin-bottom: 20px;
+        }
+
+        .waiting-text {
+            color: #666;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert.show {
+            display: block;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="team-info">
+            <div class="team-color" id="teamColor" style="background: #667eea;">?</div>
+            <div class="team-details">
+                <h3 id="teamName">Equipo</h3>
+                <p id="teamInfo">Cargando...</p>
+            </div>
+        </div>
+        <div class="tokens-badge">
+            🪙 <span id="tokensCount">0</span> Tokens
+        </div>
+    </div>
+
+    <div class="container">
+        <div id="alertContainer"></div>
+
+        <div class="stage-info-box">
+            <div class="stage-icon-large" id="resultsStageIcon">💭</div>
+            <h2 style="color: #333; font-size: 28px; margin-bottom: 10px;" id="resultsStageTitle">🏆 Resultados de la Etapa 2</h2>
+            <p id="resultsStageDescription" style="color: #666; font-size: 16px;">Resultados finales de la etapa</p>
+        </div>
+
+        <div class="results-summary" id="resultsSummary">
+            <div style="text-align: center; padding: 40px;">
+                <div class="waiting-icon">⏳</div>
+                <p class="waiting-text">Cargando resultados...</p>
+            </div>
+        </div>
+
+        <div class="waiting-next-stage" id="waitingNextStage" style="display: none;">
+            <div class="waiting-icon">⏳</div>
+            <p class="waiting-text" id="waitingNextStageText">Esperando a que el profesor inicie la siguiente etapa...</p>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8000/api';
+        
+        // Obtener connection_id de la URL o localStorage
+        const urlParams = new URLSearchParams(window.location.search);
+        let connectionId = urlParams.get('connection_id') || localStorage.getItem('tabletConnectionId');
+        
+        if (!connectionId) {
+            window.location.href = '/tablet/join/';
+        }
+
+        let myTeamId = null;
+        let gameSessionId = null;
+        let currentStageNumber = 2;
+
+        // Función para obtener colores hex desde nombres
+        function getTeamColorHex(color) {
+            const colorMap = {
+                'Verde': '#28a745',
+                'Azul': '#007bff',
+                'Rojo': '#dc3545',
+                'Amarillo': '#ffc107',
+                'Naranja': '#fd7e14',
+                'Morado': '#6f42c1',
+                'Rosa': '#e83e8c',
+                'Cian': '#17a2b8',
+                'Gris': '#6c757d',
+                'Marrón': '#795548'
+            };
+            return colorMap[color] || '#667eea';
+        }
+
+        function showAlert(message, type = 'info') {
+            const alertContainer = document.getElementById('alertContainer');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type} show`;
+            alert.textContent = message;
+            alertContainer.innerHTML = '';
+            alertContainer.appendChild(alert);
+            
+            setTimeout(() => {
+                alert.classList.remove('show');
+            }, 5000);
+        }
+
+        async function loadGameState() {
+            try {
+                const statusResponse = await fetch(`${API_BASE_URL}/sessions/tablet-connections/status/?connection_id=${connectionId}`);
+                
+                if (!statusResponse.ok) {
+                    if (statusResponse.status === 404) {
+                        showAlert('Conexión no encontrada. Por favor reconecta.', 'error');
+                        setTimeout(() => {
+                            window.location.href = '/tablet/join/';
+                        }, 3000);
+                    }
+                    return;
+                }
+
+                const statusData = await statusResponse.json();
+                myTeamId = statusData.team.id;
+                gameSessionId = statusData.game_session.id;
+                
+                // Actualizar header
+                const team = statusData.team;
+                document.getElementById('teamName').textContent = team.name;
+                document.getElementById('teamInfo').textContent = `Equipo ${team.color}`;
+                document.getElementById('teamColor').textContent = team.color.charAt(0).toUpperCase();
+                document.getElementById('teamColor').style.background = getTeamColorHex(team.color);
+                document.getElementById('tokensCount').textContent = team.tokens_total || 0;
+
+                // Verificar estado del juego
+                const gameResponse = await fetch(`${API_BASE_URL}/sessions/game-sessions/${gameSessionId}/`);
+                if (!gameResponse.ok) {
+                    console.error('Error al obtener estado del juego');
+                    return;
+                }
+
+                const gameData = await gameResponse.json();
+                
+                // Verificar si el juego ha finalizado
+                if (gameData.status === 'finished' || gameData.status === 'completed') {
+                    showAlert('El juego ha finalizado. Redirigiendo...', 'info');
+                    setTimeout(() => {
+                        window.location.href = '/tablet/join/';
+                    }, 2000);
+                    return;
+                }
+
+                // Verificar si el juego está en lobby
+                if (gameData.status === 'lobby') {
+                    window.location.href = `/tablet/lobby/?connection_id=${connectionId}`;
+                    return;
+                }
+
+                currentStageNumber = gameData.current_stage_number || 2;
+                
+                // Verificar si el profesor avanzó a la siguiente etapa
+                const currentActivityId = gameData.current_activity;
+                const currentActivityName = gameData.current_activity_name;
+                
+                // Si hay una actividad actual y no es de la etapa 2, el profesor avanzó
+                if (currentActivityId && currentActivityName && currentStageNumber > 2) {
+                    // El profesor avanzó a la siguiente etapa, redirigir a la actividad correspondiente
+                    if (currentStageNumber === 3) {
+                        // Etapa 3: redirigir a prototipo
+                        const normalizedName = currentActivityName.toLowerCase();
+                        if (normalizedName.includes('prototipo')) {
+                            window.location.href = `/tablet/etapa3/prototipo/?connection_id=${connectionId}`;
+                        } else {
+                            window.location.href = `/tablet/game/?connection_id=${connectionId}`;
+                        }
+                    } else {
+                        window.location.href = `/tablet/game/?connection_id=${connectionId}`;
+                    }
+                    return;
+                }
+
+                // Si hay una actividad actual de la etapa 2, el profesor aún no terminó la etapa
+                if (currentActivityId && currentActivityName && currentStageNumber === 2) {
+                    // El profesor aún no terminó la etapa 2, redirigir a la actividad correspondiente
+                    const normalizedName = currentActivityName.toLowerCase();
+                    if (normalizedName.includes('tema') || normalizedName.includes('seleccionar')) {
+                        window.location.href = `/tablet/etapa2/seleccionar-tema/?connection_id=${connectionId}`;
+                    } else if (normalizedName.includes('desafio') || 
+                               normalizedName.includes('desafío') || 
+                               normalizedName.includes('challenge') ||
+                               normalizedName.includes('desaf')) {
+                        window.location.href = `/tablet/etapa2/seleccionar-desafio/?connection_id=${connectionId}`;
+                    } else if (normalizedName.includes('bubble') || normalizedName.includes('mapa')) {
+                        window.location.href = `/tablet/etapa2/bubble-map/?connection_id=${connectionId}`;
+                    } else {
+                        window.location.href = `/tablet/game/?connection_id=${connectionId}`;
+                    }
+                    return;
+                }
+
+                // Si no hay actividad actual y estamos en etapa 2, mostrar resultados
+                if (!currentActivityId && currentStageNumber === 2) {
+                    await loadStageResults(gameSessionId, gameData.current_stage);
+                    
+                    // Mostrar mensaje de espera para siguiente etapa
+                    const nextStageNumber = currentStageNumber + 1;
+                    const waitingText = document.getElementById('waitingNextStageText');
+                    if (waitingText && nextStageNumber <= 4) {
+                        waitingText.textContent = `Esperando a que el profesor inicie la Etapa ${nextStageNumber}...`;
+                    }
+                    document.getElementById('waitingNextStage').style.display = 'block';
+                } else {
+                    // Si hay una actividad de otra etapa, redirigir
+                    window.location.href = `/tablet/game/?connection_id=${connectionId}`;
+                }
+            } catch (error) {
+                console.error('Error loading game state:', error);
+                showAlert('Error de conexión: ' + error.message, 'error');
+            }
+        }
+
+        async function loadStageResults(gameSessionId, stageId) {
+            try {
+                let resultsUrl = `${API_BASE_URL}/sessions/game-sessions/${gameSessionId}/stage_results/`;
+                if (stageId) {
+                    resultsUrl += `?stage_id=${stageId}`;
+                }
+
+                const response = await fetch(resultsUrl);
+                if (!response.ok) {
+                    throw new Error('Error al cargar resultados');
+                }
+
+                const resultsData = await response.json();
+                renderStageResults(resultsData);
+            } catch (error) {
+                console.error('Error cargando resultados:', error);
+                showAlert('Error al cargar resultados: ' + error.message, 'error');
+            }
+        }
+
+        function renderStageResults(data) {
+            // Actualizar título de etapa
+            document.getElementById('resultsStageTitle').textContent = `🏆 Resultados de la Etapa ${data.stage_number}: ${data.stage_name}`;
+            document.getElementById('resultsStageDescription').textContent = 'Resultados finales de la etapa';
+
+            // Buscar nuestro equipo en los resultados
+            const myTeamResult = data.teams_results.find(team => team.team_id === myTeamId);
+            const myRank = data.teams_results.findIndex(team => team.team_id === myTeamId) + 1;
+
+            if (!myTeamResult) {
+                document.getElementById('resultsSummary').innerHTML = '<p style="text-align: center; color: #666; padding: 40px;">No se encontraron resultados para tu equipo.</p>';
+                return;
+            }
+
+            // Renderizar resultados del equipo
+            const medal = myRank === 1 ? '🥇' : myRank === 2 ? '🥈' : myRank === 3 ? '🥉' : `${myRank}°`;
+            
+            document.getElementById('resultsSummary').innerHTML = `
+                <div style="background: white; border-radius: 15px; padding: 30px; box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);">
+                    <!-- Posición del equipo -->
+                    <div style="text-align: center; margin-bottom: 25px;">
+                        <div style="font-size: 60px; margin-bottom: 15px;">${medal}</div>
+                        <h3 style="color: #333; font-size: 24px; margin-bottom: 10px;">Tu posición: ${myRank}° lugar</h3>
+                    </div>
+                    
+                    <!-- Tokens del equipo -->
+                    <div style="display: flex; justify-content: space-around; margin: 30px 0; padding: 20px; background: #f8f9fa; border-radius: 12px;">
+                        <div style="text-align: center;">
+                            <div style="color: #666; font-size: 14px; margin-bottom: 8px;">Tokens en esta etapa</div>
+                            <div style="font-size: 32px; font-weight: 700; color: #667eea;">+${myTeamResult.tokens_stage}</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="color: #666; font-size: 14px; margin-bottom: 8px;">Tokens totales</div>
+                            <div style="font-size: 32px; font-weight: 700; color: #28a745;">${myTeamResult.tokens_total}</div>
+                        </div>
+                    </div>
+
+                    <!-- Ranking de todos los equipos -->
+                    <div style="margin-top: 30px; padding-top: 25px; border-top: 2px solid #e9ecef;">
+                        <h4 style="color: #333; font-size: 18px; margin-bottom: 15px; text-align: center;">📊 Clasificación General</h4>
+                        <div style="display: flex; flex-direction: column; gap: 10px;">
+                            ${data.teams_results.map((team, index) => {
+                                const rank = index + 1;
+                                const rankMedal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `${rank}°`;
+                                const isMyTeam = team.team_id === myTeamId;
+                                const bgColor = isMyTeam ? '#e7f3ff' : '#f8f9fa';
+                                const borderColor = isMyTeam ? '#2196F3' : 'transparent';
+                                return `
+                                    <div style="display: flex; align-items: center; padding: 15px; background: ${bgColor}; border-radius: 10px; border-left: 4px solid ${borderColor}; ${isMyTeam ? 'border: 2px solid #2196F3;' : ''}">
+                                        <div style="font-size: 24px; margin-right: 15px; min-width: 40px; text-align: center;">${rankMedal}</div>
+                                        <div style="flex: 1;">
+                                            <div style="display: flex; align-items: center; margin-bottom: 5px;">
+                                                <div style="width: 20px; height: 20px; border-radius: 50%; background: ${getTeamColorHex(team.team_color)}; margin-right: 10px;"></div>
+                                                <span style="font-weight: ${isMyTeam ? '700' : '600'}; color: #333; font-size: ${isMyTeam ? '16px' : '14px'};">
+                                                    ${team.team_name} ${isMyTeam ? '(Tu equipo)' : ''}
+                                                </span>
+                                            </div>
+                                            <div style="display: flex; gap: 20px; font-size: 12px; color: #666;">
+                                                <span>Etapa: <strong>${team.tokens_stage}</strong> tokens</span>
+                                                <span>Total: <strong>${team.tokens_total}</strong> tokens</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+
+                    <!-- Actividades completadas del equipo -->
+                    <div style="margin-top: 25px; padding-top: 25px; border-top: 2px solid #e9ecef;">
+                        <h4 style="color: #333; font-size: 18px; margin-bottom: 15px;">Actividades completadas:</h4>
+                        ${myTeamResult.activities_progress.map(activity => `
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; margin-bottom: 10px; background: #f8f9fa; border-radius: 8px;">
+                                <span style="color: #333; font-size: 14px;">${activity.activity_name}</span>
+                                <span style="padding: 5px 12px; border-radius: 15px; font-size: 12px; font-weight: 600; background: ${activity.status === 'completed' ? '#d4edda' : '#fff3cd'}; color: ${activity.status === 'completed' ? '#155724' : '#856404'};">
+                                    ${activity.status === 'completed' ? '✓ Completada' : '⏳ Pendiente'}
+                                </span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Cargar información inicial
+        loadGameState();
+
+        // Polling para actualizar estado y detectar cuando el profesor avanza
+        setInterval(async () => {
+            // Verificar estado del juego primero
+            if (gameSessionId) {
+                try {
+                    const gameResponse = await fetch(`${API_BASE_URL}/sessions/game-sessions/${gameSessionId}/`);
+                    if (gameResponse.ok) {
+                        const gameData = await gameResponse.json();
+                        
+                        // Si el juego finalizó, redirigir inmediatamente
+                        if (gameData.status === 'finished' || gameData.status === 'completed') {
+                            showAlert('El juego ha finalizado. Redirigiendo...', 'info');
+                            setTimeout(() => {
+                                window.location.href = '/tablet/join/';
+                            }, 1000);
+                            return;
+                        }
+                        
+                        // Si el juego volvió a lobby, redirigir al lobby
+                        if (gameData.status === 'lobby') {
+                            window.location.href = `/tablet/lobby/?connection_id=${connectionId}`;
+                            return;
+                        }
+
+                        // Verificar si el profesor avanzó a la siguiente etapa
+                        const currentActivityId = gameData.current_activity;
+                        const currentActivityName = gameData.current_activity_name;
+                        const newStageNumber = gameData.current_stage_number || 2;
+                        
+                        // Si hay una actividad de otra etapa, el profesor avanzó
+                        if (currentActivityId && currentActivityName && newStageNumber > 2) {
+                            // El profesor avanzó a la siguiente etapa, redirigir según la etapa
+                            if (newStageNumber === 3) {
+                                // Etapa 3: redirigir a prototipo
+                                const normalizedName = currentActivityName.toLowerCase();
+                                if (normalizedName.includes('prototipo')) {
+                                    window.location.href = `/tablet/etapa3/prototipo/?connection_id=${connectionId}`;
+                                } else {
+                                    window.location.href = `/tablet/game/?connection_id=${connectionId}`;
+                                }
+                            } else if (newStageNumber === 4) {
+                                // Etapa 4: redirigir según actividad
+                                const normalizedName = currentActivityName.toLowerCase();
+                                if ((normalizedName.includes('pitch') && normalizedName.includes('formulario')) || 
+                                    (normalizedName.includes('formulario') && normalizedName.includes('pitch'))) {
+                                    window.location.href = `/tablet/etapa4/formulario-pitch/?connection_id=${connectionId}`;
+                                } else if ((normalizedName.includes('pitch') && normalizedName.includes('presentacion')) || 
+                                           (normalizedName.includes('presentación') && normalizedName.includes('pitch'))) {
+                                    window.location.href = `/tablet/etapa4/presentacion-pitch/?connection_id=${connectionId}`;
+                                } else {
+                                    window.location.href = `/tablet/game/?connection_id=${connectionId}`;
+                                }
+                            } else {
+                                window.location.href = `/tablet/game/?connection_id=${connectionId}`;
+                            }
+                            return;
+                        }
+
+                        // Si hay una actividad de la etapa 2, el profesor aún no terminó
+                        if (currentActivityId && currentActivityName && newStageNumber === 2) {
+                            // El profesor aún no terminó la etapa 2, redirigir a la actividad
+                            const normalizedName = currentActivityName.toLowerCase();
+                            if (normalizedName.includes('tema') || normalizedName.includes('seleccionar')) {
+                                window.location.href = `/tablet/etapa2/seleccionar-tema/?connection_id=${connectionId}`;
+                            } else if (normalizedName.includes('desafio') || 
+                                       normalizedName.includes('desafío') || 
+                                       normalizedName.includes('challenge') ||
+                                       normalizedName.includes('desaf')) {
+                                window.location.href = `/tablet/etapa2/seleccionar-desafio/?connection_id=${connectionId}`;
+                            } else if (normalizedName.includes('bubble') || normalizedName.includes('mapa')) {
+                                window.location.href = `/tablet/etapa2/bubble-map/?connection_id=${connectionId}`;
+                            } else {
+                                window.location.href = `/tablet/game/?connection_id=${connectionId}`;
+                            }
+                            return;
+                        }
+
+                        // Si no hay actividad y estamos en etapa 2, recargar resultados
+                        if (!currentActivityId && newStageNumber === 2) {
+                            await loadGameState();
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error verificando estado del juego:', error);
+                }
+            }
+        }, 3000);
+    </script>
+</body>
+</html>
+
