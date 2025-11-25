@@ -8,6 +8,7 @@ import { Progress } from '@/components/ui/progress';
 import { BackgroundMusic } from '@/components/BackgroundMusic';
 import { sessionsAPI, reflectionEvaluationsAPI, tabletConnectionsAPI } from '@/services';
 import { toast } from 'sonner';
+import { fixTextEncoding } from '@/utils/textEncoding';
 
 export function TabletReflexion() {
   const [searchParams] = useSearchParams();
@@ -95,11 +96,28 @@ export function TabletReflexion() {
       
       const roomCode = sessionData.room_code;
       const evaluationsData = await reflectionEvaluationsAPI.byRoom(roomCode);
-      const evaluationsArray = Array.isArray(evaluationsData) ? evaluationsData : [evaluationsData];
-      setEstudiantesRespondidos(evaluationsArray.length);
       
-      // Nota: El endpoint byRoom no devuelve total_students directamente
-      // Se mantiene el cálculo anterior si es necesario
+      // El endpoint devuelve: { count, total_students, total_evaluations, results }
+      if (evaluationsData && typeof evaluationsData === 'object') {
+        // Si tiene la estructura correcta con count y total_students
+        if ('count' in evaluationsData) {
+          setEstudiantesRespondidos(evaluationsData.count || 0);
+          // Actualizar total desde la respuesta del endpoint
+          if ('total_students' in evaluationsData && evaluationsData.total_students !== undefined) {
+            setTotalEstudiantes(evaluationsData.total_students);
+          }
+        } else {
+          // Fallback: si es un array o tiene results
+          const evaluationsArray = Array.isArray(evaluationsData) 
+            ? evaluationsData 
+            : (evaluationsData.results || []);
+          setEstudiantesRespondidos(evaluationsArray.length);
+        }
+      } else {
+        // Fallback para array simple
+        const evaluationsArray = Array.isArray(evaluationsData) ? evaluationsData : [];
+        setEstudiantesRespondidos(evaluationsArray.length);
+      }
     } catch (error) {
       console.error('Error loading progress:', error);
     }
@@ -165,20 +183,20 @@ export function TabletReflexion() {
       <BackgroundMusic />
 
       <div className="relative z-10 p-3 sm:p-4 flex items-center justify-center min-h-screen">
-        <div className="max-w-2xl w-full">
+        <div className="max-w-6xl w-full mx-auto">
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-center mb-4 sm:mb-6"
+            className="text-center mb-3 sm:mb-4"
           >
-            <div className="inline-block bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2 sm:px-6 sm:py-2 rounded-full mb-3 sm:mb-4">
+            <div className="inline-block bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-1.5 sm:px-6 sm:py-2 rounded-full mb-2 sm:mb-3 shadow-lg">
               <p className="text-sm sm:text-base font-semibold">Reflexión Final</p>
             </div>
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-2 flex items-center justify-center gap-2">
-              <Brain className="w-6 h-6 sm:w-8 sm:h-8" />
+            <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1.5 flex items-center justify-center gap-2">
+              <Brain className="w-6 h-6 sm:w-7 sm:h-7" />
               Encuesta de Reflexión
             </h1>
-            <p className="text-white/90 text-base sm:text-lg">
+            <p className="text-white/90 text-sm sm:text-base">
               Escanea el código QR con tu teléfono para completar la encuesta
             </p>
           </motion.div>
@@ -188,9 +206,9 @@ export function TabletReflexion() {
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.1 }}
           >
-            <Card className="p-4 sm:p-8 bg-white shadow-2xl border-2 border-[#093c92]/20">
-              <div className="text-center mb-4 sm:mb-6">
-                <h2 className="text-xl sm:text-2xl text-[#093c92] mb-2 font-bold">
+            <Card className="p-4 sm:p-6 bg-white shadow-2xl border-2 border-[#093c92]/20">
+              <div className="text-center mb-4">
+                <h2 className="text-xl sm:text-2xl text-[#093c92] mb-1.5 font-bold">
                   Escanea el código QR
                 </h2>
                 <p className="text-gray-600 text-sm sm:text-base">
@@ -198,8 +216,8 @@ export function TabletReflexion() {
                 </p>
               </div>
 
-              {/* QR Code - Simple como en el lobby */}
-              <div className="flex justify-center mb-4 sm:mb-6">
+              {/* QR Code */}
+              <div className="flex justify-center mb-4">
                 {qrCode ? (
                   <motion.img
                     initial={{ scale: 0.9, opacity: 0 }}
@@ -217,14 +235,14 @@ export function TabletReflexion() {
               </div>
 
               {/* Instrucciones */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4">
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.3 }}
                   className="p-3 sm:p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl text-center border border-purple-200"
                 >
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-purple-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-2 sm:mb-3 shadow-md">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-purple-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-2 shadow-md">
                     <span className="text-white text-lg sm:text-xl font-bold">1</span>
                   </div>
                   <p className="text-xs sm:text-sm text-gray-700 font-medium">Abre la cámara de tu teléfono</p>
@@ -235,7 +253,7 @@ export function TabletReflexion() {
                   transition={{ delay: 0.4 }}
                   className="p-3 sm:p-4 bg-gradient-to-br from-pink-50 to-pink-100 rounded-xl text-center border border-pink-200"
                 >
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-pink-500 to-pink-600 rounded-full flex items-center justify-center mx-auto mb-2 sm:mb-3 shadow-md">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-pink-500 to-pink-600 rounded-full flex items-center justify-center mx-auto mb-2 shadow-md">
                     <span className="text-white text-lg sm:text-xl font-bold">2</span>
                   </div>
                   <p className="text-xs sm:text-sm text-gray-700 font-medium">Escanea el código QR</p>
@@ -246,7 +264,7 @@ export function TabletReflexion() {
                   transition={{ delay: 0.5 }}
                   className="p-3 sm:p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl text-center border border-blue-200"
                 >
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-2 sm:mb-3 shadow-md">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-2 shadow-md">
                     <span className="text-white text-lg sm:text-xl font-bold">3</span>
                   </div>
                   <p className="text-xs sm:text-sm text-gray-700 font-medium">Completa la encuesta</p>
@@ -258,9 +276,9 @@ export function TabletReflexion() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.6 }}
-                className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 sm:p-6 rounded-xl border-2 border-purple-200"
+                className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 sm:p-5 rounded-xl border-2 border-purple-200"
               >
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
                     <span className="text-gray-700 text-sm sm:text-base font-semibold">Progreso de respuestas</span>
@@ -269,7 +287,7 @@ export function TabletReflexion() {
                     {estudiantesRespondidos} / {totalEstudiantes}
                   </Badge>
                 </div>
-                <Progress value={porcentajeCompletado} className="h-2 sm:h-3 mb-2" />
+                <Progress value={porcentajeCompletado} className="h-2 sm:h-3 mb-1.5" />
                 <p className="text-xs sm:text-sm text-gray-600 text-right font-medium">
                   {porcentajeCompletado.toFixed(0)}% completado
                 </p>

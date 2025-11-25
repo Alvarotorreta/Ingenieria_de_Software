@@ -7,6 +7,11 @@ import {
   ArrowLeft,
   Loader2,
   CheckCircle2,
+  Users,
+  Lightbulb,
+  Rocket,
+  Target,
+  Check,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -16,6 +21,7 @@ import { BackgroundMusic } from '@/components/BackgroundMusic';
 import { CancelSessionModal } from '@/components/CancelSessionModal';
 import { sessionsAPI, teamsAPI, reflectionEvaluationsAPI } from '@/services';
 import { toast } from 'sonner';
+import { fixTextEncoding } from '@/utils/textEncoding';
 
 interface GameSession {
   id: number;
@@ -42,6 +48,7 @@ export function ProfesorReflexion() {
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [evaluationUrl, setEvaluationUrl] = useState<string | null>(null);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [completedStages, setCompletedStages] = useState<any[]>([]);
 
   useEffect(() => {
     if (sessionId) {
@@ -91,6 +98,9 @@ export function ProfesorReflexion() {
       // Cargar progreso inicial
       loadProgress();
       
+      // Cargar etapas completadas
+      loadCompletedStages();
+      
       // Cargar QR de evaluación
       loadReflectionQR();
 
@@ -108,12 +118,53 @@ export function ProfesorReflexion() {
     try {
       // Obtener número de evaluaciones recibidas y total de estudiantes
       const evaluationsData = await reflectionEvaluationsAPI.byRoom(gameSession.room_code);
-      const evaluationsArray = Array.isArray(evaluationsData) ? evaluationsData : [evaluationsData];
-      setEstudiantesRespondidos(evaluationsArray.length);
       
-      // Nota: El endpoint byRoom no devuelve total_students, se mantiene el cálculo anterior
+      // El endpoint devuelve: { count, total_students, total_evaluations, results }
+      if (evaluationsData && typeof evaluationsData === 'object') {
+        // Si tiene la estructura correcta con count y total_students
+        if ('count' in evaluationsData) {
+          setEstudiantesRespondidos(evaluationsData.count || 0);
+          // Actualizar total si viene en la respuesta (más confiable)
+          if ('total_students' in evaluationsData && evaluationsData.total_students !== undefined) {
+            setTotalEstudiantes(evaluationsData.total_students);
+          }
+        } else {
+          // Fallback: si es un array o tiene results
+          const evaluationsArray = Array.isArray(evaluationsData) 
+            ? evaluationsData 
+            : (evaluationsData.results || []);
+          setEstudiantesRespondidos(evaluationsArray.length);
+        }
+      } else {
+        // Fallback para array simple
+        const evaluationsArray = Array.isArray(evaluationsData) ? evaluationsData : [];
+        setEstudiantesRespondidos(evaluationsArray.length);
+      }
     } catch (error) {
       console.error('Error loading progress:', error);
+    }
+  };
+
+  const loadCompletedStages = async () => {
+    if (!sessionId) return;
+    
+    try {
+      const stagesData = await sessionsAPI.getSessionStages(Number(sessionId));
+      const stagesArray = Array.isArray(stagesData) ? stagesData : [stagesData];
+      
+      // Filtrar solo las etapas completadas y ordenarlas por número
+      const completed = stagesArray
+        .filter((stage: any) => stage.status === 'completed')
+        .sort((a: any, b: any) => {
+          // Ordenar por número de etapa (stage.number o stage.stage según el serializer)
+          const numA = a?.stage?.number ?? a?.stage_number ?? 0;
+          const numB = b?.stage?.number ?? b?.stage_number ?? 0;
+          return numA - numB;
+        });
+      
+      setCompletedStages(completed);
+    } catch (error) {
+      console.error('Error loading completed stages:', error);
     }
   };
   
@@ -265,11 +316,86 @@ export function ProfesorReflexion() {
           </div>
         </motion.div>
 
+        {/* Resumen de Actividades Completadas */}
+        {completedStages.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="mb-3 sm:mb-4"
+          >
+            <Card className="p-4 sm:p-6 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 border-2 border-indigo-200">
+              <h3 className="text-[#093c92] text-lg sm:text-xl mb-4 font-bold flex items-center gap-2">
+                <Trophy className="w-5 h-5" />
+                Actividades Completadas
+              </h3>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+                {completedStages.map((stage: any, index: number) => {
+                  // El serializer puede devolver stage como objeto o como ID
+                  const stageObj = stage?.stage;
+                  const stageNumber = typeof stageObj === 'object' && stageObj?.number 
+                    ? stageObj.number 
+                    : (stage?.stage_number ?? (index + 1));
+                  let stageName = typeof stageObj === 'object' && stageObj?.name
+                    ? stageObj.name
+                    : (stage?.stage_name ?? `Etapa ${stageNumber}`);
+                  
+                  // Corregir encoding del nombre
+                  stageName = fixTextEncoding(stageName);
+                  
+                  const stageIcons: Record<number, any> = {
+                    1: Users,
+                    2: Lightbulb,
+                    3: Rocket,
+                    4: Target,
+                  };
+                  
+                  const stageColors: Record<number, string> = {
+                    1: 'from-blue-500 to-cyan-500',
+                    2: 'from-purple-500 to-pink-500',
+                    3: 'from-orange-500 to-red-500',
+                    4: 'from-green-500 to-emerald-500',
+                  };
+                  
+                  const Icon = stageIcons[stageNumber] || Check;
+                  const colorGradient = stageColors[stageNumber] || 'from-gray-500 to-gray-600';
+                  
+                  return (
+                    <motion.div
+                      key={stage.id || index}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: 0.2 + index * 0.1 }}
+                      className={`bg-white p-3 sm:p-4 rounded-xl border-2 border-white/50 shadow-md hover:shadow-lg transition-shadow`}
+                    >
+                      <div className={`w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r ${colorGradient} rounded-full flex items-center justify-center mx-auto mb-2 sm:mb-3 shadow-md`}>
+                        <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xs sm:text-sm font-semibold text-[#093c92] mb-1">
+                          Etapa {stageNumber}
+                        </p>
+                        <p className="text-xs text-gray-600 line-clamp-2">
+                          {stageName}
+                        </p>
+                        <div className="flex items-center justify-center gap-1 mt-2">
+                          <Check className="w-3 h-3 text-green-600" />
+                          <span className="text-xs text-green-600 font-medium">Completada</span>
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </Card>
+          </motion.div>
+        )}
+
         {/* QR Code Card */}
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          transition={{ delay: 0.1 }}
+          transition={{ delay: 0.15 }}
         >
             <Card className="p-4 sm:p-8 bg-white shadow-xl border-2 border-[#093c92]/20 mb-3 sm:mb-4">
               <div className="text-center mb-4 sm:mb-6">

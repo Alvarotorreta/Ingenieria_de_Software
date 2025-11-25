@@ -3,7 +3,9 @@ import { api, unwrapResults } from './api';
 export const reflectionEvaluationsAPI = {
   byRoom: async (roomCode: string) => {
     const response = await api.get(`/sessions/reflection-evaluations/by_room/?room_code=${roomCode}`);
-    return unwrapResults(response.data);
+    // El endpoint by_room devuelve un objeto con count, total_students, etc.
+    // No usar unwrapResults aquí porque necesitamos toda la información
+    return response.data;
   },
 
   create: async (data: {

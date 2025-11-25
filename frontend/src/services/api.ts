@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { fixEncodingRecursive } from '@/utils/textEncoding';
 
 // En desarrollo, usar el proxy de Vite (/api)
 // En producción, usar la variable de entorno VITE_API_URL
@@ -45,10 +46,21 @@ api.interceptors.request.use(
   }
 );
 
-// Interceptor para manejar errores de autenticación
+// Interceptor para manejar errores de autenticación y corregir encoding
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Corregir encoding de todos los textos en la respuesta
+    if (response.data) {
+      response.data = fixEncodingRecursive(response.data);
+    }
+    return response;
+  },
   (error) => {
+    // Corregir encoding también en mensajes de error
+    if (error.response?.data) {
+      error.response.data = fixEncodingRecursive(error.response.data);
+    }
+    
     if (error.response?.status === 401) {
       const currentPath = window.location.pathname;
       // Solo manejar 401 en rutas de profesor, no en tablets
