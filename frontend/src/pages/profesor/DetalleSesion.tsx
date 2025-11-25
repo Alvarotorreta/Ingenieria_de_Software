@@ -18,9 +18,6 @@ import {
   Eye,
   Maximize2,
   UserCircle,
-  ZoomIn,
-  ZoomOut,
-  RotateCcw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -161,11 +158,9 @@ export function DetalleSesion() {
   const [selectedPrototype, setSelectedPrototype] = useState<TeamActivityProgress | null>(null);
   const [selectedBubbleMap, setSelectedBubbleMap] = useState<TeamBubbleMap | null>(null);
   const [selectedPitch, setSelectedPitch] = useState<TeamActivityProgress | null>(null);
-  const [bubbleMapCanvasSize, setBubbleMapCanvasSize] = useState({ width: 1000, height: 1000 });
-  const [bubbleMapViewportSize, setBubbleMapViewportSize] = useState({ width: 0, height: 0 });
-  const [bubbleMapZoomLevel, setBubbleMapZoomLevel] = useState(1);
-  const bubbleMapContainerRef = useRef<HTMLDivElement | null>(null);
-  const bubbleMapCanvasRef = useRef<HTMLDivElement | null>(null);
+  
+  // Tamaño fijo para el bubble map (sin zoom)
+  const BUBBLE_MAP_SIZE = { width: 1000, height: 1000 };
 
   useEffect(() => {
     if (sessionId) {
@@ -173,180 +168,93 @@ export function DetalleSesion() {
     }
   }, [sessionId]);
 
-  // Calcular tamaño del canvas del bubble map cuando se abre el modal (ajustar para que quepa completo)
-  useEffect(() => {
-    if (!selectedBubbleMap) {
-      bubbleMapContainerRef.current = null;
-      bubbleMapCanvasRef.current = null;
-      setBubbleMapViewportSize({ width: 0, height: 0 });
-      setBubbleMapCanvasSize({ width: 1000, height: 1000 });
-      setBubbleMapZoomLevel(1);
-      return;
+  // Función helper para obtener URL de imagen
+  const getImageUrl = (imageSrc: string): string => {
+    if (!imageSrc) return '';
+    if (imageSrc.startsWith('http://') || imageSrc.startsWith('https://')) {
+      return imageSrc;
     }
-
-    const updateBubbleMapSize = () => {
-      const container = bubbleMapContainerRef.current;
-      if (!container) return;
-
-      const rect = container.getBoundingClientRect();
-      const containerWidth = rect.width || container.clientWidth || container.offsetWidth;
-      const containerHeight = rect.height || container.clientHeight || container.offsetHeight;
-
-      if (containerWidth > 0 && containerHeight > 0) {
-        setBubbleMapViewportSize({ width: containerWidth, height: containerHeight });
-        
-        // Calcular el tamaño del canvas para que quepa completamente en el viewport
-        // Dejar un padding de 40px en cada lado
-        const padding = 40;
-        const availableWidth = containerWidth - (padding * 2);
-        const availableHeight = containerHeight - (padding * 2);
-        
-        // El canvas base es 1000x1000, pero lo ajustamos para que quepa completamente
-        const baseCanvasSize = 1000;
-        const scaleX = availableWidth / baseCanvasSize;
-        const scaleY = availableHeight / baseCanvasSize;
-        // Usar el menor de los dos para que quepa en ambas dimensiones
-        const scale = Math.min(scaleX, scaleY);
-        
-        // Calcular el tamaño ajustado (siempre debe quedar dentro del viewport)
-        const width = baseCanvasSize * scale;
-        const height = baseCanvasSize * scale;
-        
-        setBubbleMapCanvasSize({ width, height });
-        setBubbleMapZoomLevel(1); // Resetear zoom cuando se calcula el tamaño
-      }
-    };
-
-    const timeouts = [
-      setTimeout(updateBubbleMapSize, 50),
-      setTimeout(updateBubbleMapSize, 100),
-      setTimeout(updateBubbleMapSize, 200),
-      setTimeout(updateBubbleMapSize, 400),
-      setTimeout(updateBubbleMapSize, 600),
-      setTimeout(updateBubbleMapSize, 800),
-      setTimeout(updateBubbleMapSize, 1000)
-    ];
-
-    window.addEventListener('resize', updateBubbleMapSize);
+    const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+    const baseUrl = apiBaseUrl.replace('/api', '');
+    return `${baseUrl}${imageSrc.startsWith('/') ? '' : '/'}${imageSrc}`;
+  };
+  
+  // Función para renderizar el Bubble Map en formato de lista (igual que tablets)
+  const renderBubbleMap = (mapData: any) => {
+    const isNewStructure = mapData && 'questions' in mapData;
     
-    let resizeObserver: ResizeObserver | null = null;
-    if (bubbleMapContainerRef.current && typeof ResizeObserver !== 'undefined') {
-      resizeObserver = new ResizeObserver(() => {
-        setTimeout(updateBubbleMapSize, 10);
-      });
-      resizeObserver.observe(bubbleMapContainerRef.current);
-    }
-
-    return () => {
-      timeouts.forEach(clearTimeout);
-      window.removeEventListener('resize', updateBubbleMapSize);
-      if (resizeObserver) {
-        resizeObserver.disconnect();
-      }
-    };
-  }, [selectedBubbleMap]);
-
-  // Referencias para rastrear scroll manual
-  const bubbleMapHasUserScrolledRef = useRef<boolean>(false);
-  const bubbleMapInitialScrollCenteredRef = useRef<boolean>(false);
-
-  // Centrar el scroll del bubble map solo una vez cuando se abre el modal
-  useEffect(() => {
-    if (!selectedBubbleMap) {
-      // Resetear cuando se cierra el modal
-      bubbleMapHasUserScrolledRef.current = false;
-      bubbleMapInitialScrollCenteredRef.current = false;
-      return;
-    }
-
-    // Si ya se centró inicialmente, no volver a centrar
-    if (bubbleMapInitialScrollCenteredRef.current) return;
-
-    const centerScroll = () => {
-      const container = bubbleMapContainerRef.current;
-      if (!container) return;
-
-      // Si el usuario ya hizo scroll, no centrar
-      if (bubbleMapHasUserScrolledRef.current) return;
-
-      const scrollHeight = container.scrollHeight;
-      const scrollWidth = container.scrollWidth;
-      const containerHeight = container.clientHeight;
-      const containerWidth = container.clientWidth;
-
-      if (scrollHeight > 0 && containerHeight > 0 && scrollHeight > containerHeight) {
-        container.scrollTop = (scrollHeight - containerHeight) / 2;
-      }
-
-      if (scrollWidth > 0 && containerWidth > 0 && scrollWidth > containerWidth) {
-        container.scrollLeft = (scrollWidth - containerWidth) / 2;
-      }
-
-      // Marcar como centrado inicialmente
-      bubbleMapInitialScrollCenteredRef.current = true;
-    };
-
-    const waitForContainer = () => {
-      if (!bubbleMapContainerRef.current) return false;
-      const container = bubbleMapContainerRef.current;
-      return container.scrollHeight > 0 && container.scrollWidth > 0;
-    };
-
-    // Solo intentar centrar una vez con delays cortos
-    const timeouts: NodeJS.Timeout[] = [];
-    for (let delay of [50, 100, 200, 400, 600]) {
-      timeouts.push(setTimeout(() => {
-        if (waitForContainer() && !bubbleMapHasUserScrolledRef.current) {
-          centerScroll();
-        }
-      }, delay));
-    }
-
-    // Listener para detectar scroll manual del usuario
-    const container = bubbleMapContainerRef.current;
-    const handleScroll = () => {
-      if (!bubbleMapHasUserScrolledRef.current) {
-        bubbleMapHasUserScrolledRef.current = true;
-      }
-    };
-
-    if (container) {
-      container.addEventListener('scroll', handleScroll, { passive: true });
-    }
-
-    return () => {
-      timeouts.forEach(clearTimeout);
-      if (container) {
-        container.removeEventListener('scroll', handleScroll);
-      }
-    };
-  }, [selectedBubbleMap]);
-
-  // Funciones de zoom para bubble map
-  const handleBubbleMapZoomIn = () => {
-    setBubbleMapZoomLevel(prev => Math.min(prev + 0.25, 3)); // Máximo 3x
-  };
-
-  const handleBubbleMapZoomOut = () => {
-    setBubbleMapZoomLevel(prev => Math.max(prev - 0.25, 0.5)); // Mínimo 0.5x
-  };
-
-  const handleBubbleMapZoomReset = () => {
-    setBubbleMapZoomLevel(1);
-    // Centrar el scroll después de resetear
-    const container = bubbleMapContainerRef.current;
-    if (container) {
-      const scrollHeight = container.scrollHeight;
-      const scrollWidth = container.scrollWidth;
-      const containerHeight = container.clientHeight;
-      const containerWidth = container.clientWidth;
+    if (isNewStructure) {
+      const data = mapData as any;
+      const questions = data.questions || [];
+      const personName = data.central?.personName || 'Persona';
+      const profileImageRaw = data.central?.profileImage || '';
+      const profileImage = getImageUrl(profileImageRaw);
       
-      if (scrollHeight > containerHeight) {
-        container.scrollTop = (scrollHeight - containerHeight) / 2;
-      }
-      if (scrollWidth > containerWidth) {
-        container.scrollLeft = (scrollWidth - containerWidth) / 2;
-      }
+      return (
+        <div className="h-full flex flex-col overflow-hidden">
+          {/* Header con persona */}
+          <div className="flex-shrink-0 flex flex-col items-center py-3 px-2">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full shadow-xl overflow-hidden border-3 border-white relative" style={{ background: 'linear-gradient(135deg, #f757ac 0%, #d946a0 100%)' }}>
+              {profileImage ? (
+                <img
+                  src={profileImage}
+                  alt={personName}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                    (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+                  }}
+                />
+              ) : null}
+              <div className={`w-full h-full flex items-center justify-center bg-white ${profileImage ? 'hidden' : ''}`}>
+                <UserCircle className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400" />
+              </div>
+            </div>
+            <div className="mt-2 px-3 py-1 rounded-full shadow-md text-center" style={{ background: '#f757ac' }}>
+              <span className="text-white font-semibold text-sm sm:text-base">{personName}</span>
+            </div>
+          </div>
+          
+          {/* Lista scrollable */}
+          <div className="flex-1 min-h-0 overflow-y-auto px-2 py-2 space-y-3">
+            {questions.map((question: any) => (
+              <div key={question.id} className="bg-white/80 backdrop-blur-md p-5 rounded-3xl shadow-lg border border-white/50 relative">
+                {/* Question Header */}
+                <div className="mb-4">
+                  <div className="flex items-center gap-3 mb-1">
+                    <span className="w-3 h-3 rounded-full bg-purple-600 shrink-0 shadow-sm"></span>
+                    <span className="text-xs font-bold text-purple-600 uppercase tracking-wider">Pregunta</span>
+                  </div>
+                  <h3 className="font-bold text-lg text-gray-800 leading-tight">{question.question}</h3>
+                </div>
+
+                {/* Content Area */}
+                <div className="bg-white rounded-xl border border-gray-100 overflow-hidden shadow-inner">
+                  {/* Scrollable Answers List */}
+                  <ul className="max-h-48 overflow-y-auto p-3 space-y-2 min-h-[60px]">
+                    {question.answers.length === 0 && (
+                      <li className="text-sm text-gray-400 italic text-center py-2">Sin respuestas</li>
+                    )}
+                    {question.answers.map((answer: any, idx: number) => (
+                      <li key={answer.id || idx} className="flex items-start gap-3 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                        <span className="text-purple-600 font-bold text-lg leading-none mt-0.5">•</span>
+                        <span className="text-sm text-gray-700 flex-1 font-medium leading-snug">{answer.text}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    } else {
+      // Estructura antigua (compatibilidad)
+      return (
+        <div className="text-center py-8 text-gray-500">
+          <p>Formato de bubble map no compatible</p>
+        </div>
+      );
     }
   };
 
@@ -1267,41 +1175,6 @@ export function DetalleSesion() {
                   <p className="text-sm text-gray-600">Equipo {selectedBubbleMap.team_name} • {selectedBubbleMap.stage_name}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  {/* Controles de zoom */}
-                  <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={handleBubbleMapZoomOut}
-                      className="h-8 w-8 rounded"
-                      disabled={bubbleMapZoomLevel <= 0.5}
-                      title="Alejar"
-                    >
-                      <ZoomOut className="w-4 h-4" />
-                    </Button>
-                    <span className="text-xs font-medium px-2 min-w-[3rem] text-center">
-                      {Math.round(bubbleMapZoomLevel * 100)}%
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={handleBubbleMapZoomIn}
-                      className="h-8 w-8 rounded"
-                      disabled={bubbleMapZoomLevel >= 3}
-                      title="Acercar"
-                    >
-                      <ZoomIn className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={handleBubbleMapZoomReset}
-                      className="h-8 w-8 rounded"
-                      title="Restablecer zoom"
-                    >
-                      <RotateCcw className="w-4 h-4" />
-                    </Button>
-                  </div>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -1312,7 +1185,7 @@ export function DetalleSesion() {
                   </Button>
                 </div>
               </div>
-              {/* Bubble Map Preview - igual que en la vista del profesor */}
+              {/* Bubble Map Preview - formato de lista como tablets */}
               <div 
                 className="relative bg-gradient-to-br from-gray-50 to-white rounded-2xl p-6 sm:p-8 border-4 mb-4 shadow-lg flex-1 flex flex-col min-h-0"
                 style={{ 
@@ -1320,343 +1193,7 @@ export function DetalleSesion() {
                   overflow: 'hidden'
                 }}
               >
-                {/* Contenedor scrollable */}
-                <div 
-                  ref={(el) => {
-                    bubbleMapContainerRef.current = el;
-                  }}
-                  className="flex-1 overflow-auto"
-                  style={{ 
-                    minHeight: 0,
-                    position: 'relative',
-                    width: '100%'
-                  }}
-                >
-                  {/* Contenedor interno que centra el canvas */}
-                  <div 
-                    className="flex items-center justify-center"
-                    style={{
-                      height: bubbleMapViewportSize.height > 0 && bubbleMapCanvasSize.height > 0 
-                        ? `${bubbleMapViewportSize.height + (bubbleMapCanvasSize.height * bubbleMapZoomLevel)}px` 
-                        : 'auto',
-                      minHeight: bubbleMapViewportSize.height > 0 && bubbleMapCanvasSize.height > 0 
-                        ? `${bubbleMapViewportSize.height + (bubbleMapCanvasSize.height * bubbleMapZoomLevel)}px` 
-                        : '100vh',
-                      width: bubbleMapViewportSize.width > 0 && bubbleMapCanvasSize.width > 0 
-                        ? `${bubbleMapViewportSize.width + (bubbleMapCanvasSize.width * bubbleMapZoomLevel)}px` 
-                        : '100%',
-                      minWidth: bubbleMapViewportSize.width > 0 && bubbleMapCanvasSize.width > 0 
-                        ? `${bubbleMapViewportSize.width + (bubbleMapCanvasSize.width * bubbleMapZoomLevel)}px` 
-                        : '100%',
-                      padding: '0',
-                      boxSizing: 'border-box',
-                      paddingTop: bubbleMapViewportSize.height > 0 && bubbleMapCanvasSize.height > 0 
-                        ? `${bubbleMapViewportSize.height / 2}px` 
-                        : '50vh',
-                      paddingBottom: bubbleMapViewportSize.height > 0 && bubbleMapCanvasSize.height > 0 
-                        ? `${bubbleMapViewportSize.height / 2}px` 
-                        : '50vh',
-                      paddingLeft: bubbleMapViewportSize.width > 0 && bubbleMapCanvasSize.width > 0 
-                        ? `${bubbleMapViewportSize.width / 2}px` 
-                        : '50vw',
-                      paddingRight: bubbleMapViewportSize.width > 0 && bubbleMapCanvasSize.width > 0 
-                        ? `${bubbleMapViewportSize.width / 2}px` 
-                        : '50vw'
-                    }}
-                  >
-                    <div
-                      ref={bubbleMapCanvasRef}
-                      style={{
-                        transform: `scale(${bubbleMapZoomLevel})`,
-                        transformOrigin: 'center center',
-                        transition: 'transform 0.2s ease-out',
-                      }}
-                    >
-                {(() => {
-                  const mapData = selectedBubbleMap.map_data;
-                  const isNewStructure = mapData && 'questions' in mapData;
-                  
-                  if (isNewStructure) {
-                    const data = mapData as any;
-                    const questions = data.questions || [];
-                    const personName = data.central?.personName || 'Persona';
-                    const profileImageRaw = data.central?.profileImage || '';
-                    
-                    // Construir URL completa si es relativa
-                    const getImageUrl = (imageSrc: string): string => {
-                      if (!imageSrc) return '';
-                      // Si ya es una URL completa (http:// o https://), usarla directamente
-                      if (imageSrc.startsWith('http://') || imageSrc.startsWith('https://')) {
-                        return imageSrc;
-                      }
-                      // Si es relativa, construir la URL completa
-                      const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
-                      const baseUrl = apiBaseUrl.replace('/api', '');
-                      return `${baseUrl}${imageSrc.startsWith('/') ? '' : '/'}${imageSrc}`;
-                    };
-                    const profileImage = getImageUrl(profileImageRaw);
-                    
-                    // Usar el tamaño calculado dinámicamente
-                    const canvasWidth = bubbleMapCanvasSize.width;
-                    const canvasHeight = bubbleMapCanvasSize.height;
-                    const centerX = canvasWidth / 2;
-                    const centerY = canvasHeight / 2;
-                    const centralRadius = 50;
-                    const questionRadius = 40;
-                    const dynamicRadius = Math.min(canvasWidth, canvasHeight) * 0.20;
-                    
-                    const getQuestionPosition = (index: number, total: number) => {
-                      const angle = (index * 2 * Math.PI) / total - Math.PI / 2;
-                      return {
-                        x: centerX + dynamicRadius * Math.cos(angle),
-                        y: centerY + dynamicRadius * Math.sin(angle),
-                        angle
-                      };
-                    };
-                    
-                    const getAnswerPosition = (answerIndex: number, totalAnswers: number, questionX: number, questionY: number, questionAngle: number) => {
-                      const radius = 250;
-                      let angleSpread: number;
-                      if (totalAnswers === 1) {
-                        angleSpread = 0;
-                      } else if (totalAnswers === 2) {
-                        angleSpread = 0.5;
-                      } else if (totalAnswers === 3) {
-                        angleSpread = 0.45;
-                      } else if (totalAnswers === 4) {
-                        angleSpread = 0.4;
-                      } else {
-                        angleSpread = 0.35;
-                      }
-                      const angleOffset = (answerIndex - (totalAnswers - 1) / 2) * angleSpread;
-                      const angle = questionAngle + angleOffset;
-                      return {
-                        x: questionX + radius * Math.cos(angle),
-                        y: questionY + radius * Math.sin(angle)
-                      };
-                    };
-                    
-                    const getAnswerBubbleRadius = (answerCount: number) => {
-                      const totalBubbles = Math.min(answerCount + 1, 4);
-                      switch(totalBubbles) {
-                        case 1: return 38;
-                        case 2: return 34;
-                        case 3: return 32;
-                        case 4: return 30;
-                        default: return 30;
-                      }
-                    };
-                    
-                    return (
-                      <div 
-                        className="relative bg-gradient-to-br from-gray-50 to-white"
-                        style={{ 
-                          width: canvasWidth, 
-                          height: canvasHeight,
-                          minWidth: canvasWidth,
-                          minHeight: canvasHeight,
-                          flexShrink: 0
-                        }}
-                      >
-                        {/* SVG para líneas */}
-                        <svg 
-                          className="absolute pointer-events-none" 
-                          style={{ 
-                            left: -300,
-                            top: -300,
-                            width: canvasWidth + 600,
-                            height: canvasHeight + 600,
-                            zIndex: 0 
-                          }}
-                        >
-                          {questions.map((question: any, index: number) => {
-                            const questionPos = getQuestionPosition(index, questions.length);
-                            return (
-                              <line
-                                key={`line-center-${question.id}`}
-                                x1={centerX + 300}
-                                y1={centerY + 300}
-                                x2={questionPos.x + 300}
-                                y2={questionPos.y + 300}
-                                stroke="#f757ac"
-                                strokeWidth="3"
-                                opacity="0.3"
-                              />
-                            );
-                          })}
-                          
-                          {questions.map((question: any, questionIndex: number) => {
-                            const questionPos = getQuestionPosition(questionIndex, questions.length);
-                            return (
-                              <g key={`question-lines-${question.id}`}>
-                                {question.answers.map((answer: any, answerIndex: number) => {
-                                  const totalItems = question.answers.length < 5 ? question.answers.length + 1 : question.answers.length;
-                                  const answerPos = getAnswerPosition(answerIndex, totalItems, questionPos.x, questionPos.y, questionPos.angle);
-                                  return (
-                                    <line
-                                      key={`line-answer-${question.id}-${answer.id}`}
-                                      x1={questionPos.x + 300}
-                                      y1={questionPos.y + 300}
-                                      x2={answerPos.x + 300}
-                                      y2={answerPos.y + 300}
-                                      stroke="#a855f7"
-                                      strokeWidth="2"
-                                      opacity="0.4"
-                                    />
-                                  );
-                                })}
-                              </g>
-                            );
-                          })}
-                        </svg>
-                        
-                        {/* Burbuja central */}
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          transition={{ type: "spring", duration: 0.6 }}
-                          className="absolute"
-                          style={{ 
-                            left: centerX,
-                            top: centerY,
-                            width: centralRadius * 2,
-                            height: centralRadius * 2,
-                            marginLeft: -centralRadius,
-                            marginTop: -centralRadius,
-                            zIndex: 10 
-                          }}
-                        >
-                          <div 
-                            className="w-full h-full rounded-full shadow-2xl flex flex-col items-center justify-center text-white transition-transform relative overflow-visible p-1"
-                            style={{ background: 'linear-gradient(135deg, #f757ac 0%, #d946a0 100%)' }}
-                          >
-                            <div className="w-full h-full rounded-full overflow-hidden bg-white p-1">
-                              {profileImage ? (
-                                <img
-                                  src={profileImage}
-                                  alt={personName}
-                                  className="w-full h-full object-cover rounded-full"
-                                  onError={(e) => {
-                                    console.error('Error loading profile image:', profileImage);
-                                    (e.target as HTMLImageElement).style.display = 'none';
-                                    (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
-                                  }}
-                                />
-                              ) : null}
-                              <div className={`w-full h-full flex items-center justify-center bg-gray-100 rounded-full ${profileImage ? 'hidden' : ''}`}>
-                                <UserCircle className="w-full h-full text-gray-400" />
-                              </div>
-                            </div>
-                          </div>
-                          
-                          <div 
-                            className="absolute -bottom-10 left-1/2 -translate-x-1/2 px-5 py-2 rounded-full shadow-xl whitespace-nowrap"
-                            style={{ background: '#f757ac' }}
-                          >
-                            <span className="text-white font-semibold">{personName}</span>
-                          </div>
-                        </motion.div>
-                        
-                        {/* Burbujas de preguntas y respuestas */}
-                        {questions.map((question: any, questionIndex: number) => {
-                          const questionPos = getQuestionPosition(questionIndex, questions.length);
-                          
-                          return (
-                            <div key={question.id}>
-                              {/* Burbuja de pregunta */}
-                              <motion.div
-                                initial={{ scale: 0, opacity: 0 }}
-                                animate={{ scale: 1, opacity: 1 }}
-                                transition={{ 
-                                  type: "spring", 
-                                  duration: 0.5,
-                                  delay: questionIndex * 0.1 
-                                }}
-                                className="absolute"
-                                style={{ 
-                                  left: questionPos.x,
-                                  top: questionPos.y,
-                                  width: questionRadius * 2,
-                                  height: questionRadius * 2,
-                                  marginLeft: -questionRadius,
-                                  marginTop: -questionRadius,
-                                  zIndex: 5
-                                }}
-                              >
-                                <div
-                                  className={`w-full h-full rounded-full ${question.isOptional ? 'bg-amber-500' : 'bg-[#093c92]'} shadow-2xl flex items-center justify-center text-white relative`}
-                                >
-                                  <span className="text-xs text-center px-3 leading-tight" style={{ hyphens: 'auto', wordBreak: 'break-word' }}>
-                                    {question.question}
-                                  </span>
-                                </div>
-                              </motion.div>
-                              
-                              {/* Burbujas de respuestas */}
-                              {question.answers.map((answer: any, answerIndex: number) => {
-                                const totalItems = question.answers.length < 5 ? question.answers.length + 1 : question.answers.length;
-                                const answerPos = getAnswerPosition(answerIndex, totalItems, questionPos.x, questionPos.y, questionPos.angle);
-                                const answerRadius = getAnswerBubbleRadius(question.answers.length);
-                                
-                                return (
-                                  <motion.div
-                                    key={answer.id}
-                                    initial={{ scale: 0, opacity: 0 }}
-                                    animate={{ scale: 1, opacity: 1 }}
-                                    transition={{ 
-                                      type: "spring", 
-                                      duration: 0.4,
-                                      delay: questionIndex * 0.1 + answerIndex * 0.05
-                                    }}
-                                    className="absolute"
-                                    style={{ 
-                                      left: answerPos.x,
-                                      top: answerPos.y,
-                                      width: answerRadius * 2,
-                                      height: answerRadius * 2,
-                                      marginLeft: -answerRadius,
-                                      marginTop: -answerRadius,
-                                      zIndex: 4
-                                    }}
-                                  >
-                                    <div
-                                      className="w-full h-full rounded-full bg-gradient-to-br from-purple-400 to-purple-500 shadow-lg flex items-center justify-center text-white"
-                                    >
-                                      <span 
-                                        className="text-xs text-center px-2 leading-tight"
-                                        style={{ 
-                                          display: '-webkit-box',
-                                          WebkitLineClamp: 2,
-                                          WebkitBoxOrient: 'vertical',
-                                          overflow: 'hidden',
-                                          textOverflow: 'ellipsis',
-                                          wordBreak: 'break-word',
-                                          hyphens: 'auto'
-                                        }}
-                                      >
-                                        {answer.text}
-                                      </span>
-                                    </div>
-                                  </motion.div>
-                                );
-                              })}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    );
-                  } else {
-                    // Estructura antigua (compatibilidad)
-                    return (
-                      <div className="text-center py-8 text-gray-500">
-                        <p>Formato de bubble map no compatible</p>
-                      </div>
-                    );
-                  }
-                })()}
-                    </div>
-                  </div>
-                </div>
+                {renderBubbleMap(selectedBubbleMap.map_data)}
               </div>
             </div>
           </motion.div>

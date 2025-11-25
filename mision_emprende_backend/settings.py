@@ -123,7 +123,7 @@ ASGI_APPLICATION = 'mision_emprende_backend.asgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'mision_emprende',
+        'NAME': 'mision_emprende2',
         'USER': 'root',
         'PASSWORD': '1234',
         'HOST': 'localhost',
