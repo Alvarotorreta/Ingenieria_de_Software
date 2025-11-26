@@ -36,7 +36,20 @@ class AdministratorViewSet(viewsets.ModelViewSet):
     """
     queryset = Administrator.objects.all()
     serializer_class = AdministratorSerializer
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAuthenticated]
+
+    @action(detail=False, methods=['get'])
+    def me(self, request):
+        """Obtener información del administrador actual"""
+        try:
+            administrator = request.user.administrator
+            serializer = self.get_serializer(administrator)
+            return Response(serializer.data)
+        except Administrator.DoesNotExist:
+            return Response(
+                {'error': 'El usuario no es un administrador'},
+                status=status.HTTP_403_FORBIDDEN
+            )
 
 
 class ProfessorViewSet(viewsets.ModelViewSet):

@@ -2298,8 +2298,30 @@ class SessionStageViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(session_stage)
         response_data = serializer.data
         # Agregar el timestamp de inicio en la respuesta
+        
+        # Obtener la duración del temporizador desde la actividad "Presentación del Pitch"
+        from challenges.models import Activity
+        presentation_duration = 90  # Valor por defecto (1:30 minutos)
+        
+        try:
+            presentation_activity = Activity.objects.filter(
+                stage=session_stage.stage,
+                activity_type__name__icontains='presentación',
+                is_active=True
+            ).first()
+            
+            if presentation_activity:
+                # Buscar en config_data primero
+                if presentation_activity.config_data and isinstance(presentation_activity.config_data, dict):
+                    presentation_duration = presentation_activity.config_data.get('presentation_duration', 90)
+                # Si no está en config_data, intentar usar timer_duration de la actividad
+                elif presentation_activity.timer_duration:
+                    presentation_duration = presentation_activity.timer_duration
+        except Exception as e:
+            print(f"Error al obtener duración de presentación desde actividad: {e}")
+        
         response_data['presentation_started_at'] = presentation_started_at.isoformat()
-        response_data['presentation_duration'] = 90  # 1:30 minutos (90 segundos)
+        response_data['presentation_duration'] = presentation_duration
         
         return Response(response_data)
     
@@ -2503,8 +2525,27 @@ class SessionStageViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
         
-        # Calcular tiempo restante (1:30 minutos = 90 segundos)
-        duration_seconds = 90
+        # Obtener la duración del temporizador desde la actividad "Presentación del Pitch"
+        from challenges.models import Activity
+        duration_seconds = 90  # Valor por defecto (1:30 minutos)
+        
+        try:
+            presentation_activity = Activity.objects.filter(
+                stage=session_stage.stage,
+                activity_type__name__icontains='presentación',
+                is_active=True
+            ).first()
+            
+            if presentation_activity:
+                # Buscar en config_data primero
+                if presentation_activity.config_data and isinstance(presentation_activity.config_data, dict):
+                    duration_seconds = presentation_activity.config_data.get('presentation_duration', 90)
+                # Si no está en config_data, intentar usar timer_duration de la actividad
+                elif presentation_activity.timer_duration:
+                    duration_seconds = presentation_activity.timer_duration
+        except Exception as e:
+            print(f"Error al obtener duración de presentación desde actividad: {e}")
+        
         elapsed = (timezone.now() - started_at).total_seconds()
         remaining = max(0, duration_seconds - elapsed)
         

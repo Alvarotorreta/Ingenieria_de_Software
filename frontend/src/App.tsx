@@ -2,6 +2,10 @@ import { Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { ProfesorLogin } from './pages/profesor/Login';
 import { ProfesorRegistro } from './pages/profesor/Registro';
 import { ProfesorPanel } from './pages/profesor/Panel';
+import { AdminLogin } from './pages/admin/Login';
+import { AdminPanel } from './pages/admin/Panel';
+import { UpdateGame } from './pages/admin/UpdateGame';
+import { Dashboard } from './pages/admin/Dashboard';
 import { ProfesorLobby } from './pages/profesor/Lobby';
 import { ProfesorVideoInstitucional } from './pages/profesor/etapa1/VideoInstitucional';
 import { ProfesorInstructivo } from './pages/profesor/etapa1/Instructivo';
@@ -71,6 +75,15 @@ function App() {
       <Route path="/profesor/etapa4/formulario-pitch/:sessionId" element={<ProfesorFormularioPitch />} />
       <Route path="/profesor/etapa4/presentacion-pitch/:sessionId" element={<ProfesorPresentacionPitch />} />
       <Route path="/profesor/reflexion/:sessionId" element={<ProfesorReflexion />} />
+      {/* Rutas de Administrador */}
+      <Route path="/admin/login" element={<AdminLogin />} />
+      <Route path="/admin/panel" element={<AdminPanel />} />
+      <Route path="/admin/update-game" element={<UpdateGame />} />
+      <Route path="/admin/dashboard" element={<Dashboard />} />
+      <Route path="/admin/historial" element={<Historial />} />
+      <Route path="/admin/historial/:sessionId" element={<DetalleSesion />} />
+      <Route path="/admin/objetivos" element={<Objetivos />} />
+      <Route path="/admin/tutorial" element={<Tutorial />} />
       <Route path="/tablet/join" element={<TabletJoin />} />
       <Route path="/tablet/join/:roomCode" element={<TabletJoin />} />
       <Route path="/tablet/lobby" element={<TabletLobby />} />

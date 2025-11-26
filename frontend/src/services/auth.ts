@@ -45,6 +45,12 @@ export const authAPI = {
     const response = await api.get('/auth/professors/stats/');
     return response.data;
   },
+
+  // Admin methods
+  getAdminProfile: async () => {
+    const response = await api.get('/auth/administrators/me/');
+    return response.data;
+  },
 };
 
 

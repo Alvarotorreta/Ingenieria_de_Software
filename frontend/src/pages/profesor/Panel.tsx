@@ -199,7 +199,24 @@ export function ProfesorPanel() {
     }
 
     try {
+      // Verificar que sea profesor y no administrador
       const profile = await authAPI.getProfile();
+      
+      // Verificar que no sea administrador intentando obtener perfil de admin
+      try {
+        await authAPI.getAdminProfile();
+        // Si llega aquí, es administrador, no permitir acceso
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('refreshToken');
+        toast.error('Acceso denegado', {
+          description: 'Los administradores deben usar el panel de administración',
+        });
+        navigate('/admin/login');
+        return;
+      } catch (adminError) {
+        // No es administrador, continuar como profesor
+      }
+      
       setProfessor(profile);
       await loadPanelData();
     } catch (error) {
