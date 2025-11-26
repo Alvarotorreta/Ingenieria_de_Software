@@ -73,6 +73,25 @@ git checkout master
   git checkout 434d99b1ef5b78036b913f554886a184c6d62bfb
   ```
 
+### Commit #4
+- **Hash completo:** `f0631c25fe58a7dd4df3ced8833ac660d409e2a8`
+- **Hash corto:** `f0631c2`
+- **Fecha:** 2025-11-26 00:56:06
+- **Mensaje:** Agregar gráfico interactivo de juegos por facultades y carreras, mejorar gráficos temporales
+- **Descripción:**
+  - Agregar endpoints backend para juegos por facultad y carreras
+  - Implementar gráfico interactivo con drill-down (facultad -> carreras)
+  - Mejorar gráficos de series temporales: quitar animaciones problemáticas, agregar loader
+  - Agregar manejo de estados de carga y mensajes cuando no hay datos
+  - Crear nueva app Django `admin_dashboard` para métricas administrativas
+  - Implementar modelos de cache para métricas de duración y selección
+  - Agregar señales automáticas para actualizar métricas cuando ocurren eventos
+  - Implementar dashboard completo con múltiples gráficos interactivos y métricas
+- **Para volver aquí:**
+  ```bash
+  git checkout f0631c25fe58a7dd4df3ced8833ac660d409e2a8
+  ```
+
 ---
 
-*Última actualización: 2025-11-25*
+*Última actualización: 2025-11-26*
