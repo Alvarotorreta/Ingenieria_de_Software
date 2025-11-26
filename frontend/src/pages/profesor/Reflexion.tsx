@@ -133,7 +133,7 @@ export function ProfesorReflexion() {
           const evaluationsArray = Array.isArray(evaluationsData) 
             ? evaluationsData 
             : (evaluationsData.results || []);
-          setEstudiantesRespondidos(evaluationsArray.length);
+      setEstudiantesRespondidos(evaluationsArray.length);
         }
       } else {
         // Fallback para array simple

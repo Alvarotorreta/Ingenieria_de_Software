@@ -37,6 +37,9 @@ urlpatterns = [
     
     # API Endpoints - Desafíos y Retos
     path('api/challenges/', include('challenges.urls')),
+    
+    # API Endpoints - Dashboard Administrativo
+    path('api/admin/dashboard/', include('admin_dashboard.urls')),
 ]
 
 # Servir archivos estáticos y media en desarrollo

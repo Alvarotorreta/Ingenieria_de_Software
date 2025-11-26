@@ -15,4 +15,5 @@ export { tabletConnectionsAPI } from './tabletConnections';
 export { academicAPI } from './academic';
 export { challengesAPI } from './challenges';
 export { teamPersonalizationsAPI } from './teamPersonalizations';
+export { adminDashboardAPI } from './adminDashboard';
 

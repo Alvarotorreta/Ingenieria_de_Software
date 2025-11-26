@@ -67,6 +67,7 @@ INSTALLED_APPS = [
     'academic',
     'game_sessions',
     'challenges',
+    'admin_dashboard',
 ]
 
 # Development Tools (solo en DEBUG)

@@ -54,6 +54,25 @@ git checkout master
   git checkout c8b70691c3dc1e78b8a7a2697a0450b07f6fef7b
   ```
 
+### Commit #3
+- **Hash completo:** `434d99b1ef5b78036b913f554886a184c6d62bfb`
+- **Hash corto:** `434d99b`
+- **Fecha:** 2025-11-25 22:17:10 -0300
+- **Mensaje:** Implementar gestión completa de Temas y Desafíos en panel admin
+- **Descripción:**
+  - Agregado CRUD completo de temas y desafíos en Etapa 2
+  - Implementada vista de gestión con lista de temas y temporizador
+  - Permitir editar temporizador de presentación individual (1:30) para Presentación del Pitch
+  - Vista completa de edición de temas (nombre, descripción, icono, carreras disponibles)
+  - Vista completa de edición de desafíos (título, descripción, icono, información de persona, imagen)
+  - Funcionalidad para crear, editar y eliminar temas y desafíos
+  - Eliminados campos innecesarios: URL imagen tema, nivel de dificultad, recursos adicionales, objetivos de aprendizaje
+  - Actualizado backend para leer temporizador de presentación desde config_data de la actividad
+- **Para volver aquí:**
+  ```bash
+  git checkout 434d99b1ef5b78036b913f554886a184c6d62bfb
+  ```
+
 ---
 
 *Última actualización: 2025-11-25*
