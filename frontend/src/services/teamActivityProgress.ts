@@ -37,6 +37,15 @@ export const teamActivityProgressAPI = {
     return response.data;
   },
 
+  update: async (progressId: number | string, data: {
+    status?: string;
+    response_data?: any;
+    progress_percentage?: number;
+  }) => {
+    const response = await api.patch(`/sessions/team-activity-progress/${progressId}/`, data);
+    return response.data;
+  },
+
   savePitch: async (data: {
     team_id: number;
     activity_id: number;

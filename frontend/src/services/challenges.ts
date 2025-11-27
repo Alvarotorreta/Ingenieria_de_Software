@@ -141,5 +141,149 @@ export const challengesAPI = {
     const response = await api.delete(`/challenges/challenges/${challengeId}/`);
     return response.data;
   },
+
+  // Word Search Options CRUD
+  getWordSearchOptions: async (activityId?: number | string) => {
+    const params = activityId ? { activity: activityId } : {};
+    const response = await api.get('/challenges/word-search-options/', { params });
+    return unwrapResults(response.data);
+  },
+
+  generateWordSearchPreview: async (data: { words: string[]; name: string }) => {
+    const response = await api.post('/challenges/word-search-options/generate_preview/', data);
+    return response.data;
+  },
+
+  confirmWordSearch: async (data: {
+    words: string[];
+    name: string;
+    grid: string[][];
+    word_positions: any[];
+    seed: number;
+    activity_id: number;
+  }) => {
+    const response = await api.post('/challenges/word-search-options/confirm_and_save/', data);
+    return response.data;
+  },
+
+  deleteWordSearchOption: async (optionId: number | string) => {
+    const response = await api.delete(`/challenges/word-search-options/${optionId}/`);
+    return response.data;
+  },
+
+  getRandomWordSearch: async (activityId: number | string) => {
+    const response = await api.get('/challenges/word-search-options/random/', {
+      params: { activity_id: activityId },
+    });
+    return response.data;
+  },
+
+  // Anagram Words CRUD
+  getAnagramWords: async () => {
+    const response = await api.get('/challenges/anagram-words/');
+    return unwrapResults(response.data);
+  },
+
+  createAnagramWord: async (data: { word: string; is_active?: boolean }) => {
+    const response = await api.post('/challenges/anagram-words/', data);
+    return response.data;
+  },
+
+  updateAnagramWord: async (wordId: number | string, data: Partial<{
+    word?: string;
+    is_active?: boolean;
+  }>) => {
+    const response = await api.patch(`/challenges/anagram-words/${wordId}/`, data);
+    return response.data;
+  },
+
+  deleteAnagramWord: async (wordId: number | string) => {
+    const response = await api.delete(`/challenges/anagram-words/${wordId}/`);
+    return response.data;
+  },
+
+  getRandomAnagramWords: async (count: number = 5) => {
+    const response = await api.get('/challenges/anagram-words/random/', {
+      params: { count },
+    });
+    return response.data;
+  },
+
+  // Chaos Questions CRUD
+  getChaosQuestions: async () => {
+    const response = await api.get('/challenges/chaos-questions/');
+    return unwrapResults(response.data);
+  },
+
+  createChaosQuestion: async (data: { question: string; is_active?: boolean }) => {
+    const response = await api.post('/challenges/chaos-questions/', data);
+    return response.data;
+  },
+
+  updateChaosQuestion: async (questionId: number | string, data: Partial<{
+    question?: string;
+    is_active?: boolean;
+  }>) => {
+    const response = await api.patch(`/challenges/chaos-questions/${questionId}/`, data);
+    return response.data;
+  },
+
+  deleteChaosQuestion: async (questionId: number | string) => {
+    const response = await api.delete(`/challenges/chaos-questions/${questionId}/`);
+    return response.data;
+  },
+
+  getRandomChaosQuestion: async (excludeIds: number[] = []) => {
+    const params: any = {};
+    if (excludeIds.length > 0) {
+      params.exclude_ids = excludeIds.join(',');
+    }
+    const response = await api.get('/challenges/chaos-questions/random/', { params });
+    return response.data;
+  },
+
+  // General Knowledge Questions CRUD
+  getGeneralKnowledgeQuestions: async () => {
+    const response = await api.get('/challenges/general-knowledge-questions/');
+    return unwrapResults(response.data);
+  },
+
+  createGeneralKnowledgeQuestion: async (data: {
+    question: string;
+    option_a: string;
+    option_b: string;
+    option_c: string;
+    option_d: string;
+    correct_answer: number; // 0=A, 1=B, 2=C, 3=D
+    is_active?: boolean;
+  }) => {
+    const response = await api.post('/challenges/general-knowledge-questions/', data);
+    return response.data;
+  },
+
+  updateGeneralKnowledgeQuestion: async (questionId: number | string, data: Partial<{
+    question?: string;
+    option_a?: string;
+    option_b?: string;
+    option_c?: string;
+    option_d?: string;
+    correct_answer?: number;
+    is_active?: boolean;
+  }>) => {
+    const response = await api.patch(`/challenges/general-knowledge-questions/${questionId}/`, data);
+    return response.data;
+  },
+
+  deleteGeneralKnowledgeQuestion: async (questionId: number | string) => {
+    const response = await api.delete(`/challenges/general-knowledge-questions/${questionId}/`);
+    return response.data;
+  },
+
+  getRandomGeneralKnowledgeQuestions: async (count: number = 5) => {
+    const response = await api.get('/challenges/general-knowledge-questions/random/', {
+      params: { count },
+    });
+    return response.data;
+  },
 };
 

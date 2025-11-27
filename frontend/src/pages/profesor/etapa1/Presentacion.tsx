@@ -58,6 +58,23 @@ interface ActivityProgress {
     minigame_part?: string;  // Parte del minijuego: 'word_search' o 'anagram'
     found_words?: string[];  // Palabras encontradas en sopa de letras
     correct_words?: string[];  // Palabras correctas encontradas
+    word_search_words_found?: number;
+    anagram_words_found?: number;
+    word_search_total_words?: number;
+    anagram_total_words?: number;
+    part1_completed?: boolean;  // Parte 1: Presentación
+    chaos?: {
+      completed?: boolean;
+      questions_answered?: number;
+      shown_question_ids?: number[];
+    };
+    general_knowledge?: {
+      answers?: Array<{ question_id: number; selected: number; correct?: boolean }>;
+      correct_count?: number;
+      total_questions?: number;
+      completed?: boolean;
+      questions_data?: any[];
+    };
   };
   progress_percentage?: number;
 }
@@ -182,7 +199,8 @@ export function ProfesorPresentacion() {
             });
             const progressResults = Array.isArray(progressList) ? progressList : [progressList];
             if (progressResults.length > 0) {
-              fetchedProgress[team.id] = progressResults[0];
+              const progressData = progressResults[0];
+              fetchedProgress[team.id] = progressData;
             }
           } catch (error) {
             console.error(`Error loading progress for team ${team.id}:`, error);
@@ -597,24 +615,30 @@ export function ProfesorPresentacion() {
                   const correctWords = responseData.correct_words || [];
                   const answers = responseData.answers || [];
                   
-                  // Usar contadores específicos si están disponibles, sino calcularlos
-                  const wordSearchWordsFound = responseData.word_search_words_found ?? foundWords.length;
-                  const anagramWordsFound = responseData.anagram_words_found ?? answers.filter((a: any) => 
-                    a.word?.toUpperCase() === a.answer?.toUpperCase()
-                  ).length;
+                  // Usar siempre los valores del backend cuando estén disponibles
+                  const wordSearchWordsFound = responseData.word_search_words_found !== undefined 
+                    ? responseData.word_search_words_found 
+                    : foundWords.length;
                   
-                  // Determinar qué parte está activa o completada
-                  // Si hay found_words, han jugado sopa de letras
-                  // Si hay answers, han jugado anagrama
-                  const hasWordSearchProgress = foundWords.length > 0 || wordSearchWordsFound > 0;
-                  const hasAnagramProgress = answers.length > 0 || anagramWordsFound > 0;
+                  // Usar siempre anagram_words_found del backend cuando esté disponible
+                  const anagramWordsFound = responseData.anagram_words_found !== undefined 
+                    ? responseData.anagram_words_found 
+                    : 0;
                   
-                  // IMPORTANTE: Usar campos separados para los totales de cada parte del minijuego
-                  // word_search_total_words y anagram_total_words son independientes
+                  // Usar campos separados para los totales de cada parte del minijuego
                   const wordSearchTotal = responseData.word_search_total_words ?? responseData.total_words ?? 5;
-                  const anagramTotal = responseData.anagram_total_words ?? 3;
-                  const wordSearchCompleted = hasWordSearchProgress && wordSearchWordsFound >= wordSearchTotal;
-                  const anagramCompleted = hasAnagramProgress && anagramWordsFound >= anagramTotal;
+                  const anagramTotal = responseData.anagram_total_words ?? 5;
+                  
+                  // Determinar qué parte está activa o completada usando los valores del backend
+                  const hasWordSearchProgress = wordSearchWordsFound > 0 || foundWords.length > 0;
+                  const hasAnagramProgress = anagramWordsFound > 0 || answers.length > 0;
+                  
+                  // Verificar si las partes están completas usando los valores del backend
+                  const wordSearchCompleted = wordSearchWordsFound >= wordSearchTotal;
+                  const anagramCompleted = anagramWordsFound >= anagramTotal;
+                  
+                  // Mostrar el progreso usando siempre los valores del backend
+                  const displayAnagramWordsFound = anagramWordsFound;
 
                   activityType = 'minigame';
 
@@ -640,11 +664,6 @@ export function ProfesorPresentacion() {
                           <p className="text-xs">
                             <span className="font-medium">Palabras encontradas:</span>{' '}
                             <strong>{wordSearchWordsFound}/{wordSearchTotal}</strong>
-                            {correctWords.length > 0 && (
-                              <span className="text-gray-600 ml-1">
-                                ({correctWords.length} correctas)
-                              </span>
-                            )}
                           </p>
                         ) : (
                           <p className="text-xs text-gray-500 italic">Aún no iniciado</p>
@@ -670,30 +689,90 @@ export function ProfesorPresentacion() {
                         {hasAnagramProgress ? (
                           <p className="text-xs">
                             <span className="font-medium">Palabras adivinadas:</span>{' '}
-                            <strong>{anagramWordsFound}/{anagramTotal}</strong>
+                            <strong>{displayAnagramWordsFound}/{anagramTotal}</strong>
                           </p>
                         ) : (
                           <p className="text-xs text-gray-500 italic">Aún no iniciado</p>
                         )}
                       </div>
 
+                      {/* Parte 3: Conocimiento General */}
+                      {(() => {
+                        const generalKnowledge = responseData.general_knowledge || {};
+                        const generalKnowledgeAnswers = generalKnowledge.answers || [];
+                        const generalKnowledgeCorrect = generalKnowledge.correct_count || 0;
+                        // IMPORTANTE: Siempre usar 5 como total, independientemente de lo que venga del backend
+                        // (puede haber datos antiguos con total_questions incorrecto)
+                        const generalKnowledgeTotal = 5;
+                        const generalKnowledgeCompleted = generalKnowledge.completed || false;
+                        const hasGeneralKnowledgeProgress = generalKnowledgeAnswers.length > 0;
+
+                        return (
+                          <div className={`p-2 rounded-lg border-2 ${
+                            generalKnowledgeCompleted 
+                              ? 'bg-green-50 border-green-300' 
+                              : hasGeneralKnowledgeProgress 
+                              ? 'bg-indigo-50 border-indigo-300' 
+                              : 'bg-gray-50 border-gray-200'
+                          }`}>
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="font-semibold text-xs">
+                                🧠 Parte 3: Conocimiento General
+                              </span>
+                              {generalKnowledgeCompleted && (
+                                <CheckCircle2 className="w-4 h-4 text-green-600" />
+                              )}
+                            </div>
+                            {hasGeneralKnowledgeProgress ? (
+                              <div className="space-y-1">
+                                <p className="text-xs">
+                                  <span className="font-medium">Preguntas respondidas:</span>{' '}
+                                  <strong>{generalKnowledgeAnswers.length}/{generalKnowledgeTotal}</strong>
+                                </p>
+                                <p className="text-xs">
+                                  <span className="font-medium">Respuestas correctas:</span>{' '}
+                                  <strong className="text-green-600">{generalKnowledgeCorrect}/{generalKnowledgeTotal}</strong>
+                                </p>
+                                {generalKnowledgeCompleted && (
+                                  <p className="text-xs text-green-600 font-semibold">
+                                    ✅ Completado
+                                  </p>
+                                )}
+                              </div>
+                            ) : (
+                              <p className="text-xs text-gray-500 italic">Aún no iniciado</p>
+                            )}
+                          </div>
+                        );
+                      })()}
+
                       {/* Resumen general */}
                       <div className="pt-2 border-t border-gray-200">
-                        <p className="text-xs">
-                          <span className="font-medium">Tokens ganados en esta actividad:</span>{' '}
-                          <strong className="text-green-600">{wordSearchWordsFound + anagramWordsFound} tokens</strong>
-                          <span className="text-gray-500 ml-1">
-                            ({wordSearchWordsFound} sopa + {anagramWordsFound} anagrama)
-                          </span>
-                        </p>
-                        <p className="text-xs">
-                          <span className="font-medium">Tokens totales del equipo:</span>{' '}
-                          <strong className="text-blue-600">{team.tokens_total || 0} tokens</strong>
-                        </p>
-                        <p className="text-xs">
-                          <span className="font-medium">Progreso total:</span>{' '}
-                          <strong>{progressPercentage}%</strong>
-                        </p>
+                        {(() => {
+                          const generalKnowledge = responseData.general_knowledge || {};
+                          const generalKnowledgeCorrect = generalKnowledge.correct_count || 0;
+                          const totalTokensFromActivity = wordSearchWordsFound + anagramWordsFound + generalKnowledgeCorrect;
+                          
+                          return (
+                            <>
+                              <p className="text-xs">
+                                <span className="font-medium">Tokens ganados en esta actividad:</span>{' '}
+                                <strong className="text-green-600">{totalTokensFromActivity} tokens</strong>
+                                <span className="text-gray-500 ml-1">
+                                  ({wordSearchWordsFound} sopa + {displayAnagramWordsFound} anagrama + {generalKnowledgeCorrect} conocimiento)
+                                </span>
+                              </p>
+                              <p className="text-xs">
+                                <span className="font-medium">Tokens totales del equipo:</span>{' '}
+                                <strong className="text-blue-600">{team.tokens_total || 0} tokens</strong>
+                              </p>
+                              <p className="text-xs">
+                                <span className="font-medium">Progreso total:</span>{' '}
+                                <strong>{progressPercentage}%</strong>
+                              </p>
+                            </>
+                          );
+                        })()}
                       </div>
                     </div>
                   );
@@ -705,22 +784,151 @@ export function ProfesorPresentacion() {
                       <div className="text-xs space-y-1">
                         <p>🔍 Parte 1: Sopa de Letras - Pendiente</p>
                         <p>🧩 Parte 2: Anagrama - Pendiente</p>
+                        <p>🧠 Parte 3: Conocimiento General - Pendiente</p>
                       </div>
                     </div>
                   );
                 }
               } else if (teamKnowsEachOther === false) {
-                // Equipo que NO se conoce → actividad de presentación
+                // Equipo que NO se conoce → actividad de presentación (3 partes)
                 activityType = 'presentation';
-                activityDetails = (
-                  <p className="mt-3 text-sm text-gray-700">
-                    {isCompleted ? (
-                      <span className="text-green-600">✅ Presentación completada</span>
-                    ) : (
-                      <span className="text-gray-600">En proceso de presentación</span>
-                    )}
-                  </p>
-                );
+                
+                if (progress) {
+                  const responseData = progress.response_data || {};
+                  const part1Completed = responseData.part1_completed || false;
+                  const chaosData = responseData.chaos || {};
+                  const chaosCompleted = chaosData.completed || false;
+                  const chaosQuestionsAnswered = chaosData.questions_answered || 0;
+                  const generalKnowledge = responseData.general_knowledge || {};
+                  const generalKnowledgeAnswers = generalKnowledge.answers || [];
+                  const generalKnowledgeCorrect = generalKnowledge.correct_count || 0;
+                  // IMPORTANTE: Siempre usar 5 como total, independientemente de lo que venga del backend
+                  // (puede haber datos antiguos con total_questions incorrecto)
+                  const generalKnowledgeTotal = 5;
+                  const generalKnowledgeCompleted = generalKnowledge.completed || false;
+                  const hasGeneralKnowledgeProgress = generalKnowledgeAnswers.length > 0;
+                  
+                  activityDetails = (
+                    <div className="mt-3 text-sm text-gray-700 space-y-2">
+                      {/* Parte 1: Presentación */}
+                      <div className={`p-2 rounded-lg border-2 ${
+                        part1Completed 
+                          ? 'bg-green-50 border-green-300' 
+                          : 'bg-gray-50 border-gray-200'
+                      }`}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-semibold text-xs">
+                            👋 Parte 1: Presentación
+                          </span>
+                          {part1Completed && (
+                            <CheckCircle2 className="w-4 h-4 text-green-600" />
+                          )}
+                        </div>
+                        {part1Completed ? (
+                          <p className="text-xs text-green-600 font-semibold">✅ Completado</p>
+                        ) : (
+                          <p className="text-xs text-gray-500 italic">Aún no iniciado</p>
+                        )}
+                      </div>
+
+                      {/* Parte 2: Caos */}
+                      <div className={`p-2 rounded-lg border-2 ${
+                        chaosCompleted 
+                          ? 'bg-green-50 border-green-300' 
+                          : chaosQuestionsAnswered > 0 
+                          ? 'bg-purple-50 border-purple-300' 
+                          : 'bg-gray-50 border-gray-200'
+                      }`}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-semibold text-xs">
+                            🎲 Parte 2: Preguntas del Caos
+                          </span>
+                          {chaosCompleted && (
+                            <CheckCircle2 className="w-4 h-4 text-green-600" />
+                          )}
+                        </div>
+                        {chaosQuestionsAnswered > 0 || chaosCompleted ? (
+                          <p className="text-xs">
+                            <span className="font-medium">Preguntas respondidas:</span>{' '}
+                            <strong>{chaosCompleted ? 5 : chaosQuestionsAnswered}/5</strong>
+                          </p>
+                        ) : (
+                          <p className="text-xs text-gray-500 italic">Aún no iniciado</p>
+                        )}
+                      </div>
+
+                      {/* Parte 3: Conocimiento General */}
+                      <div className={`p-2 rounded-lg border-2 ${
+                        generalKnowledgeCompleted 
+                          ? 'bg-green-50 border-green-300' 
+                          : hasGeneralKnowledgeProgress 
+                          ? 'bg-indigo-50 border-indigo-300' 
+                          : 'bg-gray-50 border-gray-200'
+                      }`}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-semibold text-xs">
+                            🧠 Parte 3: Conocimiento General
+                          </span>
+                          {generalKnowledgeCompleted && (
+                            <CheckCircle2 className="w-4 h-4 text-green-600" />
+                          )}
+                        </div>
+                        {hasGeneralKnowledgeProgress ? (
+                          <div className="space-y-1">
+                            <p className="text-xs">
+                              <span className="font-medium">Preguntas respondidas:</span>{' '}
+                              <strong>{generalKnowledgeAnswers.length}/{generalKnowledgeTotal}</strong>
+                            </p>
+                            <p className="text-xs">
+                              <span className="font-medium">Respuestas correctas:</span>{' '}
+                              <strong className="text-green-600">{generalKnowledgeCorrect}/{generalKnowledgeTotal}</strong>
+                            </p>
+                            {generalKnowledgeCompleted && (
+                              <p className="text-xs text-green-600 font-semibold">
+                                ✅ Completado
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-gray-500 italic">Aún no iniciado</p>
+                        )}
+                      </div>
+
+                      {/* Resumen general */}
+                      <div className="pt-2 border-t border-gray-200">
+                        <p className="text-xs">
+                          <span className="font-medium">Tokens ganados en esta actividad:</span>{' '}
+                          <strong className="text-green-600">
+                            {(part1Completed ? 5 : 0) + (chaosCompleted ? 5 : 0) + generalKnowledgeCorrect} tokens
+                          </strong>
+                          <span className="text-gray-500 ml-1">
+                            ({part1Completed ? 5 : 0} presentación + {chaosCompleted ? 5 : 0} caos + {generalKnowledgeCorrect} conocimiento)
+                          </span>
+                        </p>
+                        <p className="text-xs">
+                          <span className="font-medium">Tokens totales del equipo:</span>{' '}
+                          <strong className="text-blue-600">{team.tokens_total || 0} tokens</strong>
+                        </p>
+                        <p className="text-xs">
+                          <span className="font-medium">Progreso total:</span>{' '}
+                          <strong>{progress.progress_percentage || 0}%</strong>
+                        </p>
+                      </div>
+                    </div>
+                  );
+                } else {
+                  activityType = 'presentation';
+                  activityDetails = (
+                    <div className="mt-3 text-sm text-gray-500 space-y-2">
+                      <p className="italic">Aún no ha iniciado la presentación</p>
+                      <div className="text-xs space-y-1">
+                        <p>👋 Parte 1: Presentación - Pendiente</p>
+                        <p>🎲 Parte 2: Preguntas del Caos - Pendiente</p>
+                        <p>🧠 Parte 3: Conocimiento General - Pendiente</p>
+                      </div>
+                    </div>
+                  );
+                }
               } else {
                 // Aún no se ha definido
                 activityType = 'pending';
@@ -784,9 +992,9 @@ export function ProfesorPresentacion() {
                         <Sparkles className="w-4 h-4 text-[#093c92]" />
                         <span className="text-xs sm:text-sm font-semibold text-gray-700">
                           {activityType === 'minigame' ? (
-                            <>🎮 Minijuego (Sopa de Letras + Anagrama)</>
+                            <>🎮 Minijuego (Sopa de Letras + Anagrama + Conocimiento General)</>
                           ) : activityType === 'presentation' ? (
-                            <>👋 Presentación</>
+                            <>👋 Presentación (Presentación + Caos + Conocimiento General)</>
                           ) : (
                             <>⏳ Esperando</>
                           )}

@@ -383,8 +383,8 @@ export function parseMinigameConfig(
     if (config.words && Array.isArray(config.words) && config.words.length > 0) {
       const firstWord = config.words[0];
       if (typeof firstWord === 'object' && 'word' in firstWord && 'anagram' in firstWord) {
-        // Limitar a 3 palabras
-        const words = (config.words as Array<{ word: string; anagram: string }>).slice(0, 3);
+        // Usar hasta 5 palabras
+        const words = (config.words as Array<{ word: string; anagram: string }>).slice(0, 5);
         return {
           type: MinigameType.ANAGRAMA,
           words,
@@ -394,12 +394,12 @@ export function parseMinigameConfig(
 
     // Si vienen como array de strings, generar anagramas
     if (config.words && Array.isArray(config.words) && typeof config.words[0] === 'string') {
-      let words = (config.words as string[]).slice(0, 3); // Limitar a 3 palabras
+      let words = (config.words as string[]).slice(0, 5); // Usar hasta 5 palabras
       
-      // Si hay menos de 3 palabras, usar palabras por defecto
-      const palabrasDefault = ['IDEA', 'META', 'EQUIPO'];
-      if (words.length < 3) {
-        const palabrasFaltantes = palabrasDefault.slice(words.length, 3);
+      // Si hay menos de 5 palabras, usar palabras por defecto
+      const palabrasDefault = ['IDEA', 'META', 'EQUIPO', 'NEGOCIO', 'VENTA'];
+      if (words.length < 5) {
+        const palabrasFaltantes = palabrasDefault.slice(words.length, 5);
         words = [...words, ...palabrasFaltantes];
       }
       
@@ -412,8 +412,8 @@ export function parseMinigameConfig(
       };
     }
     
-    // Si no hay palabras, usar 3 por defecto
-    const palabrasDefault = ['IDEA', 'META', 'EQUIPO'];
+    // Si no hay palabras, usar 5 por defecto
+    const palabrasDefault = ['IDEA', 'META', 'EQUIPO', 'NEGOCIO', 'VENTA'];
     return {
       type: MinigameType.ANAGRAMA,
       words: palabrasDefault.map(word => ({
@@ -423,8 +423,8 @@ export function parseMinigameConfig(
     };
   }
 
-  // Fallback: anagrama por defecto con 3 palabras
-  const palabrasDefault = ['IDEA', 'META', 'EQUIPO'];
+  // Fallback: anagrama por defecto con 5 palabras
+  const palabrasDefault = ['IDEA', 'META', 'EQUIPO', 'NEGOCIO', 'VENTA'];
   return {
     type: MinigameType.ANAGRAMA,
     words: palabrasDefault.map(word => ({

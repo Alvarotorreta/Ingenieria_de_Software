@@ -178,7 +178,7 @@ export function DetalleSesion() {
     const baseUrl = apiBaseUrl.replace('/api', '');
     return `${baseUrl}${imageSrc.startsWith('/') ? '' : '/'}${imageSrc}`;
   };
-  
+        
   // Función para renderizar el Bubble Map en formato de lista (igual que tablets)
   const renderBubbleMap = (mapData: any) => {
     const isNewStructure = mapData && 'questions' in mapData;

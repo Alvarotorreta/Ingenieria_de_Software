@@ -1,16 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Gamepad2, Clock, Loader2, CheckCircle2, Award, Coins } from 'lucide-react';
+import { Clock, Loader2, CheckCircle2, Coins } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { EtapaIntroModal } from '@/components/EtapaIntroModal';
 import { BackgroundMusic } from '@/components/BackgroundMusic';
 import { toast } from 'sonner';
-import { tabletConnectionsAPI, sessionsAPI, teamPersonalizationsAPI } from '@/services';
+import { tabletConnectionsAPI, sessionsAPI, teamPersonalizationsAPI, teamActivityProgressAPI } from '@/services';
 import { AnagramGame } from '@/components/minigames/AnagramGame';
 import { WordSearchGame } from '@/components/minigames/WordSearchGame';
+import { GeneralKnowledgeQuiz } from '@/components/minigames/GeneralKnowledgeQuiz';
 import { parseMinigameConfig } from '@/components/minigames/MinigameSelector';
 import { MinigameType, AnyMinigameData, WordSearchData } from '@/components/minigames/types';
+import { challengesAPI } from '@/services';
 
 interface Team {
   id: number;
@@ -35,10 +37,16 @@ export function TabletMinijuego() {
   const [gameSessionId, setGameSessionId] = useState<number | null>(null);
   const [currentActivityId, setCurrentActivityId] = useState<number | null>(null);
   const [currentSessionStageId, setCurrentSessionStageId] = useState<number | null>(null);
-  const [completedItems, setCompletedItems] = useState<Array<{ word: string; answer: string }>>([]);
+  // completedItems removido - no se usa realmente, solo se establecía pero nunca se leía
   const [foundWords, setFoundWords] = useState<string[]>([]);
   const [showEtapaIntro, setShowEtapaIntro] = useState(false);
-  const [currentPart, setCurrentPart] = useState<'word_search' | 'anagram'>('word_search'); // Parte actual del minijuego
+  const [currentPart, setCurrentPart] = useState<'word_search' | 'anagram' | 'general_knowledge'>('word_search'); // Parte actual del minijuego
+  const [generalKnowledgeQuestions, setGeneralKnowledgeQuestions] = useState<any[]>([]);
+  const [loadingGeneralKnowledge, setLoadingGeneralKnowledge] = useState(false);
+  const [generalKnowledgeCompleted, setGeneralKnowledgeCompleted] = useState(false);
+  const [generalKnowledgeCurrentIndex, setGeneralKnowledgeCurrentIndex] = useState(0);
+  const [generalKnowledgeSelectedAnswers, setGeneralKnowledgeSelectedAnswers] = useState<Map<number, number>>(new Map());
+  const previousGeneralKnowledgeAnswersRef = useRef<Map<number, number>>(new Map());
   const [personalization, setPersonalization] = useState<{ team_name?: string } | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -159,14 +167,19 @@ export function TabletMinijuego() {
         }
       }
 
-      // Cargar actividad del minijuego (solo si no hay datos cargados)
-      if (gameData.current_activity && !minigameData && statusData.team?.id) {
-        await loadMinijuegoActivity(gameData.current_activity, statusData.team.id, statusData.game_session.id);
+      // Verificar progreso existente PRIMERO para restaurar el estado correcto (tiene más prioridad)
+      // No verificar en cada polling para evitar sobrescribir el estado actual
+      if (gameData.current_activity && currentSessionStageId && statusData.team.id && !progressCheckedRef.current) {
+        console.log('[loadGameState] ✅ Primera vez, llamando a checkExistingProgress para restaurar estado...');
+        await checkExistingProgress(statusData.team.id, gameData.current_activity, currentSessionStageId);
+        progressCheckedRef.current = true;
+        // Pequeño delay para asegurar que el estado se haya actualizado
+        await new Promise(resolve => setTimeout(resolve, 50));
       }
 
-      // Verificar progreso existente
-      if (gameData.current_activity && currentSessionStageId && statusData.team.id) {
-        await checkExistingProgress(statusData.team.id, gameData.current_activity, currentSessionStageId);
+      // Cargar actividad del minijuego DESPUÉS de restaurar progreso
+      if (gameData.current_activity && !minigameData && statusData.team?.id && !loadingMinijuegoRef.current && currentPart !== 'general_knowledge' && currentPart !== 'anagram' && !minigameDataLoadedRef.current) {
+        await loadMinijuegoActivity(gameData.current_activity, statusData.team.id, statusData.game_session.id);
       }
 
       // Iniciar temporizador
@@ -197,7 +210,29 @@ export function TabletMinijuego() {
     return await response.json();
   };
 
+  const loadingMinijuegoRef = useRef(false);
+  const progressCheckedRef = useRef(false);
+  const minigameDataLoadedRef = useRef(false); // Ref para rastrear si ya se cargó inicialmente
+
   const loadMinijuegoActivity = async (activityId: number, teamId: number, gameSessionIdParam?: number) => {
+    // Protecciones para evitar cargas múltiples
+    if (minigameDataLoadedRef.current || loadingMinijuegoRef.current || minigameData || currentPart === 'general_knowledge') {
+      return;
+    }
+    
+    // Si estamos en anagram sin datos, checkExistingProgress ya debería haberlo cargado
+    if (currentPart === 'anagram' && !minigameData) {
+      // Esperar un momento por si checkExistingProgress aún está cargando
+      await new Promise(resolve => setTimeout(resolve, 100));
+      if (minigameData) {
+        minigameDataLoadedRef.current = true;
+        return;
+      }
+    }
+    
+    loadingMinijuegoRef.current = true;
+    minigameDataLoadedRef.current = true;
+    setLoading(true);
     try {
       // Verificar progreso existente para determinar qué parte mostrar
       // Primero intentar obtener session_stage_id
@@ -220,35 +255,238 @@ export function TabletMinijuego() {
         }
       }
       
-      // Obtener la actividad con word_search_data del backend
-      const activityData = await loadActivityWithWordSearch(activityId, teamId, sessionStageId);
+      // Obtener la actividad y el progreso en paralelo para optimizar la carga
+      const [activityData, progressData] = await Promise.all([
+        loadActivityWithWordSearch(activityId, teamId, sessionStageId),
+        sessionStageId ? fetch(
+          `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/sessions/team-activity-progress/?team=${teamId}&activity=${activityId}&session_stage=${sessionStageId}`
+        ).then(res => res.ok ? res.json() : null).catch(() => null) : Promise.resolve(null)
+      ]);
+      
       const config = activityData.config_data || {};
       const wordSearchDataFromBackend = activityData.word_search_data; // Datos generados por el backend
+      const anagramDataFromBackend = activityData.anagram_data; // Datos del anagrama del backend
+      const generalKnowledgeDataFromBackend = activityData.general_knowledge_data; // Datos de conocimiento general del backend
       
       let existingProgress: any = null;
-      if (sessionStageId) {
-        const progressResponse = await fetch(
-          `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/sessions/team-activity-progress/?team=${teamId}&activity=${activityId}&session_stage=${sessionStageId}`
-        );
-        
-        if (progressResponse.ok) {
-          const progressData = await progressResponse.json();
+      if (progressData) {
           const progressResults = Array.isArray(progressData.results) ? progressData.results : (Array.isArray(progressData) ? progressData : []);
           if (progressResults.length > 0) {
             existingProgress = progressResults[0];
+        }
+      }
+      
+      // Cargar preguntas de conocimiento general desde el backend si están disponibles
+      // Solo cargar si no están ya cargadas para evitar recargas innecesarias
+      if (generalKnowledgeDataFromBackend && generalKnowledgeDataFromBackend.questions && generalKnowledgeDataFromBackend.questions.length > 0) {
+        // Solo actualizar si no hay preguntas cargadas o si son diferentes
+        if (generalKnowledgeQuestions.length === 0 || 
+            JSON.stringify(generalKnowledgeQuestions.map(q => q.id)) !== 
+            JSON.stringify(generalKnowledgeDataFromBackend.questions.map((q: any) => q.id))) {
+          console.log(`[loadMinijuegoActivity] Preguntas de conocimiento general cargadas desde backend: ${generalKnowledgeDataFromBackend.questions.length}`);
+          setGeneralKnowledgeQuestions(generalKnowledgeDataFromBackend.questions);
+          
+          // Guardar las preguntas en el progreso para mantener consistencia (después de obtener existingProgress)
+          if (existingProgress && generalKnowledgeDataFromBackend.questions.length === 5) {
+            const updatedResponseData = existingProgress.response_data || {};
+            if (!updatedResponseData.general_knowledge?.questions_data || updatedResponseData.general_knowledge.questions_data.length === 0) {
+              updatedResponseData.general_knowledge = {
+                ...updatedResponseData.general_knowledge,
+                questions: generalKnowledgeDataFromBackend.questions.map((q: any) => q.id),
+                questions_data: generalKnowledgeDataFromBackend.questions,
+              };
+              // Actualizar en el backend sin esperar respuesta
+              fetch(
+                `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/sessions/team-activity-progress/${existingProgress.id}/`,
+                {
+                  method: 'PATCH',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    response_data: updatedResponseData,
+                  }),
+                }
+              ).catch(error => {
+                console.error('Error guardando preguntas de conocimiento general:', error);
+              });
+            }
           }
         }
       }
       
-      // Determinar qué parte mostrar basado en el progreso
       const responseData = existingProgress?.response_data || {};
+      const anagramCompleted = responseData.anagram_completed || false;
+      const generalKnowledgeData = responseData.general_knowledge || {};
+      const hasGeneralKnowledgeProgress = generalKnowledgeData.answers && generalKnowledgeData.answers.length > 0;
+      
+      // Si hay progreso en general_knowledge o anagrama completado, avanzar directamente ahí
+      // Solo si checkExistingProgress no lo hizo ya (verificar si ya está en general_knowledge)
+      if ((hasGeneralKnowledgeProgress || generalKnowledgeData.completed || anagramCompleted) && currentPart !== 'general_knowledge') {
+        console.log('[loadMinijuegoActivity] Anagrama completado o general_knowledge en progreso, avanzando directamente a general_knowledge');
+        setCurrentPart('general_knowledge');
+        // Restaurar preguntas si están guardadas
+        if (generalKnowledgeData.questions_data && generalKnowledgeData.questions_data.length > 0) {
+          setGeneralKnowledgeQuestions(generalKnowledgeData.questions_data);
+        }
+        // Restaurar respuestas e índice como fallback
+        if (generalKnowledgeData.answers && Array.isArray(generalKnowledgeData.answers)) {
+          const answeredCount = generalKnowledgeData.answers.length;
+          const answersMap = new Map<number, number>();
+          generalKnowledgeData.answers.forEach((a: any) => {
+            if (a.question_id !== undefined && a.selected !== undefined) {
+              answersMap.set(a.question_id, a.selected);
+            }
+          });
+          setGeneralKnowledgeSelectedAnswers(answersMap);
+          previousGeneralKnowledgeAnswersRef.current = new Map(answersMap);
+          setGeneralKnowledgeCurrentIndex(answeredCount);
+        }
+        setLoading(false);
+        loadingMinijuegoRef.current = false;
+        return;
+      }
+      
       const foundWordsFromProgress = responseData.found_words || [];
       const answersFromProgress = responseData.answers || [];
       
-      // Usar word_search_data del backend (el backend siempre debería generarlo)
+      const hasAnagramProgress = answersFromProgress.length > 0;
+      const totalWordsExpectedForAnagram = responseData.total_words || 5;
+      
+      // Si hay progreso en anagrama pero no está completado, restaurar anagrama
+      if (hasAnagramProgress && answersFromProgress.length < totalWordsExpectedForAnagram && !anagramCompleted) {
+        console.log('[loadMinijuegoActivity] 🔍 Hay progreso en anagrama, restaurando desde progreso...', {
+          answersLength: answersFromProgress.length,
+          totalWordsExpected: totalWordsExpectedForAnagram,
+          anagramCompleted,
+          hasSavedWords: !!responseData.anagram_words,
+          savedWordsLength: responseData.anagram_words?.length || 0
+        });
+        setCurrentPart('anagram');
+        const anagramType = MinigameType.ANAGRAMA;
+        setCurrentGameType(anagramType);
+        console.log('[loadMinijuegoActivity] ✅ currentPart establecido a "anagram", currentGameType establecido a ANAGRAMA');
+        
+        const savedAnagramWords = responseData.anagram_words;
+        // Solo usar palabras guardadas si hay exactamente 5 palabras y tienen el formato correcto
+        if (savedAnagramWords && Array.isArray(savedAnagramWords) && savedAnagramWords.length === 5) {
+          // Verificar si todas las palabras tienen el formato correcto
+          const allHaveCorrectFormat = savedAnagramWords.every((w: any) => 
+            typeof w === 'object' && w.word && (w.anagram || w.scrambled_word)
+          );
+          
+          if (allHaveCorrectFormat) {
+            const formattedWords = savedAnagramWords.map((w: any) => {
+              return { word: w.word, anagram: w.anagram || w.scrambled_word };
+            });
+            setMinigameData({
+              type: anagramType,
+              words: formattedWords,
+            });
+            minigameDataLoadedRef.current = true;
+            if (responseData.anagram_current_index !== undefined && responseData.anagram_current_index !== null) {
+              setCurrentGameIndex(responseData.anagram_current_index);
+            } else if (answersFromProgress.length > 0) {
+              setCurrentGameIndex(answersFromProgress.length);
+            }
+            console.log(`[loadMinijuegoActivity] ✅ Anagrama restaurado desde progreso: ${formattedWords.length} palabras`);
+            setLoading(false);
+            loadingMinijuegoRef.current = false;
+            return;
+          } else {
+            // Si las palabras vienen como strings, no podemos restaurar el estado completo
+            // Continuar con la carga normal desde la API
+            console.log('[loadMinijuegoActivity] ⚠️ anagram_words viene como strings, cargando desde API...');
+          }
+        } else {
+          // Cargar desde backend si no hay palabras guardadas o hay menos de 5
+          const anagramDataFromBackend = activityData.anagram_data;
+          if (anagramDataFromBackend && anagramDataFromBackend.words && anagramDataFromBackend.words.length > 0) {
+            // Asegurar que tengamos exactamente 5 palabras
+            let wordsToUse = anagramDataFromBackend.words;
+            if (wordsToUse.length < 5) {
+              console.error(`ERROR: Backend solo devolvió ${wordsToUse.length} palabras, se esperaban 5`);
+              toast.error(`Error: Solo se recibieron ${wordsToUse.length} palabras del anagrama. Se esperaban 5.`);
+              setLoading(false);
+              loadingMinijuegoRef.current = false;
+              return;
+            } else if (wordsToUse.length > 5) {
+              wordsToUse = wordsToUse.slice(0, 5);
+            }
+            
+            // Validar formato de palabras
+            const validWords = wordsToUse.filter(w => w && (typeof w === 'string' || (typeof w === 'object' && w.word)));
+            if (validWords.length !== 5) {
+              console.error(`ERROR: Solo ${validWords.length} palabras válidas de ${wordsToUse.length}`);
+              toast.error('Error: Las palabras del anagrama no tienen el formato correcto.');
+              setLoading(false);
+              loadingMinijuegoRef.current = false;
+              return;
+            }
+            
+            // El backend debe enviar objetos con word y anagram ya mezclado
+            const formattedWords = validWords.map((w: any) => {
+              if (typeof w === 'object' && w.word) {
+                // Usar el anagrama que viene del backend
+                if (!w.anagram && !w.scrambled_word) {
+                  console.error('ERROR: El backend no envió el anagrama mezclado para la palabra:', w.word);
+                  toast.error('Error: El backend no envió el anagrama mezclado. Por favor, recarga la página.');
+                  throw new Error('Anagrama faltante del backend');
+                }
+                return { word: w.word, anagram: w.anagram || w.scrambled_word };
+              }
+              // Si viene como string, es un error - el backend debe enviar objetos
+              console.error('ERROR: El backend envió una palabra como string simple. Debe enviar objetos con word y anagram.');
+              toast.error('Error: Formato de datos incorrecto del backend.');
+              throw new Error('Formato de anagrama incorrecto');
+            });
+            setMinigameData({
+              type: anagramType,
+              words: formattedWords,
+            });
+            minigameDataLoadedRef.current = true;
+            if (responseData.anagram_current_index !== undefined && responseData.anagram_current_index !== null) {
+              setCurrentGameIndex(responseData.anagram_current_index);
+            } else if (answersFromProgress.length > 0) {
+              setCurrentGameIndex(answersFromProgress.length);
+            }
+            console.log(`[loadMinijuegoActivity] ✅ Anagrama cargado desde backend: ${formattedWords.length} palabras`);
+            
+            // Guardar las palabras en el progreso para mantener consistencia
+            if (existingProgress && formattedWords.length === 5) {
+              const updatedResponseData = existingProgress.response_data || {};
+              updatedResponseData.anagram_words = formattedWords;
+              fetch(
+                `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/sessions/team-activity-progress/${existingProgress.id}/`,
+                {
+                  method: 'PATCH',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    response_data: updatedResponseData,
+                  }),
+                }
+              ).catch(error => {
+                console.error('Error guardando palabras del anagrama:', error);
+              });
+            }
+            
+            setLoading(false);
+            loadingMinijuegoRef.current = false;
+            return;
+          } else {
+            console.error('[loadMinijuegoActivity] Backend no devolvió anagram_data');
+            toast.error('Error: No se pudieron cargar las palabras del anagrama. Por favor, recarga la página.');
+            setLoading(false);
+            loadingMinijuegoRef.current = false;
+            return;
+          }
+        }
+      }
+      
       let wordSearchData: WordSearchData;
       if (wordSearchDataFromBackend && wordSearchDataFromBackend.words && wordSearchDataFromBackend.grid) {
-        // Usar datos del backend
         wordSearchData = {
           type: MinigameType.WORD_SEARCH,
           words: wordSearchDataFromBackend.words,
@@ -256,7 +494,6 @@ export function TabletMinijuego() {
           wordPositions: wordSearchDataFromBackend.wordPositions || [],
         };
       } else {
-        // Fallback solo si el backend no devuelve datos (no debería pasar)
         console.warn('El backend no devolvió word_search_data, usando fallback');
         const wordSearchType = MinigameType.WORD_SEARCH;
         const seed = sessionStageId && teamId ? `${teamId}_${sessionStageId}` : undefined;
@@ -264,36 +501,154 @@ export function TabletMinijuego() {
       }
       
       const totalWordsExpected = wordSearchData.words.length;
-      
-      // Si ya completaron la sopa de letras (todas las palabras encontradas), mostrar anagrama
-      // Si están en progreso con sopa de letras, seguir con sopa de letras
-      // Si no hay progreso, empezar con sopa de letras
       if (foundWordsFromProgress.length >= totalWordsExpected) {
+        if (anagramCompleted) {
+          setCurrentPart('general_knowledge');
+          // Restaurar preguntas si están guardadas
+          if (generalKnowledgeData.questions_data && generalKnowledgeData.questions_data.length > 0) {
+            setGeneralKnowledgeQuestions(generalKnowledgeData.questions_data);
+          }
+          return;
+        }
+        
         setCurrentPart('anagram');
-        // Cargar datos de anagrama
         const anagramType = MinigameType.ANAGRAMA;
         setCurrentGameType(anagramType);
-        const parsedData = parseMinigameConfig(config, anagramType);
-        setMinigameData(parsedData);
+        
+        // Restaurar palabras desde response_data si ya están guardadas
+        const savedAnagramWords = responseData.anagram_words;
+        if (savedAnagramWords && Array.isArray(savedAnagramWords) && savedAnagramWords.length > 0) {
+          // Verificar si todas las palabras tienen formato correcto (objetos con word y anagram)
+          const allHaveFormat = savedAnagramWords.every((w: any) => 
+            typeof w === 'object' && w.word && (w.anagram || w.scrambled_word)
+          );
+          
+          if (allHaveFormat) {
+            // Las palabras guardadas tienen formato correcto, usarlas directamente
+            const formattedWords = savedAnagramWords.map((w: any) => ({
+              word: w.word,
+              anagram: w.anagram || w.scrambled_word
+            }));
+            setMinigameData({
+              type: anagramType,
+              words: formattedWords,
+            });
+            minigameDataLoadedRef.current = true;
+            if (responseData.anagram_current_index !== undefined && responseData.anagram_current_index !== null) {
+              setCurrentGameIndex(responseData.anagram_current_index);
+            }
+            console.log(`Anagrama restaurado desde progreso: ${savedAnagramWords.length} palabras`);
+            return; // Salir temprano si se restauró correctamente
+          } else {
+            // Si las palabras están como strings simples, necesitamos cargar desde el backend
+            console.log('[loadMinijuegoActivity] Palabras guardadas como strings, cargando desde backend para obtener anagramas...');
+          }
+        }
+        
+        // Si no hay palabras guardadas o están en formato incorrecto, cargar desde el backend
+        {
+          // Si no hay palabras guardadas, cargar desde el backend y guardarlas
+          const anagramDataFromBackend = activityData.anagram_data;
+          if (anagramDataFromBackend && anagramDataFromBackend.words && anagramDataFromBackend.words.length > 0) {
+            // Asegurar que tengamos exactamente 5 palabras
+            let wordsToUse = anagramDataFromBackend.words;
+            if (wordsToUse.length < 5) {
+              console.error(`ERROR: Backend solo devolvió ${wordsToUse.length} palabras, se esperaban 5`);
+              toast.error(`Error: Solo se recibieron ${wordsToUse.length} palabras del anagrama. Se esperaban 5.`);
+              // No establecer minigameData si no hay 5 palabras
+              return;
+            } else if (wordsToUse.length > 5) {
+              wordsToUse = wordsToUse.slice(0, 5);
+            }
+            
+            // Validar que todas las palabras tengan el formato correcto
+            const validWords = wordsToUse.filter(w => w && (typeof w === 'string' || (typeof w === 'object' && w.word)));
+            if (validWords.length !== 5) {
+              console.error(`ERROR: Solo ${validWords.length} palabras válidas de ${wordsToUse.length}`);
+              toast.error('Error: Las palabras del anagrama no tienen el formato correcto.');
+              return;
+            }
+            
+            // El backend debe enviar objetos con word y anagram ya mezclado
+            const formattedWords = validWords.map((w: any) => {
+              if (typeof w === 'object' && w.word) {
+                if (!w.anagram && !w.scrambled_word) {
+                  console.error('ERROR: El backend no envió el anagrama mezclado para la palabra:', w.word);
+                  toast.error('Error: El backend no envió el anagrama mezclado.');
+                  throw new Error('Anagrama faltante del backend');
+                }
+                return { word: w.word, anagram: w.anagram || w.scrambled_word };
+              }
+              console.error('ERROR: El backend envió una palabra como string simple. Debe enviar objetos con word y anagram.');
+              toast.error('Error: Formato de datos incorrecto del backend.');
+              throw new Error('Formato de anagrama incorrecto');
+            });
+            
+            setMinigameData({
+              type: anagramType,
+              words: formattedWords,
+            });
+            console.log(`Anagrama cargado desde backend: ${formattedWords.length} palabras`);
+            
+            // Guardar las palabras en el progreso para mantener consistencia
+            if (existingProgress && formattedWords.length === 5) {
+              const updatedResponseData = existingProgress.response_data || {};
+              updatedResponseData.anagram_words = formattedWords;
+              // Actualizar en el backend sin esperar respuesta
+              fetch(
+                `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/sessions/team-activity-progress/${existingProgress.id}/`,
+                {
+                  method: 'PATCH',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    response_data: updatedResponseData,
+                  }),
+                }
+              ).catch(error => {
+                console.error('Error guardando palabras del anagrama:', error);
+              });
+            }
+          } else {
+            // NO usar fallback - esperar a que el backend devuelva anagram_data
+            console.error('ERROR: Backend no devolvió anagram_data. No se puede usar fallback para anagramas.');
+            toast.error('Error: No se pudieron cargar las palabras del anagrama. Por favor, recarga la página.');
+            // No establecer minigameData si no hay datos del backend
+            return;
+          }
+        }
       } else {
-        // Están en progreso con sopa de letras o no hay progreso
+        if (currentPart !== 'anagram') {
         setCurrentPart('word_search');
+        }
         setCurrentGameType(MinigameType.WORD_SEARCH);
         setMinigameData(wordSearchData);
+        minigameDataLoadedRef.current = true;
       }
       
-      // Restaurar palabras encontradas si hay progreso
       if (foundWordsFromProgress.length > 0) {
         setFoundWords(foundWordsFromProgress.map((w: string) => w.toUpperCase()));
       }
+      
+      setLoading(false);
+      minigameDataLoadedRef.current = true;
     } catch (error: any) {
       console.error('Error loading minijuego activity:', error);
       toast.error('Error al cargar la actividad: ' + (error.message || 'Error desconocido'));
+      setLoading(false);
+    } finally {
+      loadingMinijuegoRef.current = false;
     }
   };
 
   const checkExistingProgress = async (teamId: number, activityId: number, sessionStageId: number) => {
     try {
+      if (progressCheckedRef.current) {
+        return;
+      }
+      progressCheckedRef.current = true;
+      
       const response = await fetch(
         `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/sessions/team-activity-progress/?team=${teamId}&activity=${activityId}&session_stage=${sessionStageId}`
       );
@@ -307,52 +662,139 @@ export function TabletMinijuego() {
           const responseData = progress.response_data || {};
           const answers = responseData.answers || [];
           
-          // Restaurar progreso
-          setCompletedItems(answers);
+          // Restaurar índice actual del anagrama
+          const savedIndex = responseData.anagram_current_index;
+          if (savedIndex !== undefined && savedIndex !== null) {
+            console.log(`[checkExistingProgress] Restaurando índice del anagrama desde progreso: ${savedIndex}`);
+            setCurrentGameIndex(savedIndex);
+          } else if (answers.length > 0) {
+            // Si no hay índice guardado, calcular basado en respuestas correctas
+            const correctAnswers = answers.filter((a: any) => 
+              a.word && a.answer && a.word.toLowerCase() === a.answer.toLowerCase()
+            );
+            const indexToSet = correctAnswers.length;
+            console.log(`[checkExistingProgress] No hay índice guardado, calculando desde respuestas correctas: ${indexToSet} de ${answers.length} respuestas`);
+            setCurrentGameIndex(indexToSet);
+          }
           
-          // Restaurar palabras encontradas para sopa de letras
           const foundWordsFromData = responseData.found_words || [];
           if (foundWordsFromData.length > 0) {
             setFoundWords(foundWordsFromData.map((w: string) => w.toUpperCase()));
           }
           
-          // Determinar qué parte mostrar basado en el progreso
-          const minigamePart = responseData.minigame_part;
           const hasWordSearchProgress = foundWordsFromData.length > 0;
           const hasAnagramProgress = answers.length > 0;
           
-          // Obtener el número real de palabras esperadas
-          const totalWordsExpected = responseData.total_words || 3;
+          const generalKnowledgeData = responseData.general_knowledge || {};
+          const hasGeneralKnowledgeProgress = generalKnowledgeData.answers && generalKnowledgeData.answers.length > 0;
+          const generalKnowledgeCompleted = generalKnowledgeData.completed || false;
+          const totalWordsExpected = responseData.total_words || 5;
           
-          // Si hay progreso en ambas partes o solo en una, determinar la parte actual
-          if (hasWordSearchProgress && foundWordsFromData.length >= totalWordsExpected && !hasAnagramProgress) {
-            // Completaron sopa de letras pero no han empezado anagrama
+          // Si hay progreso en general_knowledge, mostrar esa parte
+          if (hasGeneralKnowledgeProgress || generalKnowledgeCompleted) {
+            setCurrentPart('general_knowledge');
+            if (generalKnowledgeData.questions_data && generalKnowledgeData.questions_data.length > 0) {
+              // Primero establecer las preguntas
+              if (generalKnowledgeQuestions.length === 0 || 
+                  JSON.stringify(generalKnowledgeQuestions.map(q => q.id)) !== 
+                  JSON.stringify(generalKnowledgeData.questions_data.map((q: any) => q.id))) {
+                setGeneralKnowledgeQuestions(generalKnowledgeData.questions_data);
+              }
+              
+              // IMPORTANTE: Restaurar respuestas DESPUÉS de establecer las preguntas
+              if (generalKnowledgeData.answers && Array.isArray(generalKnowledgeData.answers)) {
+                const answeredCount = generalKnowledgeData.answers.length;
+                const totalQuestions = generalKnowledgeData.questions_data?.length || 0;
+                console.log(`[checkExistingProgress] 📝 Conocimiento general: ya se respondieron ${answeredCount} preguntas de ${totalQuestions}`);
+                
+                const answersMap = new Map<number, number>();
+                generalKnowledgeData.answers.forEach((a: any) => {
+                  if (a.question_id !== undefined && a.selected !== undefined) {
+                    answersMap.set(a.question_id, a.selected);
+                  }
+                });
+                
+                // Establecer respuestas e índice INMEDIATAMENTE (antes de que el componente se renderice)
+                setGeneralKnowledgeSelectedAnswers(answersMap);
+                previousGeneralKnowledgeAnswersRef.current = new Map(answersMap);
+                // El índice actual es la cantidad de respuestas (mostrar la siguiente)
+                setGeneralKnowledgeCurrentIndex(answeredCount);
+              }
+            } else if (generalKnowledgeQuestions.length === 0) {
+              loadGeneralKnowledgeQuestions();
+            }
+          } else if (hasAnagramProgress && (answers.length >= totalWordsExpected || responseData.anagram_completed)) {
+            setCurrentPart('general_knowledge');
+            if (minigameData?.type === MinigameType.ANAGRAMA) {
+              setCurrentGameIndex(minigameData.words.length);
+            } else {
+              setCurrentGameIndex(totalWordsExpected);
+            }
+            if (responseData.general_knowledge?.questions_data && responseData.general_knowledge.questions_data.length > 0) {
+              console.log('[checkExistingProgress] 📚 Restaurando preguntas de conocimiento general:', responseData.general_knowledge.questions_data.length);
+              setGeneralKnowledgeQuestions(responseData.general_knowledge.questions_data);
+              
+              // Restaurar respuestas DESPUÉS de establecer las preguntas
+              if (responseData.general_knowledge.answers && Array.isArray(responseData.general_knowledge.answers)) {
+                const answeredCount = responseData.general_knowledge.answers.length;
+                console.log('[checkExistingProgress] 📝 Conocimiento general: ya se respondieron', answeredCount, 'preguntas de', responseData.general_knowledge.questions_data.length);
+                
+                const answersMap = new Map<number, number>();
+                responseData.general_knowledge.answers.forEach((a: any) => {
+                  if (a.question_id !== undefined && a.selected !== undefined) {
+                    answersMap.set(a.question_id, a.selected);
+                  }
+                });
+                
+                // Establecer respuestas e índice INMEDIATAMENTE
+                setGeneralKnowledgeSelectedAnswers(answersMap);
+                previousGeneralKnowledgeAnswersRef.current = new Map(answersMap);
+                // El índice actual es la cantidad de respuestas (mostrar la siguiente)
+                setGeneralKnowledgeCurrentIndex(answeredCount);
+              }
+            } else if (generalKnowledgeQuestions.length === 0) {
+              loadGeneralKnowledgeQuestions();
+            }
+          } else if (hasWordSearchProgress && foundWordsFromData.length >= totalWordsExpected && !hasAnagramProgress) {
             setCurrentPart('anagram');
-            // Cargar datos de anagrama si no están cargados
-            if (minigameData?.type !== MinigameType.ANAGRAMA && currentActivityId && teamId && sessionStageId) {
-              loadActivityWithWordSearch(currentActivityId, teamId, sessionStageId)
+            if (minigameData?.type !== MinigameType.ANAGRAMA && activityId && teamId && sessionStageId) {
+              loadActivityWithWordSearch(activityId, teamId, sessionStageId)
                 .then(activityData => {
-                  const config = activityData.config_data || {};
                   const anagramType = MinigameType.ANAGRAMA;
                   setCurrentGameType(anagramType);
-                  const parsedData = parseMinigameConfig(config, anagramType);
-                  setMinigameData(parsedData);
+                  const anagramDataFromBackend = activityData.anagram_data;
+                  if (anagramDataFromBackend && anagramDataFromBackend.words && anagramDataFromBackend.words.length > 0) {
+                    const formattedWords = anagramDataFromBackend.words.map((w: any) => {
+                      if (typeof w === 'object' && w.word && (w.anagram || w.scrambled_word)) {
+                        return { word: w.word, anagram: w.anagram || w.scrambled_word };
+                      }
+                      console.error('ERROR: El backend envió formato incorrecto:', w);
+                      throw new Error('Formato de anagrama incorrecto del backend');
+                    });
+                    setMinigameData({
+                      type: anagramType,
+                      words: formattedWords,
+                    });
+                    minigameDataLoadedRef.current = true;
+                  } else {
+                    console.error('[checkExistingProgress] Backend no devolvió anagram_data');
+                    toast.error('Error: No se pudieron cargar las palabras del anagrama.');
+                  }
                 })
                 .catch(error => {
                   console.error('Error loading activity:', error);
                 });
             }
           } else if (hasWordSearchProgress && foundWordsFromData.length < totalWordsExpected) {
-            // Están en progreso con sopa de letras
             setCurrentPart('word_search');
-            if (minigameData?.type !== MinigameType.WORD_SEARCH && currentActivityId && teamId && sessionStageId) {
-              loadActivityWithWordSearch(currentActivityId, teamId, sessionStageId)
+            if (!minigameData || minigameData.type !== MinigameType.WORD_SEARCH) {
+              if (activityId && teamId && sessionStageId && !loadingMinijuegoRef.current) {
+                loadingMinijuegoRef.current = true;
+              loadActivityWithWordSearch(activityId, teamId, sessionStageId)
                 .then(activityData => {
                   const wordSearchDataFromBackend = activityData.word_search_data;
                   const wordSearchType = MinigameType.WORD_SEARCH;
                   setCurrentGameType(wordSearchType);
-                  
-                  // Usar word_search_data del backend
                   let parsedData: WordSearchData;
                   if (wordSearchDataFromBackend && wordSearchDataFromBackend.words && wordSearchDataFromBackend.grid) {
                     parsedData = {
@@ -369,46 +811,131 @@ export function TabletMinijuego() {
                     parsedData = parseMinigameConfig(config, wordSearchType, seed) as WordSearchData;
                   }
                   setMinigameData(parsedData);
+                    loadingMinijuegoRef.current = false;
                 })
                 .catch(error => {
                   console.error('Error loading activity:', error);
-                });
+                    loadingMinijuegoRef.current = false;
+                  });
+              }
             }
-          } else if (hasAnagramProgress) {
-            // Están en anagrama
+          } else if (hasAnagramProgress && answers.length < totalWordsExpected && !responseData.anagram_completed) {
             setCurrentPart('anagram');
-            if (minigameData?.type !== MinigameType.ANAGRAMA && currentActivityId && teamId && sessionStageId) {
-              loadActivityWithWordSearch(currentActivityId, teamId, sessionStageId)
+            const savedAnagramWords = responseData.anagram_words;
+            if (savedAnagramWords && Array.isArray(savedAnagramWords) && savedAnagramWords.length > 0) {
+              const anagramType = MinigameType.ANAGRAMA;
+              setCurrentGameType(anagramType);
+              const formattedWords = savedAnagramWords.map((w: any) => {
+                if (typeof w === 'object' && w.word && (w.anagram || w.scrambled_word)) {
+                  return { word: w.word, anagram: w.anagram || w.scrambled_word };
+                }
+                console.error('ERROR: Palabra guardada sin formato correcto:', w);
+                throw new Error('Formato de palabra guardada incorrecto');
+              });
+              
+                setMinigameData({
+                  type: anagramType,
+                words: formattedWords,
+              });
+              minigameDataLoadedRef.current = true;
+              const savedIndex = responseData.anagram_current_index;
+              if (savedIndex !== undefined && savedIndex !== null) {
+                console.log(`[checkExistingProgress] Restaurando índice del anagrama: ${savedIndex}`);
+                setCurrentGameIndex(savedIndex);
+              } else if (answers.length > 0) {
+                setCurrentGameIndex(answers.length);
+              }
+            } else if (activityId && teamId && sessionStageId) {
+              loadActivityWithWordSearch(activityId, teamId, sessionStageId)
                 .then(activityData => {
-                  const config = activityData.config_data || {};
                   const anagramType = MinigameType.ANAGRAMA;
                   setCurrentGameType(anagramType);
-                  const parsedData = parseMinigameConfig(config, anagramType);
-                  setMinigameData(parsedData);
+                  const anagramDataFromBackend = activityData.anagram_data;
+                    if (anagramDataFromBackend && anagramDataFromBackend.words && anagramDataFromBackend.words.length > 0) {
+                      // Validar que tenga exactamente 5 palabras
+                      if (anagramDataFromBackend.words.length !== 5) {
+                        console.error(`ERROR: Backend devolvió ${anagramDataFromBackend.words.length} palabras, se esperaban exactamente 5`);
+                        toast.error(`Error: Se recibieron ${anagramDataFromBackend.words.length} palabras del anagrama. Se esperaban 5.`);
+                        return;
+                      }
+                      
+                      // Validar formato de palabras
+                      const validWords = anagramDataFromBackend.words.filter(w => 
+                        w && (typeof w === 'string' || (typeof w === 'object' && w.word))
+                      );
+                      
+                      if (validWords.length !== 5) {
+                        console.error(`ERROR: Solo ${validWords.length} palabras válidas de ${anagramDataFromBackend.words.length}`);
+                        toast.error('Error: Las palabras del anagrama no tienen el formato correcto.');
+                        return;
+                      }
+                      
+                      // El backend debe enviar objetos con word y anagram ya mezclado
+                      const formattedWords = validWords.map((w: any) => {
+                        if (typeof w === 'object' && w.word) {
+                          if (!w.anagram && !w.scrambled_word) {
+                            console.error('ERROR: El backend no envió el anagrama mezclado para la palabra:', w.word);
+                            toast.error('Error: El backend no envió el anagrama mezclado.');
+                            throw new Error('Anagrama faltante del backend');
+                          }
+                          return { word: w.word, anagram: w.anagram || w.scrambled_word };
+                        }
+                        console.error('ERROR: El backend envió una palabra como string simple. Debe enviar objetos con word y anagram.');
+                        toast.error('Error: Formato de datos incorrecto del backend.');
+                        throw new Error('Formato de anagrama incorrecto');
+                      });
+                      
+                      setMinigameData({
+                        type: anagramType,
+                        words: formattedWords,
+                      });
+                    minigameDataLoadedRef.current = true;
+                    const savedIndex = responseData.anagram_current_index;
+                    if (savedIndex !== undefined && savedIndex !== null) {
+                      console.log(`[checkExistingProgress] Restaurando índice del anagrama: ${savedIndex}`);
+                      setCurrentGameIndex(savedIndex);
+                    } else if (answers.length > 0) {
+                      setCurrentGameIndex(answers.length);
+                    }
+                    
+                    // Guardar las palabras en el progreso
+                      if (results.length > 0 && formattedWords.length === 5) {
+                        const progressToUpdate = results[0];
+                        const updatedResponseData = progressToUpdate.response_data || {};
+                        updatedResponseData.anagram_words = formattedWords;
+                        // Actualizar en el backend sin esperar respuesta
+                        fetch(
+                          `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/sessions/team-activity-progress/${progressToUpdate.id}/`,
+                          {
+                            method: 'PATCH',
+                            headers: {
+                              'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                              response_data: updatedResponseData,
+                            }),
+                          }
+                        ).catch(error => {
+                          console.error('Error guardando palabras del anagrama:', error);
+                      });
+                    }
+                  } else {
+                    console.error('ERROR: Backend no devolvió anagram_data');
+                    toast.error('Error: No se pudieron cargar las palabras del anagrama. Por favor, recarga la página.');
+                  }
                 })
                 .catch(error => {
                   console.error('Error loading activity:', error);
+                  toast.error('Error al cargar el anagrama. Por favor, recarga la página.');
                 });
-            }
-          }
-          
-          // Si está completado, mostrar pantalla de completado
-          if (progress.status === 'completed') {
-            if (minigameData?.type === MinigameType.ANAGRAMA) {
-              setCurrentGameIndex(minigameData.words.length);
-            } else if (minigameData?.type === MinigameType.WORD_SEARCH) {
-              // Ya está completo, foundWords ya tiene todas las palabras
-            }
-          } else {
-            // Continuar desde donde se quedó
-            if (minigameData?.type === MinigameType.ANAGRAMA) {
-              setCurrentGameIndex(answers.length);
             }
           }
         }
       }
+      progressCheckedRef.current = true;
     } catch (error) {
       console.error('Error checking game progress:', error);
+      progressCheckedRef.current = true;
     }
   };
 
@@ -495,9 +1022,11 @@ export function TabletMinijuego() {
     setSubmitting(true);
 
     if (isAnswerCorrect) {
-      // Guardar respuesta
-      const newCompletedItem = { word: currentWord.word, answer: userAnswerLower };
-      setCompletedItems([...completedItems, newCompletedItem]);
+      // Guardar respuesta (usar la palabra original en mayúsculas y la respuesta también en mayúsculas para consistencia con el backend)
+      const newCompletedItem = { word: currentWord.word.toUpperCase(), answer: userAnswerLower.toUpperCase() };
+
+      // Guardar el índice actual en el progreso
+      const newIndex = currentGameIndex + 1;
 
       // Enviar respuesta
       try {
@@ -515,6 +1044,8 @@ export function TabletMinijuego() {
               answers: [newCompletedItem],
               minigame_type: currentGameType,  // Enviar tipo de minijuego
               total_words: minigameData?.words.length || 0, // Enviar el número real de palabras generadas
+              current_index: newIndex, // Guardar el índice actual
+              anagram_words: minigameData.words.map((w: any) => w.word.toUpperCase()), // Enviar las palabras del anagrama
             }),
           }
         );
@@ -523,21 +1054,145 @@ export function TabletMinijuego() {
           const data = await response.json();
           const tokensEarned = data.tokens_earned || 0;
           
+          console.log(`[verifyAnswer] Respuesta del backend: tokens_earned=${tokensEarned}, correct_answers=${data.correct_answers || 0}, total_correct=${data.total_correct || 0}`);
+          
           if (tokensEarned > 0) {
-            toast.success(`¡Correcto! +${tokensEarned} tokens`);
-            // Recargar estado del equipo para actualizar tokens
+            toast.success(`¡Correcto! +${tokensEarned} token${tokensEarned > 1 ? 's' : ''}`);
+            // Actualizar tokens sin recargar toda la página (evitar que loadMinijuegoActivity se ejecute)
+            try {
             if (connectionId) {
-              loadGameState(connectionId);
+                const statusData = await tabletConnectionsAPI.getStatus(connectionId);
+                if (statusData?.team?.tokens_total !== undefined) {
+                  setTeam(prev => prev ? { ...prev, tokens_total: statusData.team.tokens_total } : prev);
+                }
+              }
+            } catch (error) {
+              console.error('Error al actualizar tokens:', error);
             }
+          } else {
+            // Si no se otorgaron tokens pero la respuesta fue correcta, puede ser que ya se otorgaron antes
+            console.log('[verifyAnswer] No se otorgaron tokens nuevos (puede ser que ya se otorgaron antes)');
           }
 
+          // Verificar si completó todas las palabras del anagrama
+          const newIndex = currentGameIndex + 1;
+          const isAnagramComplete = newIndex >= minigameData.words.length;
+          
+          console.log(`[verifyAnswer] currentGameIndex=${currentGameIndex}, newIndex=${newIndex}, words.length=${minigameData.words.length}, isAnagramComplete=${isAnagramComplete}`);
+          
+          if (isAnagramComplete) {
+            // Asegurar que el índice esté en el límite correcto
+            setCurrentGameIndex(minigameData.words.length);
+            
+            // Completó el anagrama, guardar progreso y cargar preguntas de conocimiento general
+            // Guardar que el anagrama está completado
+            try {
+              const progressResponse = await fetch(
+                `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/sessions/team-activity-progress/?team=${team.id}&activity=${currentActivityId}&session_stage=${currentSessionStageId}`
+              );
+              if (progressResponse.ok) {
+                const progressData = await progressResponse.json();
+                const results = Array.isArray(progressData.results) ? progressData.results : (Array.isArray(progressData) ? progressData : []);
+                if (results.length > 0) {
+                  const progress = results[0];
+                  const responseData = progress.response_data || {};
+                  await fetch(
+                    `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/sessions/team-activity-progress/${progress.id}/`,
+                    {
+                      method: 'PATCH',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({
+                        response_data: {
+                          ...responseData,
+                          anagram_completed: true,
+                          anagram_current_index: minigameData.words.length,
+                        },
+                      }),
+                    }
+                  );
+                }
+              }
+            } catch (error) {
+              console.error('Error al guardar progreso del anagrama completado:', error);
+            }
+            
+            // Avanzar directamente a parte 3 - las preguntas ya deberían estar cargadas desde el inicio
+            console.log('[verifyAnswer] Anagrama completado, avanzando a parte 3...');
+            setSubmitting(false);
+            setUserAnswer('');
+            setIsCorrect(null);
+            
+            // Cambiar a parte 3 directamente (sin pantalla de carga)
+            setCurrentPart('general_knowledge');
+            
+            // Verificar que las preguntas estén cargadas (si no, cargarlas)
+            if (generalKnowledgeQuestions.length === 0) {
+              console.warn('[verifyAnswer] No hay preguntas de conocimiento general cargadas, cargando...');
+              try {
+                await loadGeneralKnowledgeQuestions();
+              } catch (error) {
+                console.error('[verifyAnswer] Error al cargar preguntas:', error);
+                toast.error('Error al cargar las preguntas de conocimiento general. Intenta recargar la página.');
+              }
+            } else {
+              console.log(`[verifyAnswer] Preguntas de conocimiento general ya cargadas: ${generalKnowledgeQuestions.length}`);
+            }
+            
+            // Restaurar progreso de conocimiento general si existe
+            if (currentActivityId && currentSessionStageId && team.id) {
+              try {
+                const progressResponse = await fetch(
+                  `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/sessions/team-activity-progress/?team=${team.id}&activity=${currentActivityId}&session_stage=${currentSessionStageId}`
+                );
+                if (progressResponse.ok) {
+                  const progressData = await progressResponse.json();
+                  const results = Array.isArray(progressData.results) ? progressData.results : (Array.isArray(progressData) ? progressData : []);
+                  if (results.length > 0) {
+                    const progress = results[0];
+                    const responseData = progress.response_data || {};
+                    const generalKnowledgeData = responseData.general_knowledge || {};
+                    
+                    // IMPORTANTE: Restaurar preguntas PRIMERO, luego el índice
+                    if (generalKnowledgeData.questions_data && generalKnowledgeData.questions_data.length > 0) {
+                      console.log('[verifyAnswer] 📚 Restaurando preguntas de conocimiento general:', generalKnowledgeData.questions_data.length);
+                      setGeneralKnowledgeQuestions(generalKnowledgeData.questions_data);
+                      
+                      // Restaurar respuestas DESPUÉS de establecer las preguntas
+                      if (generalKnowledgeData.answers && Array.isArray(generalKnowledgeData.answers)) {
+                        const answeredCount = generalKnowledgeData.answers.length;
+                        console.log('[verifyAnswer] 📝 Conocimiento general: ya se respondieron', answeredCount, 'preguntas de', generalKnowledgeData.questions_data.length);
+                        
+                        const answersMap = new Map<number, number>();
+                        generalKnowledgeData.answers.forEach((a: any) => {
+                          if (a.question_id !== undefined && a.selected !== undefined) {
+                            answersMap.set(a.question_id, a.selected);
+                          }
+                        });
+                        
+                        // Establecer respuestas e índice INMEDIATAMENTE
+                        setGeneralKnowledgeSelectedAnswers(answersMap);
+                        previousGeneralKnowledgeAnswersRef.current = new Map(answersMap);
+                        // El índice actual es la cantidad de respuestas (mostrar la siguiente)
+                        setGeneralKnowledgeCurrentIndex(answeredCount);
+                      }
+                    }
+                  }
+                }
+              } catch (error) {
+                console.error('[verifyAnswer] Error al restaurar progreso de conocimiento general:', error);
+              }
+            }
+          } else {
           // Esperar un momento y mostrar siguiente palabra
           setTimeout(() => {
-            setCurrentGameIndex(currentGameIndex + 1);
+              setCurrentGameIndex(newIndex);
             setUserAnswer('');
             setIsCorrect(null);
             setSubmitting(false);
           }, 1500);
+          }
         } else {
           const errorData = await response.json().catch(() => ({}));
           toast.error('Error: ' + (errorData.error || 'Error desconocido'));
@@ -558,11 +1213,7 @@ export function TabletMinijuego() {
   };
 
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !submitting) {
-      verifyAnswer();
-    }
-  };
+  // handleKeyPress removido - no se usa, el componente AnagramGame maneja su propio onKeyPress
 
   const getTeamColorHex = (color: string) => {
     const colorMap: Record<string, string> = {
@@ -644,10 +1295,8 @@ export function TabletMinijuego() {
           loadGameState(connectionId);
         }
         
-        // Recargar progreso para actualizar el contador
-        if (currentActivityId && currentSessionStageId) {
-          checkExistingProgress(team.id, currentActivityId, currentSessionStageId);
-        }
+        // No recargar progreso aquí para evitar sobrescribir el estado actual
+        // El progreso se actualiza automáticamente cuando se envía la respuesta
       } else {
         const errorData = await response.json().catch(() => ({}));
         toast.error('Error: ' + (errorData.error || 'Error desconocido'));
@@ -701,7 +1350,188 @@ export function TabletMinijuego() {
     }
   };
   
-  const switchToPart = async (part: 'word_search' | 'anagram') => {
+  const loadGeneralKnowledgeQuestions = async (forceReload: boolean = false) => {
+    // Si ya hay preguntas cargadas y no se fuerza la recarga, no hacer nada
+    if (generalKnowledgeQuestions.length > 0 && !forceReload) {
+      console.log('[loadGeneralKnowledgeQuestions] Ya hay preguntas cargadas, no recargando');
+      return;
+    }
+    
+    console.log('[loadGeneralKnowledgeQuestions] Iniciando carga de preguntas...');
+    setLoadingGeneralKnowledge(true);
+    
+    try {
+      // Agregar timeout para evitar que se quede pegado
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Timeout: La carga de preguntas tomó demasiado tiempo')), 10000);
+      });
+      
+      const questionsPromise = challengesAPI.getRandomGeneralKnowledgeQuestions(5);
+      const questions = await Promise.race([questionsPromise, timeoutPromise]) as any;
+      
+      const questionsArray = Array.isArray(questions) ? questions : [];
+      console.log(`[loadGeneralKnowledgeQuestions] Preguntas recibidas: ${questionsArray.length}`);
+      setGeneralKnowledgeQuestions(questionsArray);
+      
+      // Guardar las preguntas en el progreso para que no cambien
+      if (questionsArray.length > 0 && team?.id && currentActivityId && currentSessionStageId) {
+        try {
+          console.log('[loadGeneralKnowledgeQuestions] Guardando preguntas en progreso...');
+          const existingProgress = await teamActivityProgressAPI.list({
+            team: team.id,
+            activity: currentActivityId,
+            session_stage: currentSessionStageId,
+          });
+          
+          const progressData = Array.isArray(existingProgress) ? existingProgress : [existingProgress];
+          const progress = progressData.length > 0 ? progressData[0] : null;
+          
+          if (progress) {
+            const responseData = progress.response_data || {};
+            // Solo guardar si no están ya guardadas
+            if (!responseData.general_knowledge?.questions_data || responseData.general_knowledge.questions_data.length === 0) {
+              await teamActivityProgressAPI.update(progress.id, {
+                response_data: {
+                  ...responseData,
+                  general_knowledge: {
+                    ...responseData.general_knowledge,
+                    questions: questionsArray.map(q => q.id), // Guardar solo los IDs
+                    questions_data: questionsArray, // Guardar los datos completos
+                  },
+                },
+              });
+              console.log('[loadGeneralKnowledgeQuestions] Preguntas guardadas en progreso');
+            } else {
+              console.log('[loadGeneralKnowledgeQuestions] Las preguntas ya estaban guardadas');
+            }
+          }
+        } catch (error) {
+          console.error('[loadGeneralKnowledgeQuestions] Error al guardar preguntas en progreso:', error);
+          // No bloquear el flujo si falla el guardado
+        }
+      } else {
+        console.warn('[loadGeneralKnowledgeQuestions] No se pueden guardar preguntas: faltan datos', {
+          hasTeam: !!team?.id,
+          hasActivity: !!currentActivityId,
+          hasSessionStage: !!currentSessionStageId,
+        });
+      }
+    } catch (error: any) {
+      console.error('[loadGeneralKnowledgeQuestions] Error al cargar preguntas de conocimiento general:', error);
+      toast.error('Error al cargar las preguntas: ' + (error.message || 'Error desconocido'));
+      // No lanzar el error, solo loguearlo para que el flujo continúe
+    } finally {
+      setLoadingGeneralKnowledge(false);
+      console.log('[loadGeneralKnowledgeQuestions] Finalizado');
+    }
+  };
+
+  const findNewlyAnsweredQuestion = (
+    previousAnswers: Map<number, number>,
+    selectedAnswers: Map<number, number>,
+    questions: any[]
+  ): { question: any; selected: number } | null => {
+    // Buscar la pregunta que tiene respuesta en selectedAnswers pero no en previousAnswers
+    for (const question of questions) {
+      if (selectedAnswers.has(question.id) && !previousAnswers.has(question.id)) {
+        return {
+          question,
+          selected: selectedAnswers.get(question.id)!
+        };
+      }
+    }
+    
+    // Si no encontramos por diferencia directa, usar el índice basado en el número de respuestas
+    if (selectedAnswers.size > previousAnswers.size) {
+      const answeredIndex = selectedAnswers.size - 1;
+      if (answeredIndex >= 0 && answeredIndex < questions.length) {
+        const question = questions[answeredIndex];
+        return {
+          question,
+          selected: selectedAnswers.get(question.id)!
+        };
+      }
+    }
+    
+    // Buscar cualquier pregunta que tenga respuesta nueva o modificada
+    for (const question of questions) {
+      if (selectedAnswers.has(question.id)) {
+        const currentSelected = selectedAnswers.get(question.id);
+        const previousSelected = previousAnswers.get(question.id);
+        
+        // Si la respuesta cambió o no existía antes
+        if (previousSelected === undefined || previousSelected !== currentSelected) {
+          return {
+            question,
+            selected: currentSelected!
+          };
+        }
+      }
+    }
+    
+    return null;
+  };
+
+  const handleGeneralKnowledgeComplete = async (results: Array<{ question_id: number; selected: number }>) => {
+    if (!currentActivityId || !currentSessionStageId || !team?.id) {
+      toast.error('Error: faltan datos necesarios');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/sessions/team-activity-progress/submit_general_knowledge/`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            team: team.id,
+            activity: currentActivityId,
+            session_stage: currentSessionStageId,
+            answers: results, // Solo question_id y selected, sin 'correct'
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error al enviar respuestas');
+      }
+
+      const data = await response.json();
+      setGeneralKnowledgeCompleted(true);
+      
+      console.log(`[handleGeneralKnowledgeComplete] Respuesta del backend: tokens_earned=${data.tokens_earned || 0}, correct_count=${data.correct_count || 0}, total_questions=${data.total_questions || 0}`);
+      
+      // El backend retorna tokens_earned, correct_count, etc.
+      const tokensEarned = data.tokens_earned || 0;
+      const correctCount = data.correct_count || 0;
+      const totalQuestions = data.total_questions || 5;
+      
+      if (tokensEarned > 0) {
+        toast.success(`¡Completado! Ganaste ${tokensEarned} token${tokensEarned > 1 ? 's' : ''} (${correctCount}/${totalQuestions} correctas)`);
+      } else {
+        toast.success(`¡Completado! (${correctCount}/${totalQuestions} correctas)`);
+      }
+      
+      // Recargar estado del equipo para actualizar tokens
+      if (connectionId) {
+        await loadGameState(connectionId);
+      }
+    } catch (error: any) {
+      console.error('Error al enviar respuestas:', error);
+      toast.error('Error al enviar las respuestas', {
+        description: error.message || 'Por favor intenta nuevamente',
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const switchToPart = async (part: 'word_search' | 'anagram' | 'general_knowledge') => {
     if (!currentActivityId || !team || !currentSessionStageId) return;
     
     setCurrentPart(part);
@@ -737,10 +1567,29 @@ export function TabletMinijuego() {
         }
         setMinigameData(parsedData);
       } else {
+        // Cargar anagrama desde el backend (NO usar parseMinigameConfig como fallback)
         const anagramType = MinigameType.ANAGRAMA;
         setCurrentGameType(anagramType);
-        const parsedData = parseMinigameConfig(config, anagramType);
-        setMinigameData(parsedData);
+        
+        // Usar anagram_data del backend si está disponible
+        const anagramDataFromBackend = activityData.anagram_data;
+        if (anagramDataFromBackend && anagramDataFromBackend.words && anagramDataFromBackend.words.length > 0) {
+          const formattedWords = anagramDataFromBackend.words.map((w: any) => {
+            if (typeof w === 'object' && w.word && (w.anagram || w.scrambled_word)) {
+              return { word: w.word, anagram: w.anagram || w.scrambled_word };
+            }
+            console.error('ERROR: El backend envió formato incorrecto:', w);
+            throw new Error('Formato de anagrama incorrecto del backend');
+          });
+          setMinigameData({
+            type: anagramType,
+            words: formattedWords,
+          });
+          console.log(`[switchToPart] Anagrama cargado desde backend: ${formattedWords.length} palabras`);
+        } else {
+          console.error('[switchToPart] Backend no devolvió anagram_data');
+          toast.error('Error: No se pudieron cargar las palabras del anagrama.');
+        }
       }
     } catch (error: any) {
       console.error('Error switching part:', error);
@@ -750,7 +1599,7 @@ export function TabletMinijuego() {
 
   const allCompleted = minigameData 
     ? (minigameData.type === MinigameType.ANAGRAMA 
-        ? currentGameIndex >= minigameData.words.length
+        ? currentGameIndex >= minigameData.words.length && generalKnowledgeCompleted
         : minigameData.type === MinigameType.WORD_SEARCH
         ? foundWords.length >= minigameData.words.length
         : false)
@@ -838,34 +1687,9 @@ export function TabletMinijuego() {
         >
           {/* Título y Descripción */}
           <div className="mb-4 sm:mb-5">
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="text-xl sm:text-2xl font-bold text-[#093c92]">
-                2. Presentación - Minijuego
-              </h2>
-              {/* Selector de partes */}
-              <div className="flex gap-2 bg-gray-100 rounded-lg p-1">
-                <button
-                  onClick={() => switchToPart('word_search')}
-                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                    currentPart === 'word_search'
-                      ? 'bg-blue-500 text-white shadow-md'
-                      : 'bg-transparent text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  🔍 Parte 1
-                </button>
-                <button
-                  onClick={() => switchToPart('anagram')}
-                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                    currentPart === 'anagram'
-                      ? 'bg-purple-500 text-white shadow-md'
-                      : 'bg-transparent text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  🧩 Parte 2
-                </button>
-              </div>
-            </div>
+            <h2 className="text-xl sm:text-2xl font-bold text-[#093c92] mb-2">
+              2. Presentación - Minijuego
+            </h2>
             <p className="text-gray-600 text-sm">
               {currentGameType === MinigameType.WORD_SEARCH 
                 ? 'Parte 1: Encuentra las palabras en la sopa de letras. Cada palabra encontrada vale 1 token'
@@ -900,10 +1724,10 @@ export function TabletMinijuego() {
             </div>
           )}
 
-          {/* Progreso */}
-          {!allCompleted && minigameData && minigameData.type === MinigameType.ANAGRAMA && (
+          {/* Progreso - Solo mostrar para anagrama, NO para general_knowledge */}
+          {currentPart === 'anagram' && !allCompleted && minigameData && minigameData.type === MinigameType.ANAGRAMA && currentGameIndex < minigameData.words.length && (
             <div className="text-center mb-4 sm:mb-5 text-gray-700 font-semibold text-sm sm:text-base">
-              Palabra <span className="text-[#093c92]">{currentGameIndex + 1}</span> de{' '}
+              Palabra <span className="text-[#093c92]">{Math.min(currentGameIndex + 1, minigameData.words.length)}</span> de{' '}
               <span className="text-[#093c92]">{minigameData.words.length}</span>
             </div>
           )}
@@ -915,7 +1739,76 @@ export function TabletMinijuego() {
               <p className="text-xl sm:text-2xl font-bold text-green-700 mb-2">¡Felicidades!</p>
               <p className="text-green-800 text-sm sm:text-base">Has completado el minijuego</p>
             </div>
-          ) : minigameData && currentGameType === MinigameType.ANAGRAMA ? (
+          ) : currentPart === 'general_knowledge' ? (
+            loadingGeneralKnowledge ? (
+              <div className="text-center text-gray-500">
+                <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
+                <p>Cargando preguntas...</p>
+              </div>
+            ) : generalKnowledgeQuestions.length > 0 ? (
+              <GeneralKnowledgeQuiz
+                questions={generalKnowledgeQuestions}
+                onComplete={handleGeneralKnowledgeComplete}
+                initialIndex={generalKnowledgeCurrentIndex}
+                initialSelectedAnswers={generalKnowledgeSelectedAnswers}
+                onProgressChange={async (currentIndex, selectedAnswers) => {
+                  const previousAnswers = new Map(generalKnowledgeSelectedAnswers);
+                  setGeneralKnowledgeCurrentIndex(currentIndex);
+                  setGeneralKnowledgeSelectedAnswers(selectedAnswers);
+                  
+                  // Enviar respuesta individual al backend inmediatamente para otorgar token si es correcta
+                  if (team?.id && currentActivityId && currentSessionStageId && generalKnowledgeQuestions.length > 0) {
+                    try {
+                      const result = findNewlyAnsweredQuestion(previousAnswers, selectedAnswers, generalKnowledgeQuestions);
+                      
+                      if (result && result.selected !== undefined && result.selected !== null) {
+                        // Enviar solo la respuesta que se acaba de dar
+                        const response = await fetch(
+                          `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/sessions/team-activity-progress/submit_general_knowledge/`,
+                          {
+                            method: 'POST',
+                            headers: {
+                              'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                              team: team.id,
+                              activity: currentActivityId,
+                              session_stage: currentSessionStageId,
+                              answers: [{
+                                question_id: result.question.id,
+                                selected: result.selected
+                              }],
+                            }),
+                          }
+                        );
+                        
+                        if (response.ok) {
+                          const data = await response.json();
+                          if (data.tokens_earned > 0) {
+                            toast.success(`¡Correcto! +${data.tokens_earned} token`);
+                            // Actualizar tokens del equipo sin recargar toda la página
+                            if (connectionId) {
+                              const statusData = await tabletConnectionsAPI.getStatus(connectionId);
+                              if (statusData?.team?.tokens_total !== undefined) {
+                                setTeam(prev => prev ? { ...prev, tokens_total: statusData.team.tokens_total } : prev);
+                              }
+                            }
+                          }
+                        }
+                      }
+                    } catch (error) {
+                      console.error('Error enviando respuesta individual:', error);
+                      // No mostrar error al usuario, solo loguearlo
+                    }
+                  }
+                }}
+              />
+            ) : (
+              <div className="text-center text-gray-500">
+                <p>No hay preguntas disponibles</p>
+              </div>
+            )
+          ) : currentPart === 'anagram' && minigameData && minigameData.type === MinigameType.ANAGRAMA ? (
             <AnagramGame
               data={minigameData}
               currentIndex={currentGameIndex}

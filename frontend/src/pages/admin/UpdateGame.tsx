@@ -10,6 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { challengesAPI, academicAPI } from '@/services';
 import { Plus, Trash2, Search } from 'lucide-react';
+import { WordSearchPreview } from '@/components/admin/WordSearchPreview';
 
 interface Activity {
   id: number;
@@ -80,6 +81,37 @@ export function UpdateGame() {
   const [creatingChallenge, setCreatingChallenge] = useState(false);
   const [savingTopic, setSavingTopic] = useState(false);
   const [savingChallenge, setSavingChallenge] = useState(false);
+
+  // Estados para gestión de Minijuego
+  const [wordSearchOptions, setWordSearchOptions] = useState<any[]>([]);
+  const [loadingWordSearch, setLoadingWordSearch] = useState(false);
+  const [creatingWordSearch, setCreatingWordSearch] = useState(false);
+  const [wordSearchWords, setWordSearchWords] = useState<string[]>(['']);
+  const [wordSearchName, setWordSearchName] = useState('');
+  const [wordSearchPreview, setWordSearchPreview] = useState<any>(null);
+  const [generatingPreview, setGeneratingPreview] = useState(false);
+
+  const [anagramWords, setAnagramWords] = useState<any[]>([]);
+  const [loadingAnagram, setLoadingAnagram] = useState(false);
+  const [creatingAnagram, setCreatingAnagram] = useState(false);
+  const [newAnagramWord, setNewAnagramWord] = useState('');
+  const [anagramPreview, setAnagramPreview] = useState<string>('');
+
+  const [generalKnowledgeQuestions, setGeneralKnowledgeQuestions] = useState<any[]>([]);
+  const [loadingGeneralKnowledge, setLoadingGeneralKnowledge] = useState(false);
+  const [creatingGeneralKnowledge, setCreatingGeneralKnowledge] = useState(false);
+  const [editingGeneralKnowledge, setEditingGeneralKnowledge] = useState<any | null>(null);
+
+  // Estados para gestión de Presentación
+  const [chaosQuestions, setChaosQuestions] = useState<any[]>([]);
+  const [loadingChaos, setLoadingChaos] = useState(false);
+  const [creatingChaos, setCreatingChaos] = useState(false);
+  const [editingChaos, setEditingChaos] = useState<any | null>(null);
+
+  const [presentationGeneralKnowledge, setPresentationGeneralKnowledge] = useState<any[]>([]);
+  const [loadingPresentationGeneralKnowledge, setLoadingPresentationGeneralKnowledge] = useState(false);
+  const [creatingPresentationGeneralKnowledge, setCreatingPresentationGeneralKnowledge] = useState(false);
+  const [editingPresentationGeneralKnowledge, setEditingPresentationGeneralKnowledge] = useState<any | null>(null);
 
   useEffect(() => {
     // Verificar autenticación
@@ -304,6 +336,22 @@ export function UpdateGame() {
         await loadTopics();
         await loadFaculties();
       }
+      
+      // Cargar datos según el tipo de actividad
+      const activityName = (fullActivity.name || '').toLowerCase();
+      const activityType = (fullActivity.activity_type_name || '').toLowerCase();
+      
+      if (activityName.includes('minijuego') || activityType.includes('minijuego')) {
+        // Cargar datos del minijuego
+        await loadWordSearchOptions(fullActivity.id);
+        await loadAnagramWords();
+        await loadGeneralKnowledgeQuestions();
+      } else if (activityName.includes('presentacion') || activityName.includes('presentación')) {
+        // Cargar datos de presentación
+        await loadChaosQuestions();
+        await loadGeneralKnowledgeQuestions();
+        setPresentationGeneralKnowledge(generalKnowledgeQuestions);
+      }
     } catch (error: any) {
       console.error('Error al cargar actividad:', error);
       toast.error('Error al cargar la actividad');
@@ -502,6 +550,147 @@ export function UpdateGame() {
 
   const handleBackToChallenges = () => {
     setSelectedChallenge(null);
+  };
+
+  // Funciones para gestión de Minijuego - Sopa de Letras
+  const loadWordSearchOptions = async (activityId: number) => {
+    setLoadingWordSearch(true);
+    try {
+      const options = await challengesAPI.getWordSearchOptions(activityId);
+      setWordSearchOptions(Array.isArray(options) ? options : []);
+    } catch (error) {
+      console.error('Error al cargar sopas de letras:', error);
+      toast.error('Error al cargar las sopas de letras');
+      setWordSearchOptions([]);
+    } finally {
+      setLoadingWordSearch(false);
+    }
+  };
+
+  const generateWordSearchPreview = async () => {
+    const words = wordSearchWords.filter(w => w.trim()).map(w => w.trim().toUpperCase());
+    if (words.length === 0) {
+      toast.error('Ingresa al menos una palabra');
+      return;
+    }
+    if (words.length > 5) {
+      toast.error('Máximo 5 palabras');
+      return;
+    }
+    setGeneratingPreview(true);
+    try {
+      const response = await challengesAPI.generateWordSearchPreview({
+        words,
+        name: wordSearchName || 'Sopa de Letras',
+      });
+      setWordSearchPreview(response.preview);
+      toast.success('Preview generado');
+    } catch (error: any) {
+      toast.error('Error al generar preview', {
+        description: error.response?.data?.error || 'Por favor intenta nuevamente',
+      });
+    } finally {
+      setGeneratingPreview(false);
+    }
+  };
+
+  const confirmWordSearch = async () => {
+    if (!wordSearchPreview || !selectedActivity) return;
+    try {
+      await challengesAPI.confirmWordSearch({
+        words: wordSearchWords.filter(w => w.trim()).map(w => w.trim().toUpperCase()),
+        name: wordSearchName || 'Sopa de Letras',
+        grid: wordSearchPreview.grid,
+        word_positions: wordSearchPreview.wordPositions,
+        seed: wordSearchPreview.seed,
+        activity_id: selectedActivity.id,
+      });
+      toast.success('Sopa de letras guardada');
+      setCreatingWordSearch(false);
+      setWordSearchWords(['']);
+      setWordSearchName('');
+      setWordSearchPreview(null);
+      await loadWordSearchOptions(selectedActivity.id);
+    } catch (error: any) {
+      toast.error('Error al guardar', {
+        description: error.response?.data?.error || 'Por favor intenta nuevamente',
+      });
+    }
+  };
+
+  // Funciones para gestión de Anagrama
+  const loadAnagramWords = async () => {
+    setLoadingAnagram(true);
+    try {
+      const words = await challengesAPI.getAnagramWords();
+      setAnagramWords(Array.isArray(words) ? words : []);
+    } catch (error) {
+      console.error('Error al cargar palabras de anagrama:', error);
+      toast.error('Error al cargar las palabras');
+      setAnagramWords([]);
+    } finally {
+      setLoadingAnagram(false);
+    }
+  };
+
+  const generateAnagramPreview = (word: string) => {
+    if (!word.trim()) return;
+    // Desordenar la palabra
+    const wordArray = word.toUpperCase().split('');
+    for (let i = wordArray.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [wordArray[i], wordArray[j]] = [wordArray[j], wordArray[i]];
+    }
+    setAnagramPreview(wordArray.join(''));
+  };
+
+  const confirmAnagram = async () => {
+    if (!newAnagramWord.trim()) {
+      toast.error('Ingresa una palabra');
+      return;
+    }
+    try {
+      await challengesAPI.createAnagramWord({ word: newAnagramWord.trim().toUpperCase() });
+      toast.success('Palabra agregada');
+      setCreatingAnagram(false);
+      setNewAnagramWord('');
+      setAnagramPreview('');
+      await loadAnagramWords();
+    } catch (error: any) {
+      toast.error('Error al agregar palabra', {
+        description: error.response?.data?.error || 'Por favor intenta nuevamente',
+      });
+    }
+  };
+
+  // Funciones para gestión de Preguntas Conocimiento General
+  const loadGeneralKnowledgeQuestions = async () => {
+    setLoadingGeneralKnowledge(true);
+    try {
+      const questions = await challengesAPI.getGeneralKnowledgeQuestions();
+      setGeneralKnowledgeQuestions(Array.isArray(questions) ? questions : []);
+    } catch (error) {
+      console.error('Error al cargar preguntas:', error);
+      toast.error('Error al cargar las preguntas');
+      setGeneralKnowledgeQuestions([]);
+    } finally {
+      setLoadingGeneralKnowledge(false);
+    }
+  };
+
+  // Funciones para gestión de Preguntas del Caos
+  const loadChaosQuestions = async () => {
+    setLoadingChaos(true);
+    try {
+      const questions = await challengesAPI.getChaosQuestions();
+      setChaosQuestions(Array.isArray(questions) ? questions : []);
+    } catch (error) {
+      console.error('Error al cargar preguntas del caos:', error);
+      toast.error('Error al cargar las preguntas');
+      setChaosQuestions([]);
+    } finally {
+      setLoadingChaos(false);
+    }
   };
 
   // Función para obtener el icono correcto dependiendo si es una actividad o pantalla "otra"
@@ -1337,6 +1526,765 @@ export function UpdateGame() {
                           </Button>
                         </div>
                       </div>
+
+                      {/* Secciones de Gestión para Minijuego */}
+                      {selectedActivity && (
+                        (selectedActivity.name?.toLowerCase().includes('minijuego') || 
+                         selectedActivity.activity_type_name?.toLowerCase().includes('minijuego')) && 
+                        !(selectedActivity as any)?._isUnified && (
+                          <div className="space-y-6">
+                            {/* Sopa de Letras */}
+                            <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                              <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-2">
+                                  <Gamepad2 className="w-5 h-5 text-blue-900" />
+                                  <Label className="text-blue-900 font-semibold text-lg">Sopa de Letras</Label>
+                                </div>
+                                <Button
+                                  onClick={() => {
+                                    setCreatingWordSearch(true);
+                                    setWordSearchWords(['']);
+                                    setWordSearchName('');
+                                    setWordSearchPreview(null);
+                                  }}
+                                  className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white"
+                                >
+                                  <Plus className="w-4 h-4 mr-2" />
+                                  Crear Nueva Sopa
+                                </Button>
+                              </div>
+                              
+                              {creatingWordSearch ? (
+                                <div className="space-y-4">
+                                  <Input
+                                    label="Nombre"
+                                    value={wordSearchName}
+                                    onChange={(e) => setWordSearchName(e.target.value)}
+                                    placeholder="Ej: Sopa de Letras 1"
+                                  />
+                                  <div className="space-y-2">
+                                    <Label>Palabras (máximo 5)</Label>
+                                    {wordSearchWords.map((word, index) => (
+                                      <Input
+                                        key={index}
+                                        value={word}
+                                        onChange={(e) => {
+                                          const newWords = [...wordSearchWords];
+                                          newWords[index] = e.target.value;
+                                          setWordSearchWords(newWords);
+                                        }}
+                                        placeholder={`Palabra ${index + 1}`}
+                                        maxLength={20}
+                                      />
+                                    ))}
+                                    {wordSearchWords.length < 5 && (
+                                      <Button
+                                        variant="outline"
+                                        onClick={() => setWordSearchWords([...wordSearchWords, ''])}
+                                      >
+                                        <Plus className="w-4 h-4 mr-2" />
+                                        Agregar Palabra
+                                      </Button>
+                                    )}
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <Button
+                                      onClick={generateWordSearchPreview}
+                                      disabled={generatingPreview}
+                                    >
+                                      {generatingPreview ? 'Generando...' : 'Generar Preview'}
+                                    </Button>
+                                    {wordSearchPreview && (
+                                      <>
+                                        <Button
+                                          variant="outline"
+                                          onClick={generateWordSearchPreview}
+                                          disabled={generatingPreview}
+                                        >
+                                          🔄 Regenerar
+                                        </Button>
+                                        <Button
+                                          onClick={confirmWordSearch}
+                                          className="bg-green-600 hover:bg-green-700 text-white"
+                                        >
+                                          ✅ Confirmar y Guardar
+                                        </Button>
+                                        <Button
+                                          variant="outline"
+                                          onClick={() => {
+                                            setCreatingWordSearch(false);
+                                            setWordSearchPreview(null);
+                                          }}
+                                        >
+                                          Cancelar
+                                        </Button>
+                                      </>
+                                    )}
+                                  </div>
+                                  {wordSearchPreview && (
+                                    <div className="mt-4">
+                                      <WordSearchPreview
+                                        grid={wordSearchPreview.grid}
+                                        wordPositions={wordSearchPreview.wordPositions}
+                                        words={wordSearchPreview.words}
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <>
+                                  {loadingWordSearch ? (
+                                    <div className="flex items-center justify-center py-12">
+                                      <Loader2 className="w-6 h-6 animate-spin text-pink-500" />
+                                    </div>
+                                  ) : wordSearchOptions.length === 0 ? (
+                                    <p className="text-gray-500 text-center py-8">No hay sopas de letras creadas</p>
+                                  ) : (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                      {wordSearchOptions.map((option) => (
+                                        <motion.div
+                                          key={option.id}
+                                          initial={{ opacity: 0, scale: 0.9 }}
+                                          animate={{ opacity: 1, scale: 1 }}
+                                          className="bg-white rounded-xl p-4 border border-gray-200"
+                                        >
+                                          <div className="flex items-start justify-between mb-2">
+                                            <h3 className="font-semibold text-blue-900">{option.name}</h3>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              onClick={async (e) => {
+                                                e.stopPropagation();
+                                                if (window.confirm(`¿Estás seguro de eliminar "${option.name}"?`)) {
+                                                  try {
+                                                    await challengesAPI.deleteWordSearchOption(option.id);
+                                                    toast.success('Sopa de letras eliminada');
+                                                    await loadWordSearchOptions(selectedActivity.id);
+                                                  } catch (error: any) {
+                                                    toast.error('Error al eliminar', {
+                                                      description: error.response?.data?.error || 'Por favor intenta nuevamente',
+                                                    });
+                                                  }
+                                                }
+                                              }}
+                                            >
+                                              <Trash2 className="w-4 h-4 text-red-500" />
+                                            </Button>
+                                          </div>
+                                          <p className="text-xs text-gray-600">
+                                            {option.words?.length || 0} palabra{(option.words?.length || 0) !== 1 ? 's' : ''}
+                                          </p>
+                                        </motion.div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </>
+                              )}
+                            </div>
+
+                            {/* Anagrama */}
+                            <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                              <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-2">
+                                  <Gamepad2 className="w-5 h-5 text-blue-900" />
+                                  <Label className="text-blue-900 font-semibold text-lg">Anagrama</Label>
+                                </div>
+                                <Button
+                                  onClick={() => {
+                                    setCreatingAnagram(true);
+                                    setNewAnagramWord('');
+                                    setAnagramPreview('');
+                                  }}
+                                  className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white"
+                                >
+                                  <Plus className="w-4 h-4 mr-2" />
+                                  Agregar Palabra
+                                </Button>
+                              </div>
+                              
+                              {creatingAnagram ? (
+                                <div className="space-y-4">
+                                  <Input
+                                    label="Palabra"
+                                    value={newAnagramWord}
+                                    onChange={(e) => {
+                                      setNewAnagramWord(e.target.value);
+                                      generateAnagramPreview(e.target.value);
+                                    }}
+                                    placeholder="Ej: EMPRENDIMIENTO"
+                                    maxLength={20}
+                                  />
+                                  {anagramPreview && (
+                                    <div className="bg-white rounded-lg p-4 border border-gray-200">
+                                      <p className="text-sm text-gray-600 mb-2">Preview (desordenada):</p>
+                                      <p className="text-2xl font-bold text-blue-900">{anagramPreview}</p>
+                                    </div>
+                                  )}
+                                  <div className="flex gap-2">
+                                    <Button
+                                      onClick={confirmAnagram}
+                                      className="bg-green-600 hover:bg-green-700 text-white"
+                                    >
+                                      ✅ Confirmar y Guardar
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      onClick={() => {
+                                        setCreatingAnagram(false);
+                                        setNewAnagramWord('');
+                                        setAnagramPreview('');
+                                      }}
+                                    >
+                                      Cancelar
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <>
+                                  {loadingAnagram ? (
+                                    <div className="flex items-center justify-center py-12">
+                                      <Loader2 className="w-6 h-6 animate-spin text-pink-500" />
+                                    </div>
+                                  ) : anagramWords.length === 0 ? (
+                                    <p className="text-gray-500 text-center py-8">No hay palabras agregadas</p>
+                                  ) : (
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                                      {anagramWords.map((word) => (
+                                        <motion.div
+                                          key={word.id}
+                                          initial={{ opacity: 0, scale: 0.9 }}
+                                          animate={{ opacity: 1, scale: 1 }}
+                                          className="bg-white rounded-lg p-3 border border-gray-200 flex items-center justify-between"
+                                        >
+                                          <span className="font-medium text-blue-900">{word.word}</span>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={async () => {
+                                              if (window.confirm(`¿Eliminar "${word.word}"?`)) {
+                                                try {
+                                                  await challengesAPI.deleteAnagramWord(word.id);
+                                                  toast.success('Palabra eliminada');
+                                                  await loadAnagramWords();
+                                                } catch (error: any) {
+                                                  toast.error('Error al eliminar', {
+                                                    description: error.response?.data?.error || 'Por favor intenta nuevamente',
+                                                  });
+                                                }
+                                              }
+                                            }}
+                                          >
+                                            <Trash2 className="w-3 h-3 text-red-500" />
+                                          </Button>
+                                        </motion.div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </>
+                              )}
+                            </div>
+
+                            {/* Preguntas Conocimiento General */}
+                            <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                              <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-2">
+                                  <HelpCircle className="w-5 h-5 text-blue-900" />
+                                  <Label className="text-blue-900 font-semibold text-lg">Preguntas de Conocimiento General</Label>
+                                </div>
+                                <Button
+                                  onClick={() => {
+                                    setCreatingGeneralKnowledge(true);
+                                    setEditingGeneralKnowledge({
+                                      question: '',
+                                      option_a: '',
+                                      option_b: '',
+                                      option_c: '',
+                                      option_d: '',
+                                      correct_answer: 0,
+                                    });
+                                  }}
+                                  className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white"
+                                >
+                                  <Plus className="w-4 h-4 mr-2" />
+                                  Crear Pregunta
+                                </Button>
+                              </div>
+                              
+                              {(creatingGeneralKnowledge || editingGeneralKnowledge) ? (
+                                <div className="space-y-4 bg-white rounded-lg p-4 border border-gray-200">
+                                  <Textarea
+                                    label="Pregunta"
+                                    value={editingGeneralKnowledge?.question || ''}
+                                    onChange={(e) => setEditingGeneralKnowledge({ ...editingGeneralKnowledge, question: e.target.value })}
+                                    placeholder="Ej: ¿Qué es un MVP en emprendimiento?"
+                                    rows={3}
+                                  />
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <Input
+                                      label="Opción A"
+                                      value={editingGeneralKnowledge?.option_a || ''}
+                                      onChange={(e) => setEditingGeneralKnowledge({ ...editingGeneralKnowledge, option_a: e.target.value })}
+                                      placeholder="Opción A"
+                                    />
+                                    <Input
+                                      label="Opción B"
+                                      value={editingGeneralKnowledge?.option_b || ''}
+                                      onChange={(e) => setEditingGeneralKnowledge({ ...editingGeneralKnowledge, option_b: e.target.value })}
+                                      placeholder="Opción B"
+                                    />
+                                    <Input
+                                      label="Opción C"
+                                      value={editingGeneralKnowledge?.option_c || ''}
+                                      onChange={(e) => setEditingGeneralKnowledge({ ...editingGeneralKnowledge, option_c: e.target.value })}
+                                      placeholder="Opción C"
+                                    />
+                                    <Input
+                                      label="Opción D"
+                                      value={editingGeneralKnowledge?.option_d || ''}
+                                      onChange={(e) => setEditingGeneralKnowledge({ ...editingGeneralKnowledge, option_d: e.target.value })}
+                                      placeholder="Opción D"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label>Respuesta Correcta</Label>
+                                    <select
+                                      value={editingGeneralKnowledge?.correct_answer ?? 0}
+                                      onChange={(e) => setEditingGeneralKnowledge({ ...editingGeneralKnowledge, correct_answer: parseInt(e.target.value) })}
+                                      className="w-full mt-2 px-3 py-2 border border-gray-300 rounded-lg"
+                                    >
+                                      <option value={0}>A</option>
+                                      <option value={1}>B</option>
+                                      <option value={2}>C</option>
+                                      <option value={3}>D</option>
+                                    </select>
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <Button
+                                      onClick={async () => {
+                                        try {
+                                          if (editingGeneralKnowledge?.id) {
+                                            await challengesAPI.updateGeneralKnowledgeQuestion(editingGeneralKnowledge.id, editingGeneralKnowledge);
+                                            toast.success('Pregunta actualizada');
+                                          } else {
+                                            await challengesAPI.createGeneralKnowledgeQuestion(editingGeneralKnowledge);
+                                            toast.success('Pregunta creada');
+                                          }
+                                          setCreatingGeneralKnowledge(false);
+                                          setEditingGeneralKnowledge(null);
+                                          await loadGeneralKnowledgeQuestions();
+                                        } catch (error: any) {
+                                          toast.error('Error al guardar', {
+                                            description: error.response?.data?.error || 'Por favor intenta nuevamente',
+                                          });
+                                        }
+                                      }}
+                                      className="bg-green-600 hover:bg-green-700 text-white"
+                                    >
+                                      Guardar
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      onClick={() => {
+                                        setCreatingGeneralKnowledge(false);
+                                        setEditingGeneralKnowledge(null);
+                                      }}
+                                    >
+                                      Cancelar
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <>
+                                  {loadingGeneralKnowledge ? (
+                                    <div className="flex items-center justify-center py-12">
+                                      <Loader2 className="w-6 h-6 animate-spin text-pink-500" />
+                                    </div>
+                                  ) : generalKnowledgeQuestions.length === 0 ? (
+                                    <p className="text-gray-500 text-center py-8">No hay preguntas creadas</p>
+                                  ) : (
+                                    <div className="space-y-3">
+                                      {generalKnowledgeQuestions.map((question) => (
+                                        <motion.div
+                                          key={question.id}
+                                          initial={{ opacity: 0, y: 10 }}
+                                          animate={{ opacity: 1, y: 0 }}
+                                          className="bg-white rounded-lg p-4 border border-gray-200"
+                                        >
+                                          <div className="flex items-start justify-between">
+                                            <div className="flex-1">
+                                              <p className="font-semibold text-blue-900 mb-2">{question.question}</p>
+                                              <div className="grid grid-cols-2 gap-2 text-sm">
+                                                <p className={question.correct_answer === 0 ? 'text-green-600 font-bold' : 'text-gray-600'}>
+                                                  A: {question.option_a}
+                                                </p>
+                                                <p className={question.correct_answer === 1 ? 'text-green-600 font-bold' : 'text-gray-600'}>
+                                                  B: {question.option_b}
+                                                </p>
+                                                <p className={question.correct_answer === 2 ? 'text-green-600 font-bold' : 'text-gray-600'}>
+                                                  C: {question.option_c}
+                                                </p>
+                                                <p className={question.correct_answer === 3 ? 'text-green-600 font-bold' : 'text-gray-600'}>
+                                                  D: {question.option_d}
+                                                </p>
+                                              </div>
+                                            </div>
+                                            <div className="flex gap-2 ml-4">
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => {
+                                                  setEditingGeneralKnowledge(question);
+                                                  setCreatingGeneralKnowledge(false);
+                                                }}
+                                              >
+                                                <Edit className="w-4 h-4" />
+                                              </Button>
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={async () => {
+                                                  if (window.confirm('¿Eliminar esta pregunta?')) {
+                                                    try {
+                                                      await challengesAPI.deleteGeneralKnowledgeQuestion(question.id);
+                                                      toast.success('Pregunta eliminada');
+                                                      await loadGeneralKnowledgeQuestions();
+                                                    } catch (error: any) {
+                                                      toast.error('Error al eliminar', {
+                                                        description: error.response?.data?.error || 'Por favor intenta nuevamente',
+                                                      });
+                                                    }
+                                                  }
+                                                }}
+                                              >
+                                                <Trash2 className="w-4 h-4 text-red-500" />
+                                              </Button>
+                                            </div>
+                                          </div>
+                                        </motion.div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      )}
+
+                      {/* Secciones de Gestión para Presentación */}
+                      {selectedActivity && (
+                        (selectedActivity.name?.toLowerCase().includes('presentacion') || 
+                         selectedActivity.name?.toLowerCase().includes('presentación')) && 
+                        !(selectedActivity as any)?._isUnified && (
+                          <div className="space-y-6">
+                            {/* Preguntas del Caos */}
+                            <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                              <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-2">
+                                  <MessageCircle className="w-5 h-5 text-blue-900" />
+                                  <Label className="text-blue-900 font-semibold text-lg">Preguntas del Caos</Label>
+                                </div>
+                                <Button
+                                  onClick={() => {
+                                    setCreatingChaos(true);
+                                    setEditingChaos({ question: '' });
+                                  }}
+                                  className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white"
+                                >
+                                  <Plus className="w-4 h-4 mr-2" />
+                                  Crear Pregunta
+                                </Button>
+                              </div>
+                              
+                              {(creatingChaos || editingChaos) ? (
+                                <div className="space-y-4 bg-white rounded-lg p-4 border border-gray-200">
+                                  <Textarea
+                                    label="Pregunta"
+                                    value={editingChaos?.question || ''}
+                                    onChange={(e) => setEditingChaos({ ...editingChaos, question: e.target.value })}
+                                    placeholder="Ej: ¿Cuál es tu mayor miedo al emprender?"
+                                    rows={3}
+                                  />
+                                  <div className="flex gap-2">
+                                    <Button
+                                      onClick={async () => {
+                                        try {
+                                          if (editingChaos?.id) {
+                                            await challengesAPI.updateChaosQuestion(editingChaos.id, editingChaos);
+                                            toast.success('Pregunta actualizada');
+                                          } else {
+                                            await challengesAPI.createChaosQuestion(editingChaos);
+                                            toast.success('Pregunta creada');
+                                          }
+                                          setCreatingChaos(false);
+                                          setEditingChaos(null);
+                                          await loadChaosQuestions();
+                                        } catch (error: any) {
+                                          toast.error('Error al guardar', {
+                                            description: error.response?.data?.error || 'Por favor intenta nuevamente',
+                                          });
+                                        }
+                                      }}
+                                      className="bg-green-600 hover:bg-green-700 text-white"
+                                    >
+                                      Guardar
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      onClick={() => {
+                                        setCreatingChaos(false);
+                                        setEditingChaos(null);
+                                      }}
+                                    >
+                                      Cancelar
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <>
+                                  {loadingChaos ? (
+                                    <div className="flex items-center justify-center py-12">
+                                      <Loader2 className="w-6 h-6 animate-spin text-pink-500" />
+                                    </div>
+                                  ) : chaosQuestions.length === 0 ? (
+                                    <p className="text-gray-500 text-center py-8">No hay preguntas creadas</p>
+                                  ) : (
+                                    <div className="space-y-3">
+                                      {chaosQuestions.map((question) => (
+                                        <motion.div
+                                          key={question.id}
+                                          initial={{ opacity: 0, y: 10 }}
+                                          animate={{ opacity: 1, y: 0 }}
+                                          className="bg-white rounded-lg p-4 border border-gray-200 flex items-start justify-between"
+                                        >
+                                          <p className="font-medium text-blue-900 flex-1">{question.question}</p>
+                                          <div className="flex gap-2 ml-4">
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              onClick={() => {
+                                                setEditingChaos(question);
+                                                setCreatingChaos(false);
+                                              }}
+                                            >
+                                              <Edit className="w-4 h-4" />
+                                            </Button>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              onClick={async () => {
+                                                if (window.confirm('¿Eliminar esta pregunta?')) {
+                                                  try {
+                                                    await challengesAPI.deleteChaosQuestion(question.id);
+                                                    toast.success('Pregunta eliminada');
+                                                    await loadChaosQuestions();
+                                                  } catch (error: any) {
+                                                    toast.error('Error al eliminar', {
+                                                      description: error.response?.data?.error || 'Por favor intenta nuevamente',
+                                                    });
+                                                  }
+                                                }
+                                              }}
+                                            >
+                                              <Trash2 className="w-4 h-4 text-red-500" />
+                                            </Button>
+                                          </div>
+                                        </motion.div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </>
+                              )}
+                            </div>
+
+                            {/* Preguntas Conocimiento General (mismas que minijuego) */}
+                            <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                              <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-2">
+                                  <HelpCircle className="w-5 h-5 text-blue-900" />
+                                  <Label className="text-blue-900 font-semibold text-lg">Preguntas de Conocimiento General</Label>
+                                </div>
+                                <Button
+                                  onClick={() => {
+                                    setCreatingPresentationGeneralKnowledge(true);
+                                    setEditingPresentationGeneralKnowledge({
+                                      question: '',
+                                      option_a: '',
+                                      option_b: '',
+                                      option_c: '',
+                                      option_d: '',
+                                      correct_answer: 0,
+                                    });
+                                  }}
+                                  className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white"
+                                >
+                                  <Plus className="w-4 h-4 mr-2" />
+                                  Crear Pregunta
+                                </Button>
+                              </div>
+                              
+                              {(creatingPresentationGeneralKnowledge || editingPresentationGeneralKnowledge) ? (
+                                <div className="space-y-4 bg-white rounded-lg p-4 border border-gray-200">
+                                  <Textarea
+                                    label="Pregunta"
+                                    value={editingPresentationGeneralKnowledge?.question || ''}
+                                    onChange={(e) => setEditingPresentationGeneralKnowledge({ ...editingPresentationGeneralKnowledge, question: e.target.value })}
+                                    placeholder="Ej: ¿Qué es un MVP en emprendimiento?"
+                                    rows={3}
+                                  />
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <Input
+                                      label="Opción A"
+                                      value={editingPresentationGeneralKnowledge?.option_a || ''}
+                                      onChange={(e) => setEditingPresentationGeneralKnowledge({ ...editingPresentationGeneralKnowledge, option_a: e.target.value })}
+                                      placeholder="Opción A"
+                                    />
+                                    <Input
+                                      label="Opción B"
+                                      value={editingPresentationGeneralKnowledge?.option_b || ''}
+                                      onChange={(e) => setEditingPresentationGeneralKnowledge({ ...editingPresentationGeneralKnowledge, option_b: e.target.value })}
+                                      placeholder="Opción B"
+                                    />
+                                    <Input
+                                      label="Opción C"
+                                      value={editingPresentationGeneralKnowledge?.option_c || ''}
+                                      onChange={(e) => setEditingPresentationGeneralKnowledge({ ...editingPresentationGeneralKnowledge, option_c: e.target.value })}
+                                      placeholder="Opción C"
+                                    />
+                                    <Input
+                                      label="Opción D"
+                                      value={editingPresentationGeneralKnowledge?.option_d || ''}
+                                      onChange={(e) => setEditingPresentationGeneralKnowledge({ ...editingPresentationGeneralKnowledge, option_d: e.target.value })}
+                                      placeholder="Opción D"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label>Respuesta Correcta</Label>
+                                    <select
+                                      value={editingPresentationGeneralKnowledge?.correct_answer ?? 0}
+                                      onChange={(e) => setEditingPresentationGeneralKnowledge({ ...editingPresentationGeneralKnowledge, correct_answer: parseInt(e.target.value) })}
+                                      className="w-full mt-2 px-3 py-2 border border-gray-300 rounded-lg"
+                                    >
+                                      <option value={0}>A</option>
+                                      <option value={1}>B</option>
+                                      <option value={2}>C</option>
+                                      <option value={3}>D</option>
+                                    </select>
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <Button
+                                      onClick={async () => {
+                                        try {
+                                          if (editingPresentationGeneralKnowledge?.id) {
+                                            await challengesAPI.updateGeneralKnowledgeQuestion(editingPresentationGeneralKnowledge.id, editingPresentationGeneralKnowledge);
+                                            toast.success('Pregunta actualizada');
+                                          } else {
+                                            await challengesAPI.createGeneralKnowledgeQuestion(editingPresentationGeneralKnowledge);
+                                            toast.success('Pregunta creada');
+                                          }
+                                          setCreatingPresentationGeneralKnowledge(false);
+                                          setEditingPresentationGeneralKnowledge(null);
+                                          await loadGeneralKnowledgeQuestions();
+                                          setPresentationGeneralKnowledge(generalKnowledgeQuestions);
+                                        } catch (error: any) {
+                                          toast.error('Error al guardar', {
+                                            description: error.response?.data?.error || 'Por favor intenta nuevamente',
+                                          });
+                                        }
+                                      }}
+                                      className="bg-green-600 hover:bg-green-700 text-white"
+                                    >
+                                      Guardar
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      onClick={() => {
+                                        setCreatingPresentationGeneralKnowledge(false);
+                                        setEditingPresentationGeneralKnowledge(null);
+                                      }}
+                                    >
+                                      Cancelar
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <>
+                                  {loadingPresentationGeneralKnowledge ? (
+                                    <div className="flex items-center justify-center py-12">
+                                      <Loader2 className="w-6 h-6 animate-spin text-pink-500" />
+                                    </div>
+                                  ) : presentationGeneralKnowledge.length === 0 ? (
+                                    <p className="text-gray-500 text-center py-8">No hay preguntas creadas</p>
+                                  ) : (
+                                    <div className="space-y-3">
+                                      {presentationGeneralKnowledge.map((question) => (
+                                        <motion.div
+                                          key={question.id}
+                                          initial={{ opacity: 0, y: 10 }}
+                                          animate={{ opacity: 1, y: 0 }}
+                                          className="bg-white rounded-lg p-4 border border-gray-200"
+                                        >
+                                          <div className="flex items-start justify-between">
+                                            <div className="flex-1">
+                                              <p className="font-semibold text-blue-900 mb-2">{question.question}</p>
+                                              <div className="grid grid-cols-2 gap-2 text-sm">
+                                                <p className={question.correct_answer === 0 ? 'text-green-600 font-bold' : 'text-gray-600'}>
+                                                  A: {question.option_a}
+                                                </p>
+                                                <p className={question.correct_answer === 1 ? 'text-green-600 font-bold' : 'text-gray-600'}>
+                                                  B: {question.option_b}
+                                                </p>
+                                                <p className={question.correct_answer === 2 ? 'text-green-600 font-bold' : 'text-gray-600'}>
+                                                  C: {question.option_c}
+                                                </p>
+                                                <p className={question.correct_answer === 3 ? 'text-green-600 font-bold' : 'text-gray-600'}>
+                                                  D: {question.option_d}
+                                                </p>
+                                              </div>
+                                            </div>
+                                            <div className="flex gap-2 ml-4">
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => {
+                                                  setEditingPresentationGeneralKnowledge(question);
+                                                  setCreatingPresentationGeneralKnowledge(false);
+                                                }}
+                                              >
+                                                <Edit className="w-4 h-4" />
+                                              </Button>
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={async () => {
+                                                  if (window.confirm('¿Eliminar esta pregunta?')) {
+                                                    try {
+                                                      await challengesAPI.deleteGeneralKnowledgeQuestion(question.id);
+                                                      toast.success('Pregunta eliminada');
+                                                      await loadGeneralKnowledgeQuestions();
+                                                      setPresentationGeneralKnowledge(generalKnowledgeQuestions);
+                                                    } catch (error: any) {
+                                                      toast.error('Error al eliminar', {
+                                                        description: error.response?.data?.error || 'Por favor intenta nuevamente',
+                                                      });
+                                                    }
+                                                  }
+                                                }}
+                                              >
+                                                <Trash2 className="w-4 h-4 text-red-500" />
+                                              </Button>
+                                            </div>
+                                          </div>
+                                        </motion.div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      )}
 
                       {/* Lista de Temas */}
                       <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">

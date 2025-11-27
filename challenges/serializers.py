@@ -4,7 +4,8 @@ Serializers para la app challenges
 from rest_framework import serializers
 from .models import (
     Stage, ActivityType, Activity, Topic, Challenge,
-    RouletteChallenge, Minigame, LearningObjective
+    RouletteChallenge, Minigame, LearningObjective,
+    WordSearchOption, AnagramWord, ChaosQuestion, GeneralKnowledgeQuestion
 )
 from academic.serializers import FacultySerializer
 
@@ -30,6 +31,9 @@ class ActivitySerializer(serializers.ModelSerializer):
     stage_name = serializers.CharField(source='stage.name', read_only=True)
     activity_type_name = serializers.CharField(source='activity_type.name', read_only=True)
     word_search_data = serializers.SerializerMethodField()
+    anagram_data = serializers.SerializerMethodField()
+    general_knowledge_data = serializers.SerializerMethodField()
+    chaos_data = serializers.SerializerMethodField()
     bubble_map_config = serializers.SerializerMethodField()
     
     class Meta:
@@ -37,9 +41,9 @@ class ActivitySerializer(serializers.ModelSerializer):
         fields = [
             'id', 'stage', 'stage_name', 'activity_type', 'activity_type_name',
             'name', 'description', 'order_number', 'timer_duration', 'config_data',
-            'word_search_data', 'bubble_map_config', 'is_active', 'created_at', 'updated_at'
+            'word_search_data', 'anagram_data', 'general_knowledge_data', 'chaos_data', 'bubble_map_config', 'is_active', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'stage_name', 'activity_type_name', 'word_search_data', 'bubble_map_config', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'stage_name', 'activity_type_name', 'word_search_data', 'anagram_data', 'general_knowledge_data', 'chaos_data', 'bubble_map_config', 'created_at', 'updated_at']
     
     def get_word_search_data(self, obj):
         """
@@ -60,6 +64,77 @@ class ActivitySerializer(serializers.ModelSerializer):
         # Generar la sopa de letras
         word_search_data = obj.get_word_search_data(team_id=team_id, session_stage_id=session_stage_id)
         return word_search_data
+    
+    def get_anagram_data(self, obj):
+        """
+        Obtiene palabras aleatorias para el juego de anagrama.
+        Solo se devuelve si la actividad es de tipo minijuego.
+        Obtiene team_id y session_stage_id de los query params para selección determinística.
+        """
+        # Verificar si es una actividad de minijuego
+        # El código puede ser 'minigame' o 'minijuego' dependiendo de la base de datos
+        if obj.activity_type.code not in ['minigame', 'minijuego']:
+            return None
+        
+        request = self.context.get('request')
+        if not request:
+            return None
+        
+        # Obtener team_id y session_stage_id de los query params
+        team_id = request.query_params.get('team_id')
+        session_stage_id = request.query_params.get('session_stage_id')
+        
+        team_id = int(team_id) if team_id and team_id.isdigit() else None
+        session_stage_id = int(session_stage_id) if session_stage_id and session_stage_id.isdigit() else None
+        
+        # Obtener 5 palabras aleatorias (determinísticas si hay team_id y session_stage_id)
+        anagram_data = obj.get_anagram_data(count=5, team_id=team_id, session_stage_id=session_stage_id)
+        return anagram_data
+    
+    def get_general_knowledge_data(self, obj):
+        """
+        Obtiene preguntas aleatorias de conocimiento general.
+        Solo se devuelve si la actividad es de tipo minijuego.
+        Obtiene team_id y session_stage_id de los query params para selección determinística.
+        """
+        # Verificar si es una actividad de minijuego
+        if obj.activity_type.code not in ['minigame', 'minijuego']:
+            return None
+        
+        request = self.context.get('request')
+        if not request:
+            return None
+        
+        # Obtener team_id y session_stage_id de los query params
+        team_id = request.query_params.get('team_id')
+        session_stage_id = request.query_params.get('session_stage_id')
+        
+        team_id = int(team_id) if team_id and team_id.isdigit() else None
+        session_stage_id = int(session_stage_id) if session_stage_id and session_stage_id.isdigit() else None
+        
+        # Obtener 5 preguntas aleatorias (determinísticas si hay team_id y session_stage_id)
+        general_knowledge_data = obj.get_general_knowledge_data(count=5, team_id=team_id, session_stage_id=session_stage_id)
+        return general_knowledge_data
+    
+    def get_chaos_data(self, obj):
+        """
+        Obtiene información sobre las preguntas del caos disponibles.
+        Solo se devuelve si la actividad es de tipo presentación.
+        """
+        request = self.context.get('request')
+        if not request:
+            return None
+        
+        # Obtener team_id y session_stage_id de los query params
+        team_id = request.query_params.get('team_id')
+        session_stage_id = request.query_params.get('session_stage_id')
+        
+        team_id = int(team_id) if team_id and team_id.isdigit() else None
+        session_stage_id = int(session_stage_id) if session_stage_id and session_stage_id.isdigit() else None
+        
+        # Obtener información sobre las preguntas del caos
+        chaos_data = obj.get_chaos_data(team_id=team_id, session_stage_id=session_stage_id)
+        return chaos_data
     
     def get_bubble_map_config(self, obj):
         """
@@ -147,4 +222,59 @@ class LearningObjectiveSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'stage_name', 'stage_number', 'created_at', 'updated_at']
+
+
+class WordSearchOptionSerializer(serializers.ModelSerializer):
+    """Serializer para Opción de Sopa de Letras"""
+    activity_name = serializers.CharField(source='activity.name', read_only=True)
+    
+    class Meta:
+        model = WordSearchOption
+        fields = [
+            'id', 'activity', 'activity_name', 'name', 'words', 'grid',
+            'word_positions', 'seed', 'is_active', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'activity_name', 'created_at', 'updated_at']
+
+
+class AnagramWordSerializer(serializers.ModelSerializer):
+    """Serializer para Palabra de Anagrama"""
+    class Meta:
+        model = AnagramWord
+        fields = [
+            'id', 'word', 'scrambled_word', 'is_active', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'scrambled_word', 'created_at', 'updated_at']
+
+
+class ChaosQuestionSerializer(serializers.ModelSerializer):
+    """Serializer para Pregunta del Caos"""
+    class Meta:
+        model = ChaosQuestion
+        fields = [
+            'id', 'question', 'is_active', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class GeneralKnowledgeQuestionSerializer(serializers.ModelSerializer):
+    """Serializer para Pregunta de Conocimiento General"""
+    options = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = GeneralKnowledgeQuestion
+        fields = [
+            'id', 'question', 'option_a', 'option_b', 'option_c', 'option_d',
+            'correct_answer', 'is_active', 'created_at', 'updated_at', 'options'
+        ]
+        read_only_fields = ['id', 'options', 'created_at', 'updated_at']
+    
+    def get_options(self, obj):
+        """Retornar opciones como lista para facilitar el frontend"""
+        return [
+            {'label': 'A', 'text': obj.option_a},
+            {'label': 'B', 'text': obj.option_b},
+            {'label': 'C', 'text': obj.option_c},
+            {'label': 'D', 'text': obj.option_d},
+        ]
 

@@ -6,7 +6,9 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     StageViewSet, ActivityTypeViewSet, ActivityViewSet,
     TopicViewSet, ChallengeViewSet, RouletteChallengeViewSet,
-    MinigameViewSet, LearningObjectiveViewSet
+    MinigameViewSet, LearningObjectiveViewSet,
+    WordSearchOptionViewSet, AnagramWordViewSet,
+    ChaosQuestionViewSet, GeneralKnowledgeQuestionViewSet
 )
 
 router = DefaultRouter()
@@ -18,6 +20,10 @@ router.register(r'challenges', ChallengeViewSet, basename='challenge')
 router.register(r'roulette-challenges', RouletteChallengeViewSet, basename='roulette-challenge')
 router.register(r'minigames', MinigameViewSet, basename='minigame')
 router.register(r'learning-objectives', LearningObjectiveViewSet, basename='learning-objective')
+router.register(r'word-search-options', WordSearchOptionViewSet, basename='word-search-option')
+router.register(r'anagram-words', AnagramWordViewSet, basename='anagram-word')
+router.register(r'chaos-questions', ChaosQuestionViewSet, basename='chaos-question')
+router.register(r'general-knowledge-questions', GeneralKnowledgeQuestionViewSet, basename='general-knowledge-question')
 
 urlpatterns = [
     path('', include(router.urls)),

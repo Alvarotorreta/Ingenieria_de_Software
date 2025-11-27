@@ -250,48 +250,6 @@ export function ProfesorVideoInstitucional() {
         </div>
 
         <div className="w-full max-w-6xl flex flex-col h-full">
-          {/* Botón Continuar - Arriba */}
-          <div className="w-full mb-3 sm:mb-4 z-20 flex justify-center gap-2 flex-shrink-0">
-            <Button
-              onClick={handleNextActivity}
-              disabled={advancing}
-              className="px-4 sm:px-6 py-2 sm:py-2.5 text-sm sm:text-base font-semibold bg-gradient-to-r from-[#093c92] to-[#f757ac] hover:from-[#072e73] hover:to-[#e6498a] text-white shadow-md hover:shadow-lg transition-all"
-            >
-              {advancing ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Avanzando...
-                </>
-              ) : (
-                <>
-                  Continuar
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </>
-              )}
-            </Button>
-            {/* Botón Dev - Solo en modo desarrollo */}
-            {isDevMode() && (
-              <Button
-                onClick={handleNextActivity}
-                disabled={advancing}
-                className="px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base font-semibold bg-orange-500 hover:bg-orange-600 text-white shadow-md hover:shadow-lg transition-all"
-                title="Modo Dev: Avanzar sin requisitos"
-              >
-                {advancing ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Avanzando...
-                  </>
-                ) : (
-                  <>
-                    <Code className="w-4 h-4 mr-2" />
-                    Dev
-                  </>
-                )}
-              </Button>
-            )}
-          </div>
-
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -312,16 +270,31 @@ export function ProfesorVideoInstitucional() {
                 />
               </motion.div>
 
-              {/* Título del video - Compacto */}
-              <div className="text-center mt-3 sm:mt-4 flex-shrink-0">
-                <p className="text-[#093c92] text-sm sm:text-base md:text-lg font-bold mb-1 sm:mb-2">
-                  Como la UDD apoya el emprendimiento
-                </p>
-
+              {/* Botones y texto - En lugar del título */}
+              <div className="text-center mt-3 sm:mt-4 flex-shrink-0 flex flex-col items-center gap-2">
                 {/* Información - Compacta */}
                 <p className="text-gray-600 text-xs sm:text-sm">
                   Los estudiantes están viendo el video institucional en sus tablets
                 </p>
+
+                {/* Botón Continuar */}
+                <Button
+                  onClick={handleNextActivity}
+                  disabled={advancing}
+                  className="px-4 sm:px-6 py-2 sm:py-2.5 text-sm sm:text-base font-semibold bg-gradient-to-r from-[#093c92] to-[#f757ac] hover:from-[#072e73] hover:to-[#e6498a] text-white shadow-md hover:shadow-lg transition-all"
+                >
+                  {advancing ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Avanzando...
+                    </>
+                  ) : (
+                    <>
+                      Continuar
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </>
+                  )}
+                </Button>
               </div>
             </div>
           </motion.div>

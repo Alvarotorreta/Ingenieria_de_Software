@@ -167,8 +167,10 @@ class Activity(models.Model):
         
         config = self.config_data or {}
         
-        # Verificar si es una actividad de minijuego con sopa de letras
-        if config.get('type') != 'word_search' and self.activity_type.code != 'minigame':
+        # Verificar si es una actividad de minijuego
+        # Para minijuegos, siempre devolver word_search_data si hay opciones guardadas
+        # El código puede ser 'minigame' o 'minijuego' dependiendo de la base de datos
+        if self.activity_type.code not in ['minigame', 'minijuego']:
             return None
         
         # Obtener opciones de sopas de letras si existen
@@ -182,8 +184,9 @@ class Activity(models.Model):
             options_list = list(word_search_options)
             
             if team_id is not None and session_stage_id is not None:
-                # Generar índice determinístico basado en team_id y session_stage_id
-                seed_string = f"{team_id}_{session_stage_id}"
+                # Generar índice determinístico basado en team_id, session_stage_id y activity_id
+                # Esto hace que diferentes equipos tengan diferentes sopas de letras
+                seed_string = f"{team_id}_{session_stage_id}_{self.id}"
                 seed_value = abs(sum(ord(c) for c in seed_string))
                 selected_index = seed_value % len(options_list)
             else:
@@ -193,6 +196,17 @@ class Activity(models.Model):
             selected_option = options_list[selected_index]
             words = selected_option.words if isinstance(selected_option.words, list) else []
             
+            # Si la opción ya tiene grid y word_positions guardados, devolverlos directamente
+            if selected_option.grid and selected_option.word_positions:
+                # Asegurar que words sea una lista de strings en mayúsculas
+                words_list = [w.upper() if isinstance(w, str) else str(w).upper() for w in words] if words else []
+                return {
+                    'words': words_list,
+                    'grid': selected_option.grid,
+                    'wordPositions': selected_option.word_positions,
+                }
+            
+            # Si no tiene grid guardado, generar uno (fallback - no debería pasar)
             # Usar el ID de la opción como parte de la semilla para generar la misma sopa siempre
             if seed is None:
                 seed = selected_option.id * 1000 + (team_id or 0) + (session_stage_id or 0)
@@ -236,6 +250,141 @@ class Activity(models.Model):
             'max_questions': bubble_map_config.get('max_questions', 7),
             'max_question_length': bubble_map_config.get('max_question_length', 60),
             'max_answer_length': bubble_map_config.get('max_answer_length', 30),
+        }
+    
+    def get_anagram_data(self, count: int = 5, team_id: Optional[int] = None, session_stage_id: Optional[int] = None) -> Optional[Dict]:
+        """
+        Obtiene palabras aleatorias para el juego de anagrama.
+        La selección es determinística basada en team_id y session_stage_id para que sea consistente.
+        
+        Args:
+            count: Número de palabras a obtener (default: 5)
+            team_id: ID del equipo (para selección determinística)
+            session_stage_id: ID de la etapa de sesión (para selección determinística)
+        
+        Returns:
+            Diccionario con 'words' (lista de objetos {word, scrambled_word})
+        """
+        from .models import AnagramWord
+        import random
+        
+        # Obtener todas las palabras activas
+        all_words = list(AnagramWord.objects.filter(is_active=True))
+        
+        if not all_words:
+            return None
+        
+        # Validar que haya suficientes palabras
+        if len(all_words) < count:
+            # Si no hay suficientes palabras, lanzar error
+            raise ValueError(f'No hay suficientes palabras activas. Se requieren {count} pero solo hay {len(all_words)}')
+        
+        # Si hay team_id y session_stage_id, usar selección determinística
+        if team_id is not None and session_stage_id is not None:
+            seed_string = f"{team_id}_{session_stage_id}_{self.id}"
+            seed_value = abs(sum(ord(c) for c in seed_string))
+            random.seed(seed_value)
+            selected_words = random.sample(all_words, count)  # Siempre devolver exactamente 'count' palabras
+            random.seed()  # Resetear semilla
+        else:
+            # Selección completamente aleatoria
+            selected_words = random.sample(all_words, count)  # Siempre devolver exactamente 'count' palabras
+        
+        return {
+            'words': [
+                {
+                    'word': word.word,
+                    'anagram': word.scrambled_word
+                }
+                for word in selected_words
+            ]
+        }
+    
+    def get_chaos_data(self, team_id: Optional[int] = None, session_stage_id: Optional[int] = None) -> Optional[Dict]:
+        """
+        Obtiene información sobre las preguntas del caos disponibles.
+        Las preguntas del caos son aleatorias (no determinísticas).
+        Solo se devuelve si la actividad es de tipo presentación.
+        """
+        # Verificar si es una actividad de presentación
+        if self.activity_type.code not in ['presentation', 'presentación']:
+            return None
+        
+        # Importar aquí para evitar importación circular
+        from challenges.models import ChaosQuestion
+        
+        # Obtener todas las preguntas activas del caos
+        active_questions = ChaosQuestion.objects.filter(is_active=True)
+        
+        if not active_questions.exists():
+            return None
+        
+        # Devolver información sobre las preguntas disponibles
+        # (no devolvemos las preguntas completas porque son aleatorias)
+        return {
+            'available_count': active_questions.count(),
+            'questions_available': True,
+        }
+    
+    def get_general_knowledge_data(self, count: int = 5, team_id: Optional[int] = None, session_stage_id: Optional[int] = None) -> Optional[Dict]:
+        """
+        Obtiene preguntas aleatorias de conocimiento general.
+        La selección es determinística basada en team_id y session_stage_id para que sea consistente.
+        
+        Args:
+            count: Número de preguntas a obtener (default: 5)
+            team_id: ID del equipo (para selección determinística)
+            session_stage_id: ID de la etapa de sesión (para selección determinística)
+        
+        Returns:
+            Diccionario con 'questions' (lista de objetos de pregunta)
+        """
+        from .models import GeneralKnowledgeQuestion
+        import random
+        
+        # Obtener todas las preguntas activas
+        all_questions = list(GeneralKnowledgeQuestion.objects.filter(is_active=True))
+        
+        if not all_questions:
+            return None
+        
+        # Validar que haya suficientes preguntas
+        if len(all_questions) < count:
+            # Si no hay suficientes preguntas, lanzar error
+            raise ValueError(f'No hay suficientes preguntas activas. Se requieren {count} pero solo hay {len(all_questions)}')
+        
+        # Si hay team_id y session_stage_id, usar selección determinística
+        if team_id is not None and session_stage_id is not None:
+            seed_string = f"{team_id}_{session_stage_id}_{self.id}_gk"
+            seed_value = abs(sum(ord(c) for c in seed_string))
+            random.seed(seed_value)
+            selected_questions = random.sample(all_questions, count)  # Siempre devolver exactamente 'count' preguntas
+            random.seed()  # Resetear semilla
+        else:
+            # Selección completamente aleatoria
+            selected_questions = random.sample(all_questions, count)
+        
+        # Serializar las preguntas
+        questions_data = []
+        for q in selected_questions:
+            questions_data.append({
+                'id': q.id,
+                'question': q.question,
+                'option_a': q.option_a,
+                'option_b': q.option_b,
+                'option_c': q.option_c,
+                'option_d': q.option_d,
+                'correct_answer': q.correct_answer,
+                'options': [
+                    {'label': 'A', 'text': q.option_a},
+                    {'label': 'B', 'text': q.option_b},
+                    {'label': 'C', 'text': q.option_c},
+                    {'label': 'D', 'text': q.option_d},
+                ]
+            })
+        
+        return {
+            'questions': questions_data
         }
     
     def __str__(self):
@@ -471,7 +620,25 @@ class WordSearchOption(models.Model):
     )
     words = models.JSONField(
         verbose_name='Palabras',
-        help_text='Lista de palabras para esta sopa de letras (mínimo 5 palabras)'
+        help_text='Lista de palabras para esta sopa de letras (máximo 5 palabras)'
+    )
+    grid = models.JSONField(
+        blank=True,
+        null=True,
+        verbose_name='Grid Generado',
+        help_text='Matriz 12x12 de la sopa de letras generada'
+    )
+    word_positions = models.JSONField(
+        blank=True,
+        null=True,
+        verbose_name='Posiciones de Palabras',
+        help_text='Lista de posiciones de cada palabra en el grid'
+    )
+    seed = models.IntegerField(
+        blank=True,
+        null=True,
+        verbose_name='Semilla',
+        help_text='Semilla usada para generar esta sopa de letras'
     )
     is_active = models.BooleanField(
         default=True,
@@ -595,3 +762,137 @@ class LearningObjective(models.Model):
 
     def __str__(self):
         return f"{self.title} - {self.stage.name if self.stage else 'General'}"
+
+
+class AnagramWord(models.Model):
+    """
+    Palabras para el juego de Anagrama
+    """
+    word = models.CharField(
+        max_length=100,
+        verbose_name='Palabra'
+    )
+    scrambled_word = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        verbose_name='Palabra Desordenada',
+        help_text='Se genera automáticamente al guardar'
+    )
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name='Activa'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'anagram_words'
+        verbose_name = 'Palabra de Anagrama'
+        verbose_name_plural = 'Palabras de Anagrama'
+        indexes = [
+            models.Index(fields=['is_active']),
+        ]
+        ordering = ['word']
+
+    def __str__(self):
+        return self.word
+
+    def save(self, *args, **kwargs):
+        # Auto-generar scrambled_word si no existe o si la palabra cambió
+        if not self.scrambled_word or (self.pk and self.word != self._get_original_word()):
+            self.scrambled_word = self._scramble_word(self.word)
+        super().save(*args, **kwargs)
+
+    def _get_original_word(self):
+        """Obtener la palabra original desde la BD"""
+        if self.pk:
+            try:
+                original = AnagramWord.objects.get(pk=self.pk)
+                return original.word
+            except AnagramWord.DoesNotExist:
+                pass
+        return None
+
+    @staticmethod
+    def _scramble_word(word):
+        """Desordenar palabra aleatoriamente"""
+        word_list = list(word.upper())
+        random.shuffle(word_list)
+        return ''.join(word_list)
+
+
+class ChaosQuestion(models.Model):
+    """
+    Preguntas del caos (Parte 2 de Presentación)
+    Cada estudiante presiona el botón y recibe una pregunta aleatoria
+    """
+    question = models.TextField(
+        verbose_name='Pregunta'
+    )
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name='Activa'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'chaos_questions'
+        verbose_name = 'Pregunta del Caos'
+        verbose_name_plural = 'Preguntas del Caos'
+        indexes = [
+            models.Index(fields=['is_active']),
+        ]
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.question[:50] + '...' if len(self.question) > 50 else self.question
+
+
+class GeneralKnowledgeQuestion(models.Model):
+    """
+    Preguntas de conocimiento general (no emprendimiento)
+    Usadas en Parte 3 del minijuego y presentación
+    """
+    question = models.TextField(
+        verbose_name='Pregunta'
+    )
+    option_a = models.CharField(
+        max_length=255,
+        verbose_name='Opción A'
+    )
+    option_b = models.CharField(
+        max_length=255,
+        verbose_name='Opción B'
+    )
+    option_c = models.CharField(
+        max_length=255,
+        verbose_name='Opción C'
+    )
+    option_d = models.CharField(
+        max_length=255,
+        verbose_name='Opción D'
+    )
+    correct_answer = models.IntegerField(
+        choices=[(0, 'A'), (1, 'B'), (2, 'C'), (3, 'D')],
+        verbose_name='Respuesta Correcta'
+    )
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name='Activa'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'general_knowledge_questions'
+        verbose_name = 'Pregunta de Conocimiento General'
+        verbose_name_plural = 'Preguntas de Conocimiento General'
+        indexes = [
+            models.Index(fields=['is_active']),
+        ]
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.question[:50] + '...' if len(self.question) > 50 else self.question
