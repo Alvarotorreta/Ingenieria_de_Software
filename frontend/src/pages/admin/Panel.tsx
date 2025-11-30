@@ -109,8 +109,8 @@ export function AdminPanel() {
   const loadPanelData = async () => {
     setLoading(true);
     try {
-      // Cargar estadísticas y sesiones
-      const sessionsList = await sessionsAPI.list({ ordering: '-created_at' });
+      // Cargar estadísticas y sesiones (con admin_view=true para ver todas las sesiones)
+      const sessionsList = await sessionsAPI.list({ ordering: '-created_at', admin_view: 'true' });
       const sessionsArray = Array.isArray(sessionsList) ? sessionsList : [sessionsList];
       setSessions(sessionsArray);
 
@@ -340,6 +340,35 @@ export function AdminPanel() {
 
                 <div className="mt-3 flex items-center text-pink-500 group-hover:text-white text-xs font-medium">
                   Ver más ✨
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* NUEVA: Gestión de Profesores */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ delay: 0.8 }}
+            onClick={() => navigate('/admin/professors')}
+            className="group cursor-pointer overflow-hidden relative"
+          >
+            <div className="bg-white/95 backdrop-blur-sm rounded-xl p-5 py-6 shadow-2xl border-0 group-hover:bg-gradient-to-br group-hover:from-pink-500 group-hover:to-purple-600">
+              <div className="relative z-10">
+                <div className="bg-gradient-to-br from-indigo-500 to-purple-600 w-10 h-10 rounded-xl flex items-center justify-center mb-3">
+                  <GraduationCap className="w-5 h-5 text-white" />
+                </div>
+                
+                <h3 className="text-sm font-semibold text-blue-900 mb-1.5">
+                  Profesores
+                </h3>
+                
+                <p className="text-xs text-gray-600 mb-2.5">
+                  Gestionar acceso de profesores
+                </p>
+
+                <div className="mt-3 flex items-center text-pink-500 group-hover:text-white text-xs font-medium">
+                  Gestionar ✨
                 </div>
               </div>
             </div>

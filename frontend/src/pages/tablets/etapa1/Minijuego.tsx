@@ -95,11 +95,16 @@ export function TabletMinijuego() {
       setGameSessionId(statusData.game_session.id);
 
       // Cargar personalización del equipo
+      let knowsEachOther: boolean | null = null;
       try {
         const persList = await teamPersonalizationsAPI.list({ team: statusData.team.id });
         const persResults = Array.isArray(persList) ? persList : [persList];
-        if (persResults.length > 0 && persResults[0].team_name) {
-          setPersonalization({ team_name: persResults[0].team_name });
+        if (persResults.length > 0) {
+          const personalization = persResults[0];
+          if (personalization.team_name) {
+            setPersonalization({ team_name: personalization.team_name });
+          }
+          knowsEachOther = personalization.team_members_know_each_other ?? null;
         } else {
           setPersonalization(null);
         }
@@ -152,6 +157,18 @@ export function TabletMinijuego() {
         return;
       }
 
+      // IMPORTANTE: Verificar si el equipo debería estar en Minijuego o Presentacion
+      // Si la actividad es "presentacion" pero el equipo NO se conoce, redirigir a Presentacion
+      // Si el equipo SÍ se conoce, quedarse en Minijuego (esta página)
+      if (currentActivityName.includes('presentacion') || currentActivityName.includes('presentación')) {
+        if (knowsEachOther === false || knowsEachOther === null) {
+          // El equipo no se conoce o no ha respondido, debe ir a Presentacion
+          window.location.href = `/tablet/etapa1/presentacion/?connection_id=${connId}`;
+          return;
+        }
+        // Si knowsEachOther === true, el equipo se queda en Minijuego (esta página)
+      }
+
       setCurrentActivityId(gameData.current_activity);
 
       // Obtener session_stage
@@ -179,7 +196,8 @@ export function TabletMinijuego() {
       }
 
       // Cargar actividad del minijuego DESPUÉS de restaurar progreso
-      if (gameData.current_activity && !minigameData && statusData.team?.id && !loadingMinijuegoRef.current && currentPart !== 'general_knowledge' && currentPart !== 'anagram' && !minigameDataLoadedRef.current) {
+      // Solo cargar si no hay minigameData Y no estamos en anagram o general_knowledge (esos se cargan con switchToPart o checkExistingProgress)
+      if (gameData.current_activity && !minigameData && statusData.team?.id && !loadingMinijuegoRef.current && currentPart === 'word_search' && !minigameDataLoadedRef.current) {
         await loadMinijuegoActivity(gameData.current_activity, statusData.team.id, statusData.game_session.id);
       }
 
@@ -1309,11 +1327,14 @@ export function TabletMinijuego() {
   };
 
   const handleWordSearchComplete = async () => {
+    // Esta función se llama automáticamente cuando se completa la sopa de letras
+    // Solo guardamos el progreso, pero NO cambiamos de parte automáticamente
+    // El usuario debe hacer clic en el botón "Continuar a Parte 2" para avanzar
     if (!team || !currentActivityId || !currentSessionStageId) {
       return;
     }
 
-    // Marcar como completado
+    // Guardar progreso (pero no cambiar de parte todavía)
     try {
       const response = await fetch(
         `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/sessions/team-activity-progress/submit_word_search/`,
@@ -1328,26 +1349,20 @@ export function TabletMinijuego() {
             session_stage: currentSessionStageId,
             found_words: foundWords,
             minigame_type: currentGameType,
-            total_words: minigameData?.words.length || 0, // Enviar el número real de palabras generadas
-            completed: foundWords.length >= (minigameData?.words.length || 0), // Completado si encontraron todas las palabras
+            total_words: minigameData?.words.length || 0,
+            completed: foundWords.length >= (minigameData?.words.length || 0),
           }),
         }
       );
 
       if (response.ok) {
         const data = await response.json();
-        toast.success(`¡Has completado la Parte 1: Sopa de Letras! ${data.tokens_earned || 0} tokens ganados`);
-        
-        // Cambiar automáticamente a la parte 2 (anagrama) inmediatamente
-        await switchToPart('anagram');
-        
-        if (connectionId) {
-          loadGameState(connectionId);
-        }
+        // No mostrar toast aquí, se mostrará cuando el usuario haga clic en el botón
+        // toast.success(`¡Has completado la Parte 1: Sopa de Letras! ${data.tokens_earned || 0} tokens ganados`);
       }
     } catch (error: any) {
-      console.error('Error completing word search:', error);
-      toast.error('Error al completar la sopa de letras');
+      console.error('Error saving word search progress:', error);
+      // No mostrar error aquí, se manejará cuando el usuario intente continuar
     }
   };
   
@@ -1535,7 +1550,13 @@ export function TabletMinijuego() {
   const switchToPart = async (part: 'word_search' | 'anagram' | 'general_knowledge') => {
     if (!currentActivityId || !team || !currentSessionStageId) return;
     
+    // Limpiar minigameData primero para evitar mostrar el juego anterior mientras se carga el nuevo
+    setMinigameData(null);
     setCurrentPart(part);
+    
+    // Resetear refs para permitir la carga del nuevo juego
+    minigameDataLoadedRef.current = false;
+    loadingMinijuegoRef.current = false;
     
     try {
       if (!currentSessionStageId) {
@@ -1567,7 +1588,8 @@ export function TabletMinijuego() {
           parsedData = parseMinigameConfig(config, wordSearchType, seed) as WordSearchData;
         }
         setMinigameData(parsedData);
-      } else {
+        minigameDataLoadedRef.current = true;
+      } else if (part === 'anagram') {
         // Cargar anagrama desde el backend (NO usar parseMinigameConfig como fallback)
         const anagramType = MinigameType.ANAGRAMA;
         setCurrentGameType(anagramType);
@@ -1586,6 +1608,11 @@ export function TabletMinijuego() {
             type: anagramType,
             words: formattedWords,
           });
+          minigameDataLoadedRef.current = true;
+          // Resetear el índice del anagrama a 0 cuando se carga por primera vez
+          setCurrentGameIndex(0);
+          setUserAnswer('');
+          setIsCorrect(null);
           console.log(`[switchToPart] Anagrama cargado desde backend: ${formattedWords.length} palabras`);
         } else {
           console.error('[switchToPart] Backend no devolvió anagram_data');
@@ -1595,15 +1622,18 @@ export function TabletMinijuego() {
     } catch (error: any) {
       console.error('Error switching part:', error);
       toast.error('Error al cambiar de parte');
+      // Resetear refs en caso de error para permitir reintentos
+      minigameDataLoadedRef.current = false;
+      loadingMinijuegoRef.current = false;
     }
   };
 
+  // allCompleted solo debe ser true cuando TODO el minijuego esté completo (anagrama + conocimiento general)
+  // NO cuando solo se completa la sopa de letras (word_search), porque debe pasar directamente al anagrama
   const allCompleted = minigameData 
     ? (minigameData.type === MinigameType.ANAGRAMA 
         ? currentGameIndex >= minigameData.words.length && generalKnowledgeCompleted
-        : minigameData.type === MinigameType.WORD_SEARCH
-        ? foundWords.length >= minigameData.words.length
-        : false)
+        : false) // Nunca mostrar "completado" cuando estamos en word_search, debe pasar a anagrama
     : false;
 
   return (
@@ -1740,6 +1770,64 @@ export function TabletMinijuego() {
               <p className="text-xl sm:text-2xl font-bold text-green-700 mb-2">¡Felicidades!</p>
               <p className="text-green-800 text-sm sm:text-base">Has completado el minijuego</p>
             </div>
+          ) : currentPart === 'word_search' && minigameData && minigameData.type === MinigameType.WORD_SEARCH && foundWords.length >= minigameData.words.length ? (
+            // Cuando se completa la sopa de letras, mostrar botón para continuar al anagrama
+            <div className="bg-green-50 border-2 border-green-400 rounded-lg p-6 sm:p-8 text-center">
+              <CheckCircle2 className="w-12 h-12 sm:w-16 sm:h-16 text-green-600 mx-auto mb-4" />
+              <p className="text-xl sm:text-2xl font-bold text-green-700 mb-2">¡Parte 1 Completada!</p>
+              <p className="text-green-800 text-sm sm:text-base mb-6">Has encontrado todas las palabras en la sopa de letras</p>
+              <Button
+                onClick={async () => {
+                  if (!team || !currentActivityId || !currentSessionStageId) {
+                    toast.error('Error: faltan datos necesarios');
+                    return;
+                  }
+                  
+                  // Marcar como completado en el backend
+                  try {
+                    const response = await fetch(
+                      `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/sessions/team-activity-progress/submit_word_search/`,
+                      {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                          team: team.id,
+                          activity: currentActivityId,
+                          session_stage: currentSessionStageId,
+                          found_words: foundWords,
+                          minigame_type: currentGameType,
+                          total_words: minigameData?.words.length || 0,
+                          completed: true,
+                        }),
+                      }
+                    );
+
+                    if (response.ok) {
+                      const data = await response.json();
+                      toast.success(`¡Has completado la Parte 1: Sopa de Letras! ${data.tokens_earned || 0} tokens ganados`);
+                      
+                      // Cambiar a la parte 2 (anagrama)
+                      await switchToPart('anagram');
+                      
+                      if (connectionId) {
+                        loadGameState(connectionId);
+                      }
+                    } else {
+                      const errorData = await response.json().catch(() => ({}));
+                      toast.error('Error: ' + (errorData.error || 'Error desconocido'));
+                    }
+                  } catch (error: any) {
+                    console.error('Error completing word search:', error);
+                    toast.error('Error al completar la sopa de letras');
+                  }
+                }}
+                className="bg-[#093c92] hover:bg-[#072e73] text-white px-8 py-3 text-lg font-semibold rounded-lg shadow-md hover:shadow-lg transition-all"
+              >
+                Continuar a Parte 2: Anagrama
+              </Button>
+            </div>
           ) : currentPart === 'general_knowledge' ? (
             loadingGeneralKnowledge ? (
               <div className="text-center text-gray-500">
@@ -1809,17 +1897,24 @@ export function TabletMinijuego() {
                 <p>No hay preguntas disponibles</p>
               </div>
             )
-          ) : currentPart === 'anagram' && minigameData && minigameData.type === MinigameType.ANAGRAMA ? (
-            <AnagramGame
-              data={minigameData}
-              currentIndex={currentGameIndex}
-              userAnswer={userAnswer}
-              setUserAnswer={setUserAnswer}
-              isCorrect={isCorrect}
-              submitting={submitting}
-              onVerify={verifyAnswer}
-            />
-          ) : minigameData && currentGameType === MinigameType.WORD_SEARCH ? (
+          ) : currentPart === 'anagram' ? (
+            minigameData && minigameData.type === MinigameType.ANAGRAMA ? (
+              <AnagramGame
+                data={minigameData}
+                currentIndex={currentGameIndex}
+                userAnswer={userAnswer}
+                setUserAnswer={setUserAnswer}
+                isCorrect={isCorrect}
+                submitting={submitting}
+                onVerify={verifyAnswer}
+              />
+            ) : (
+              <div className="text-center text-gray-500">
+                <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
+                <p>Cargando anagrama...</p>
+              </div>
+            )
+          ) : currentPart === 'word_search' && minigameData && currentGameType === MinigameType.WORD_SEARCH ? (
             <WordSearchGame
               data={minigameData}
               foundWords={foundWords}

@@ -323,8 +323,15 @@ export function TabletPersonalizacion() {
     setSubmitting(true);
 
     try {
-      await teamPersonalizationsAPI.createOrUpdate({
+      const result = await teamPersonalizationsAPI.createOrUpdate({
         team: team.id,
+        team_name: teamName.trim(),
+        team_members_know_each_other: knowEachOther,
+      });
+
+      // Actualizar el estado local con la personalización guardada
+      setPersonalization({
+        id: result.id,
         team_name: teamName.trim(),
         team_members_know_each_other: knowEachOther,
       });

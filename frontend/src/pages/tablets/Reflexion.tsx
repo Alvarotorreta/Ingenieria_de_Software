@@ -103,9 +103,25 @@ export function TabletReflexion() {
         // Si tiene la estructura correcta con count y total_students
         if ('count' in evaluationsData) {
           setEstudiantesRespondidos(evaluationsData.count || 0);
-          // Actualizar total desde la respuesta del endpoint
-          if ('total_students' in evaluationsData && evaluationsData.total_students !== undefined) {
+          
+          // Calcular total desde los equipos del lobby si el backend devuelve 0
+          let calculatedTotal = 0;
+          if (lobbyData.teams && Array.isArray(lobbyData.teams)) {
+            calculatedTotal = lobbyData.teams.reduce((sum: number, team: any) => {
+              const count = team.students_count ?? team.students?.length ?? 0;
+              return sum + count;
+            }, 0);
+            console.log('📊 Total calculado desde lobbyData.teams:', calculatedTotal);
+          }
+          
+          // Usar total_students del backend si es mayor que 0, sino usar el calculado desde equipos
+          if ('total_students' in evaluationsData && evaluationsData.total_students !== undefined && evaluationsData.total_students > 0) {
             setTotalEstudiantes(evaluationsData.total_students);
+          } else if (calculatedTotal > 0) {
+            console.log('⚠️ Backend devolvió total_students=0, usando valor calculado desde equipos:', calculatedTotal);
+            setTotalEstudiantes(calculatedTotal);
+          } else {
+            console.warn('⚠️ No se pudo calcular total de estudiantes (backend=0, equipos=0)');
           }
         } else {
           // Fallback: si es un array o tiene results

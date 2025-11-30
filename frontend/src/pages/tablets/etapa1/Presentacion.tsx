@@ -103,11 +103,16 @@ export function TabletPresentacion() {
       setGameSessionId(statusData.game_session.id);
 
       // Cargar personalización del equipo
+      let knowsEachOther: boolean | null = null;
       try {
         const persList = await teamPersonalizationsAPI.list({ team: statusData.team.id });
         const persResults = Array.isArray(persList) ? persList : [persList];
-        if (persResults.length > 0 && persResults[0].team_name) {
-          setPersonalization({ team_name: persResults[0].team_name });
+        if (persResults.length > 0) {
+          const personalization = persResults[0];
+          if (personalization.team_name) {
+            setPersonalization({ team_name: personalization.team_name });
+          }
+          knowsEachOther = personalization.team_members_know_each_other ?? null;
         } else {
           setPersonalization(null);
         }
@@ -158,6 +163,18 @@ export function TabletPresentacion() {
           window.location.href = `/tablet/lobby?connection_id=${connId}`;
         }
         return;
+      }
+
+      // IMPORTANTE: Verificar si el equipo debería estar en Minijuego o Presentacion
+      // Si la actividad es "presentacion" pero el equipo SÍ se conoce, redirigir a Minijuego
+      // Si el equipo NO se conoce, quedarse en Presentacion (esta página)
+      if (currentActivityName.includes('presentacion') || currentActivityName.includes('presentación')) {
+        if (knowsEachOther === true) {
+          // El equipo se conoce, debe ir a Minijuego
+          window.location.href = `/tablet/etapa1/minijuego/?connection_id=${connId}`;
+          return;
+        }
+        // Si knowsEachOther === false o null, el equipo se queda en Presentacion (esta página)
       }
 
       setCurrentActivityId(gameData.current_activity);

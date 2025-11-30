@@ -67,17 +67,17 @@ export function ProfesorReflexion() {
     try {
       setLoading(true);
       
-      // Cargar información de la sesión
-      const sessionData = await sessionsAPI.getById(sessionId);
+      // Cargar información de la sesión usando lobby (funciona aunque la sesión esté finalizada)
+      const lobbyData = await sessionsAPI.getLobby(sessionId);
+      const sessionData = lobbyData.game_session;
       setGameSession(sessionData);
       
       // CRÍTICO: En reflexión NO redirigimos aunque la sesión esté finalizada
       // El profesor debe permanecer aquí para ver el progreso de las encuestas
       // NO verificar el status aquí para evitar redirecciones automáticas
 
-      // Cargar equipos
-      const teamsList = await teamsAPI.list({ game_session: sessionId });
-      const teamsData = Array.isArray(teamsList) ? teamsList : [teamsList];
+      // Los equipos vienen en lobbyData.teams
+      const teamsData = Array.isArray(lobbyData.teams) ? lobbyData.teams : [];
       setTeams(teamsData);
 
       // Calcular total de estudiantes usando students_count del serializer
@@ -120,13 +120,23 @@ export function ProfesorReflexion() {
       const evaluationsData = await reflectionEvaluationsAPI.byRoom(gameSession.room_code);
       
       // El endpoint devuelve: { count, total_students, total_evaluations, results }
+      console.log('📊 Datos de evaluaciones recibidos:', evaluationsData);
       if (evaluationsData && typeof evaluationsData === 'object') {
         // Si tiene la estructura correcta con count y total_students
         if ('count' in evaluationsData) {
           setEstudiantesRespondidos(evaluationsData.count || 0);
-          // Actualizar total si viene en la respuesta (más confiable)
-          if ('total_students' in evaluationsData && evaluationsData.total_students !== undefined) {
+          console.log('📊 Estudiantes respondidos:', evaluationsData.count || 0);
+          console.log('📊 Total estudiantes del backend:', evaluationsData.total_students);
+          console.log('📊 Total estudiantes actual en estado:', totalEstudiantes);
+          
+          // Actualizar total si viene en la respuesta (solo si es mayor que 0)
+          // Si total_students es 0, mantener el valor calculado desde loadSessionData
+          if ('total_students' in evaluationsData && evaluationsData.total_students !== undefined && evaluationsData.total_students > 0) {
+            console.log('✅ Usando total_students del backend:', evaluationsData.total_students);
             setTotalEstudiantes(evaluationsData.total_students);
+          } else {
+            console.log('⚠️ Backend devolvió total_students=0 o undefined, manteniendo valor calculado desde equipos:', totalEstudiantes);
+            // No sobrescribir, mantener el valor calculado desde loadSessionData
           }
         } else {
           // Fallback: si es un array o tiene results

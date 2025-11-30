@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -23,8 +23,12 @@ interface GameSession {
 
 export function Historial() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [historySessions, setHistorySessions] = useState<GameSession[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  
+  // Detectar si estamos en la ruta de admin o profesor
+  const isAdminRoute = location.pathname.startsWith('/admin/historial');
 
   useEffect(() => {
     loadHistory();
@@ -33,7 +37,13 @@ export function Historial() {
   const loadHistory = async () => {
     setLoadingHistory(true);
     try {
-      const sessionsList = await sessionsAPI.list({ ordering: '-created_at' });
+      // Si es ruta de admin, usar admin_view=true para ver todas las sesiones
+      // Si es ruta de profesor, no usar admin_view (o usar false) para ver solo sus sesiones
+      const params: Record<string, any> = { ordering: '-created_at' };
+      if (isAdminRoute) {
+        params.admin_view = 'true';
+      }
+      const sessionsList = await sessionsAPI.list(params);
       const sessionsArray = Array.isArray(sessionsList) ? sessionsList : [sessionsList];
       setHistorySessions(sessionsArray);
     } catch (error) {
@@ -45,7 +55,12 @@ export function Historial() {
   };
 
   const viewSessionDetail = (sessionId: number) => {
-    navigate(`/profesor/historial/${sessionId}`);
+    // Navegar a la ruta correcta según si es admin o profesor
+    if (isAdminRoute) {
+      navigate(`/admin/historial/${sessionId}`);
+    } else {
+      navigate(`/profesor/historial/${sessionId}`);
+    }
   };
 
   const getStatusText = (session: GameSession) => {
@@ -113,7 +128,7 @@ export function Historial() {
       
       <div className="max-w-4xl mx-auto relative z-10 p-4 sm:p-6">
         <Button
-          onClick={() => navigate('/profesor/panel')}
+          onClick={() => navigate(isAdminRoute ? '/admin/panel' : '/profesor/panel')}
           variant="ghost"
           className="mb-4 text-white hover:bg-white/20"
         >

@@ -34,12 +34,19 @@ api.interceptors.request.use(
     // Verificar otros endpoints de tablets que no requieren autenticación
     const isTabletAPIEndpoint = url.includes('/team-bubble-maps/') ||
                                 url.includes('/team-activity-progress/') ||
-                                url.includes('/team-personalizations/') ||
-                                url.includes('/session-stages/');
+                                url.includes('/team-personalizations/');
+    
+    // Verificar endpoints específicos de session-stages que son para tablets (no requieren autenticación)
+    const isTabletSessionStageEndpoint = url.includes('/session-stages/') && (
+      url.includes('/presentation_status/') ||
+      url.includes('/presentation_timer/') ||
+      url.includes('/mark_presentation_done/') ||
+      url.includes('/presentation_evaluation_progress/')
+    );
     
     // Si estamos en una ruta de tablet o haciendo petición a endpoint de tablet, 
     // asegurarnos de que no se envíe el token (y limpiarlo si está presente en headers)
-    if (isTabletRoute || isTabletConnectionEndpoint || isTabletGameSessionEndpoint || isTabletAPIEndpoint) {
+    if (isTabletRoute || isTabletConnectionEndpoint || isTabletGameSessionEndpoint || isTabletAPIEndpoint || isTabletSessionStageEndpoint) {
       delete config.headers.Authorization;
     } else {
       // Solo agregar token en rutas que no son de tablet

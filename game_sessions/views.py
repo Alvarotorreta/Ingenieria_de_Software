@@ -13,6 +13,8 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework.authentication import SessionAuthentication
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 from django.conf import settings
@@ -72,9 +74,29 @@ class GameSessionViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = GameSession.objects.select_related('professor__user', 'course', 'current_stage', 'current_activity')
-        # Profesores solo ven sus propias sesiones (solo si están autenticados)
-        if self.request.user.is_authenticated and hasattr(self.request.user, 'professor'):
-            queryset = queryset.filter(professor__user=self.request.user)
+        # Si el usuario está autenticado
+        if self.request.user.is_authenticated:
+            # Verificar si es administrador y profesor
+            is_administrator = hasattr(self.request.user, 'administrator')
+            is_professor = hasattr(self.request.user, 'professor')
+            
+            # Verificar si se solicita vista de administrador (parámetro admin_view=true)
+            # Si admin_view=true, mostrar todas las sesiones (solo para administradores)
+            # Si admin_view=false o no está presente, y el usuario es profesor, filtrar solo sus sesiones
+            admin_view = self.request.query_params.get('admin_view', 'false').lower() == 'true'
+            
+            if is_professor:
+                # Si el usuario es profesor (incluso si también es administrador)
+                if admin_view and is_administrator:
+                    # Accediendo como administrador: mostrar todas las sesiones
+                    pass  # No filtrar
+                else:
+                    # Accediendo como profesor: mostrar solo sus sesiones
+                    queryset = queryset.filter(professor__user=self.request.user)
+            elif is_administrator and not is_professor:
+                # Usuario es solo administrador (no profesor): mostrar todas las sesiones
+                pass  # No filtrar
+            # Si no es ni administrador ni profesor, no filtrar (aunque esto no debería pasar)
         return queryset
 
     def _generate_room_code(self):
@@ -1816,7 +1838,8 @@ class GameSessionViewSet(viewsets.ModelViewSet):
         Obtener información completa del lobby de una sesión
         Incluye: equipos, estudiantes, tablets conectadas, código QR
         No requiere autenticación (accesible para tablets)
-        Solo funciona si la sesión está en estado 'lobby' o 'running'
+        Funciona si la sesión está en estado 'lobby', 'running', 'finished' o 'completed'
+        (permite acceso en reflexión aunque la sesión esté finalizada)
         """
         # Obtener sesión directamente sin verificar permisos
         try:
@@ -1827,13 +1850,13 @@ class GameSessionViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
         
-        # Verificar que la sesión esté activa (lobby o running)
-        if game_session.status not in ['lobby', 'running']:
+        # Permitir acceso si la sesión está activa o finalizada (necesario para reflexión)
+        # Solo bloquear si está en un estado inválido
+        if game_session.status not in ['lobby', 'running', 'finished', 'completed']:
             return Response(
                 {
-                    'error': 'La sesión ya ha finalizado',
-                    'status': game_session.status,
-                    'ended_at': game_session.ended_at
+                    'error': 'Estado de sesión inválido',
+                    'status': game_session.status
                 },
                 status=status.HTTP_403_FORBIDDEN
             )
@@ -2079,7 +2102,9 @@ class SessionStageViewSet(viewsets.ModelViewSet):
     queryset = SessionStage.objects.all()
     serializer_class = SessionStageSerializer
     permission_classes = [IsAuthenticated]
-    authentication_classes = []  # No requerir autenticación (se controla con get_permissions)
+    # NO establecer authentication_classes = [] a nivel de clase
+    # Las acciones del profesor necesitan autenticación JWT
+    # Las acciones de tablets tienen authentication_classes=[] en el decorador @action
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['game_session', 'stage', 'status']
     search_fields = ['game_session__room_code', 'stage__name']
@@ -2098,7 +2123,7 @@ class SessionStageViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return SessionStage.objects.select_related('game_session', 'stage')
     
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], authentication_classes=[JWTAuthentication, SessionAuthentication])
     def generate_presentation_order(self, request, pk=None):
         """
         Generar orden de presentación automáticamente (aleatorio) para la Etapa 4
@@ -2135,7 +2160,7 @@ class SessionStageViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(session_stage)
         return Response(serializer.data)
     
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], authentication_classes=[JWTAuthentication, SessionAuthentication])
     def update_presentation_order(self, request, pk=None):
         """
         Actualizar el orden de presentación (el profesor puede reordenar)
@@ -2170,7 +2195,7 @@ class SessionStageViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(session_stage)
         return Response(serializer.data)
     
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], authentication_classes=[JWTAuthentication, SessionAuthentication])
     def start_presentation(self, request, pk=None):
         """
         Iniciar las presentaciones (confirmar orden y comenzar con el primer equipo)
@@ -2200,7 +2225,7 @@ class SessionStageViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(session_stage)
         return Response(serializer.data)
     
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], authentication_classes=[JWTAuthentication, SessionAuthentication])
     def next_presentation(self, request, pk=None):
         """
         Avanzar al siguiente equipo en el orden de presentación
@@ -2247,7 +2272,7 @@ class SessionStageViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(session_stage)
         return Response(serializer.data)
     
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], authentication_classes=[JWTAuthentication, SessionAuthentication])
     def start_team_pitch(self, request, pk=None):
         """
         Iniciar el pitch del equipo actual (cambiar estado a 'presenting' e iniciar temporizador de 3 minutos)
@@ -2301,33 +2326,16 @@ class SessionStageViewSet(viewsets.ModelViewSet):
         response_data = serializer.data
         # Agregar el timestamp de inicio en la respuesta
         
-        # Obtener la duración del temporizador desde la actividad "Presentación del Pitch"
-        from challenges.models import Activity
-        presentation_duration = 90  # Valor por defecto (1:30 minutos)
-        
-        try:
-            presentation_activity = Activity.objects.filter(
-                stage=session_stage.stage,
-                activity_type__name__icontains='presentación',
-                is_active=True
-            ).first()
-            
-            if presentation_activity:
-                # Buscar en config_data primero
-                if presentation_activity.config_data and isinstance(presentation_activity.config_data, dict):
-                    presentation_duration = presentation_activity.config_data.get('presentation_duration', 90)
-                # Si no está en config_data, intentar usar timer_duration de la actividad
-                elif presentation_activity.timer_duration:
-                    presentation_duration = presentation_activity.timer_duration
-        except Exception as e:
-            print(f"Error al obtener duración de presentación desde actividad: {e}")
+        # La duración de cada presentación individual es siempre 1:30 (90 segundos)
+        # NO usar timer_duration de la actividad ya que puede ser para la duración total de la etapa
+        presentation_duration = 90  # Siempre 1:30 minutos para cada presentación individual
         
         response_data['presentation_started_at'] = presentation_started_at.isoformat()
         response_data['presentation_duration'] = presentation_duration
         
         return Response(response_data)
     
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], authentication_classes=[JWTAuthentication, SessionAuthentication])
     def finish_team_presentation(self, request, pk=None):
         """
         Finalizar la presentación del equipo actual (cambiar estado a 'evaluating')
@@ -2527,26 +2535,9 @@ class SessionStageViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
         
-        # Obtener la duración del temporizador desde la actividad "Presentación del Pitch"
-        from challenges.models import Activity
-        duration_seconds = 90  # Valor por defecto (1:30 minutos)
-        
-        try:
-            presentation_activity = Activity.objects.filter(
-                stage=session_stage.stage,
-                activity_type__name__icontains='presentación',
-                is_active=True
-            ).first()
-            
-            if presentation_activity:
-                # Buscar en config_data primero
-                if presentation_activity.config_data and isinstance(presentation_activity.config_data, dict):
-                    duration_seconds = presentation_activity.config_data.get('presentation_duration', 90)
-                # Si no está en config_data, intentar usar timer_duration de la actividad
-                elif presentation_activity.timer_duration:
-                    duration_seconds = presentation_activity.timer_duration
-        except Exception as e:
-            print(f"Error al obtener duración de presentación desde actividad: {e}")
+        # La duración de cada presentación individual es siempre 1:30 (90 segundos)
+        # NO usar timer_duration de la actividad ya que puede ser para la duración total de la etapa
+        duration_seconds = 90  # Siempre 1:30 minutos para cada presentación individual
         
         elapsed = (timezone.now() - started_at).total_seconds()
         remaining = max(0, duration_seconds - elapsed)
@@ -5103,10 +5094,36 @@ class ReflectionEvaluationViewSet(viewsets.ModelViewSet):
         evaluations = ReflectionEvaluation.objects.filter(game_session=game_session)
         serializer = self.get_serializer(evaluations, many=True)
         
-        # Calcular total de estudiantes sumando los estudiantes de todos los equipos
-        from .models import Team
-        teams = Team.objects.filter(game_session=game_session)
-        total_students = sum(team.students.count() for team in teams)
+        # Calcular total de estudiantes usando TeamStudent directamente (más eficiente y confiable)
+        from .models import Team, TeamStudent
+        from django.db.models import Count
+        
+        # Primero intentar contar desde TeamStudent (más confiable)
+        total_students = TeamStudent.objects.filter(
+            team__game_session=game_session
+        ).values('student').distinct().count()
+        
+        print(f"🔍 [by_room] Total desde TeamStudent: {total_students}")
+        
+        # Si no hay estudiantes en TeamStudent, intentar contar desde Team.students como fallback
+        if total_students == 0:
+            teams = Team.objects.filter(game_session=game_session).prefetch_related('students')
+            print(f"🔍 [by_room] Número de equipos: {teams.count()}")
+            
+            # Usar annotate para contar de forma más eficiente
+            teams_with_counts = teams.annotate(student_count=Count('students'))
+            total_students = sum(team.student_count for team in teams_with_counts)
+            print(f"🔍 [by_room] Total desde annotate: {total_students}")
+            
+            # Si aún es 0, intentar contar directamente desde la relación many-to-many
+            if total_students == 0:
+                for team in teams:
+                    count = team.students.all().count()
+                    total_students += count
+                    if count > 0:
+                        print(f"⚠️ [by_room] Equipo {team.name} tiene {count} estudiantes (contado desde team.students.all())")
+        
+        print(f"📊 [by_room] Total final de estudiantes: {total_students} para sesión {game_session.id} (room_code: {game_session.room_code})")
         
         # Contar estudiantes únicos que han respondido (por email)
         # Esto evita contar múltiples respuestas del mismo estudiante
