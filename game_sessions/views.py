@@ -2023,6 +2023,7 @@ class TeamPersonalizationViewSet(viewsets.ModelViewSet):
     queryset = TeamPersonalization.objects.all()
     serializer_class = TeamPersonalizationSerializer
     permission_classes = [IsAuthenticated]
+    authentication_classes = []  # No requerir autenticación (se controla con get_permissions)
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['team']
 
@@ -2078,6 +2079,7 @@ class SessionStageViewSet(viewsets.ModelViewSet):
     queryset = SessionStage.objects.all()
     serializer_class = SessionStageSerializer
     permission_classes = [IsAuthenticated]
+    authentication_classes = []  # No requerir autenticación (se controla con get_permissions)
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['game_session', 'stage', 'status']
     search_fields = ['game_session__room_code', 'stage__name']
@@ -2359,7 +2361,7 @@ class SessionStageViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(session_stage)
         return Response(serializer.data)
     
-    @action(detail=True, methods=['get'], permission_classes=[])
+    @action(detail=True, methods=['get'], permission_classes=[], authentication_classes=[])
     def presentation_status(self, request, pk=None):
         """
         Obtener el estado actual de las presentaciones (para tablets)
@@ -2473,7 +2475,7 @@ class SessionStageViewSet(viewsets.ModelViewSet):
         
         return Response(response_data)
     
-    @action(detail=True, methods=['get'], permission_classes=[])
+    @action(detail=True, methods=['get'], permission_classes=[], authentication_classes=[])
     def presentation_timer(self, request, pk=None):
         """
         Obtener información del temporizador de la presentación actual (3 minutos)
@@ -2557,7 +2559,7 @@ class SessionStageViewSet(viewsets.ModelViewSet):
             'current_time': timezone.now().isoformat()
         })
     
-    @action(detail=True, methods=['post'], permission_classes=[])
+    @action(detail=True, methods=['post'], permission_classes=[], authentication_classes=[])
     def mark_presentation_done(self, request, pk=None):
         """
         Marcar que un equipo completó su presentación (desde tablets)
@@ -2634,7 +2636,7 @@ class SessionStageViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
     
-    @action(detail=True, methods=['get'], permission_classes=[])
+    @action(detail=True, methods=['get'], permission_classes=[], authentication_classes=[])
     def presentation_evaluation_progress(self, request, pk=None):
         """
         Obtener el progreso de evaluaciones para el equipo que está presentando
@@ -2693,6 +2695,7 @@ class TeamActivityProgressViewSet(viewsets.ModelViewSet):
     queryset = TeamActivityProgress.objects.all()
     serializer_class = TeamActivityProgressSerializer
     permission_classes = [IsAuthenticated]
+    authentication_classes = []  # No requerir autenticación (se controla con get_permissions)
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['team', 'session_stage', 'activity', 'status']
     search_fields = ['team__name', 'activity__name']
@@ -2976,7 +2979,7 @@ class TeamActivityProgressViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
 
-    @action(detail=False, methods=['post'], permission_classes=[])
+    @action(detail=False, methods=['post'], permission_classes=[], authentication_classes=[])
     def submit_anagram(self, request):
         """
         Endpoint para enviar respuestas del juego de anagramas
@@ -3328,7 +3331,7 @@ class TeamActivityProgressViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-    @action(detail=False, methods=['post'], permission_classes=[])
+    @action(detail=False, methods=['post'], permission_classes=[], authentication_classes=[])
     def submit_word_search(self, request):
         """
         Endpoint para enviar palabras encontradas en la sopa de letras
@@ -3550,7 +3553,7 @@ class TeamActivityProgressViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-    @action(detail=False, methods=['post'], permission_classes=[])
+    @action(detail=False, methods=['post'], permission_classes=[], authentication_classes=[])
     def submit_general_knowledge(self, request):
         """
         Enviar respuestas del quiz de conocimiento general (Parte 3)
@@ -3772,7 +3775,7 @@ class TeamActivityProgressViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-    @action(detail=False, methods=['post'], permission_classes=[])
+    @action(detail=False, methods=['post'], permission_classes=[], authentication_classes=[])
     def select_topic(self, request):
         """
         Seleccionar un tema para una actividad
@@ -3865,7 +3868,7 @@ class TeamActivityProgressViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-    @action(detail=False, methods=['post'], permission_classes=[])
+    @action(detail=False, methods=['post'], permission_classes=[], authentication_classes=[])
     def select_challenge(self, request):
         """
         Seleccionar un desafío para una actividad
@@ -4032,7 +4035,7 @@ class TeamActivityProgressViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-    @action(detail=False, methods=['post'], permission_classes=[])
+    @action(detail=False, methods=['post'], permission_classes=[], authentication_classes=[])
     def upload_prototype(self, request):
         """
         Subir imagen del prototipo Lego
@@ -4213,7 +4216,7 @@ class TeamActivityProgressViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-    @action(detail=False, methods=['post'], permission_classes=[])
+    @action(detail=False, methods=['post'], permission_classes=[], authentication_classes=[])
     def save_pitch(self, request):
         """
         Guardar el formulario de pitch (Etapa 4)
@@ -4349,7 +4352,7 @@ class TabletConnectionViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return TabletConnection.objects.select_related('tablet', 'team', 'game_session')
 
-    @action(detail=False, methods=['post'], permission_classes=[])
+    @action(detail=False, methods=['post'], permission_classes=[], authentication_classes=[])
     def connect(self, request):
         """
         Conectar una tablet a una sesión de juego
@@ -4520,7 +4523,7 @@ class TabletConnectionViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
-    @action(detail=False, methods=['get'], permission_classes=[])
+    @action(detail=False, methods=['get'], permission_classes=[], authentication_classes=[])
     def status(self, request):
         """
         Obtener estado de conexión de una tablet
@@ -4657,6 +4660,7 @@ class TokenTransactionViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = TokenTransaction.objects.all()
     serializer_class = TokenTransactionSerializer
     permission_classes = [IsAuthenticated]
+    authentication_classes = []  # No requerir autenticación (se controla con get_permissions)
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['team', 'game_session', 'session_stage', 'source_type']
     search_fields = ['team__name', 'game_session__room_code', 'reason']
@@ -4684,6 +4688,7 @@ class PeerEvaluationViewSet(viewsets.ModelViewSet):
     queryset = PeerEvaluation.objects.all()
     serializer_class = PeerEvaluationSerializer
     permission_classes = [IsAuthenticated]
+    authentication_classes = []  # No requerir autenticación (se controla con get_permissions)
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['evaluator_team', 'evaluated_team', 'game_session']
     search_fields = ['evaluator_team__name', 'evaluated_team__name', 'game_session__room_code']
@@ -4940,7 +4945,7 @@ class PeerEvaluationViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
     
-    @action(detail=False, methods=['get'], permission_classes=[])
+    @action(detail=False, methods=['get'], permission_classes=[], authentication_classes=[])
     def for_professor(self, request):
         """
         Obtener todas las evaluaciones de una sesión (para el profesor)
@@ -4967,7 +4972,7 @@ class PeerEvaluationViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
     
-    @action(detail=False, methods=['get'], permission_classes=[])
+    @action(detail=False, methods=['get'], permission_classes=[], authentication_classes=[])
     def for_team(self, request):
         """
         Obtener evaluaciones recibidas por un equipo (para tablets)
@@ -5123,6 +5128,7 @@ class TeamBubbleMapViewSet(viewsets.ModelViewSet):
     queryset = TeamBubbleMap.objects.all()
     serializer_class = TeamBubbleMapSerializer
     permission_classes = []
+    authentication_classes = []  # No requerir autenticación para tablets
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['team', 'session_stage']
 
@@ -5155,7 +5161,7 @@ class TeamBubbleMapViewSet(viewsets.ModelViewSet):
         
         return response
     
-    @action(detail=False, methods=['post'], permission_classes=[])
+    @action(detail=False, methods=['post'], permission_classes=[], authentication_classes=[])
     def finalize_bubble_map(self, request):
         """
         Finalizar bubble map y otorgar tokens (llamado cuando se envía explícitamente o acaba el tiempo)

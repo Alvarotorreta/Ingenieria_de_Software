@@ -87,8 +87,9 @@ export function TabletReflexion() {
     if (!gameSessionId) return;
     
     try {
-      // Obtener número de evaluaciones recibidas y total de estudiantes
-      const sessionData = await sessionsAPI.getById(gameSessionId);
+      // Obtener número de evaluaciones recibidas y total de estudiantes (usar lobby en lugar de getById)
+      const lobbyData = await sessionsAPI.getLobby(gameSessionId);
+      const sessionData = lobbyData.game_session;
       
       // CRÍTICO: En reflexión NO redirigimos aunque la sesión esté finalizada
       // Las tablets deben permanecer aquí para que los estudiantes completen la encuesta del QR

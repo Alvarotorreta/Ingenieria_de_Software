@@ -41,6 +41,7 @@ export function TabletPersonalizacion() {
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const timeExpiredRef = useRef<boolean>(false);
+  const activityCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const connId = searchParams.get('connection_id') || localStorage.getItem('tabletConnectionId');
@@ -49,12 +50,190 @@ export function TabletPersonalizacion() {
       return;
     }
     setConnectionId(connId);
-    loadTeamInfo(connId);
+    
+    const loadInitialData = async () => {
+      try {
+        const statusData = await tabletConnectionsAPI.getStatus(connId);
+        if (!statusData || !statusData.team || !statusData.game_session) {
+          toast.error('Conexión no válida');
+          navigate('/tablet/join');
+          return;
+        }
 
-    // Polling cada 5 segundos
-    intervalRef.current = setInterval(() => {
-      loadTeamInfo(connId);
-    }, 5000);
+        setTeam(statusData.team);
+        // Usar lobby en lugar de getById para evitar problemas de autenticación
+        const lobbyData = await sessionsAPI.getLobby(statusData.game_session.id);
+        const gameData = lobbyData.game_session;
+        const sessionId = statusData.game_session.id;
+        setGameSessionId(sessionId);
+
+        // Guardar valores iniciales para comparación (COMO EN ETAPA 2)
+        const initialActivityId = gameData.current_activity;
+        const initialActivityName = gameData.current_activity_name || '';
+        const initialSessionStageId = gameData.current_session_stage;
+        const initialStageNumber = gameData.current_stage_number;
+
+        // Verificar si debemos mostrar la intro de la etapa
+        if (gameData.current_stage_number === 1) {
+          const introKey = `tablet_etapa_intro_${sessionId}_1`;
+          const hasSeenIntro = localStorage.getItem(introKey);
+          if (!hasSeenIntro) {
+            setShowEtapaIntro(true);
+          }
+        }
+
+        // Verificar si el juego ha finalizado o está en lobby
+        if (gameData.status === 'finished' || gameData.status === 'completed') {
+          toast.info('El juego ha finalizado. Redirigiendo...');
+          setTimeout(() => {
+            navigate('/tablet/join');
+          }, 2000);
+          return;
+        }
+
+        if (gameData.status === 'lobby') {
+          toast.info('El juego no ha iniciado. Redirigiendo al lobby...');
+          setTimeout(() => {
+            navigate(`/tablet/lobby?connection_id=${connId}`);
+          }, 2000);
+          return;
+        }
+
+        // Verificar actividad actual
+        const currentActivityName = gameData.current_activity_name?.toLowerCase() || '';
+        const currentStageNumber = gameData.current_stage_number;
+
+        // Si no es personalización, redirigir
+        if (currentStageNumber !== 1 || !currentActivityName.includes('personaliz')) {
+          if (currentStageNumber === 1 && currentActivityName.includes('presentaci')) {
+            try {
+              const persList = await teamPersonalizationsAPI.list({ team: statusData.team.id });
+              const persResults = Array.isArray(persList) ? persList : [persList];
+              if (persResults.length > 0) {
+                const personalization = persResults[0];
+                const knowsEachOther = personalization.team_members_know_each_other;
+                if (knowsEachOther === true) {
+                  window.location.href = `/tablet/etapa1/minijuego/?connection_id=${connId}`;
+                } else {
+                  window.location.href = `/tablet/etapa1/presentacion/?connection_id=${connId}`;
+                }
+              } else {
+                window.location.href = `/tablet/etapa1/presentacion/?connection_id=${connId}`;
+              }
+            } catch (error) {
+              window.location.href = `/tablet/etapa1/presentacion/?connection_id=${connId}`;
+            }
+          } else {
+            window.location.href = `/tablet/lobby?connection_id=${connId}`;
+          }
+          return;
+        }
+
+        setCurrentActivityId(initialActivityId);
+
+        // Cargar datos de personalización
+        try {
+          const persList = await teamPersonalizationsAPI.list({ team: statusData.team.id });
+          const persResults = Array.isArray(persList) ? persList : [persList];
+          if (persResults.length > 0) {
+            const existingPers = persResults[0];
+            setPersonalization(existingPers);
+            setTeamName(existingPers.team_name || '');
+            setKnowEachOther(existingPers.team_members_know_each_other);
+            setSubmitted(true);
+          }
+        } catch (error) {
+          console.error('Error loading personalization:', error);
+        }
+
+        // Iniciar timer si hay actividad
+        if (initialActivityId) {
+          await startTimer(initialActivityId, statusData.game_session.id);
+        }
+
+        // Verificar actividad y etapa periódicamente (COMO EN ETAPA 2)
+        activityCheckIntervalRef.current = setInterval(async () => {
+          try {
+            // Usar lobby en lugar de getById para evitar problemas de autenticación
+            const updatedLobbyData = await sessionsAPI.getLobby(statusData.game_session.id);
+            const updatedSession = updatedLobbyData.game_session;
+            
+            // Verificar si cambió la actividad o el nombre de la actividad
+            const activityChanged = updatedSession.current_activity !== initialActivityId || 
+                                   (updatedSession.current_activity_name || '') !== initialActivityName;
+            const stageChanged = updatedSession.current_stage_number !== initialStageNumber;
+            
+            if (activityChanged || stageChanged) {
+              // Limpiar intervalos
+              if (activityCheckIntervalRef.current) {
+                clearInterval(activityCheckIntervalRef.current);
+                activityCheckIntervalRef.current = null;
+              }
+              if (timerIntervalRef.current) {
+                clearInterval(timerIntervalRef.current);
+                timerIntervalRef.current = null;
+              }
+              
+              // Verificar a qué actividad redirigir
+              const newActivityName = (updatedSession.current_activity_name || '').toLowerCase();
+              const newStageNumber = updatedSession.current_stage_number;
+              
+              // Si la etapa cambió o se completó, redirigir a resultados o siguiente etapa
+              if (stageChanged || (!updatedSession.current_activity && !updatedSession.current_activity_name)) {
+                if (newStageNumber === 1 && !updatedSession.current_activity) {
+                  window.location.href = `/tablet/etapa1/resultados/?connection_id=${connId}`;
+                  return;
+                } else if (newStageNumber === 2) {
+                  window.location.href = `/tablet/etapa2/seleccionar-tema/?connection_id=${connId}`;
+                  return;
+                } else {
+                  window.location.href = `/tablet/lobby?connection_id=${connId}`;
+                  return;
+                }
+              }
+              
+              // Si cambió la actividad pero sigue siendo etapa 1
+              if (newActivityName.includes('presentaci')) {
+                // Verificar si se conocen para redirigir a presentación o minijuego
+                try {
+                  const persList = await teamPersonalizationsAPI.list({ team: statusData.team.id });
+                  const persResults = Array.isArray(persList) ? persList : [persList];
+                  if (persResults.length > 0) {
+                    const personalization = persResults[0];
+                    const knowsEachOther = personalization.team_members_know_each_other;
+                    if (knowsEachOther === true) {
+                      window.location.href = `/tablet/etapa1/minijuego/?connection_id=${connId}`;
+                    } else {
+                      window.location.href = `/tablet/etapa1/presentacion/?connection_id=${connId}`;
+                    }
+                  } else {
+                    window.location.href = `/tablet/etapa1/presentacion/?connection_id=${connId}`;
+                  }
+                } catch (error) {
+                  window.location.href = `/tablet/etapa1/presentacion/?connection_id=${connId}`;
+                }
+                return;
+              } else if (newActivityName.includes('personaliz')) {
+                // Ya estamos en personalización, no redirigir
+                return;
+              } else {
+                window.location.href = `/tablet/lobby?connection_id=${connId}`;
+                return;
+              }
+            }
+          } catch (error) {
+            console.error('Error verificando actividad:', error);
+          }
+        }, 3000); // Verificar cada 3 segundos
+
+        setLoading(false);
+      } catch (error: any) {
+        toast.error('Error al cargar datos: ' + (error.response?.data?.error || error.message));
+        setLoading(false);
+      }
+    };
+
+    loadInitialData();
 
     return () => {
       if (intervalRef.current) {
@@ -63,6 +242,9 @@ export function TabletPersonalizacion() {
       if (timerIntervalRef.current) {
         clearInterval(timerIntervalRef.current);
       }
+      if (activityCheckIntervalRef.current) {
+        clearInterval(activityCheckIntervalRef.current);
+      }
     };
   }, [searchParams, navigate]);
 
@@ -70,131 +252,6 @@ export function TabletPersonalizacion() {
   useEffect(() => {
     timeExpiredRef.current = false;
   }, [currentActivityId]);
-
-  const loadTeamInfo = async (connId: string) => {
-    try {
-      let statusData;
-      try {
-        statusData = await tabletConnectionsAPI.getStatus(connId);
-      } catch (error: any) {
-        if (error.response?.status === 404) {
-          toast.error('Conexión no encontrada. Por favor reconecta.');
-          setTimeout(() => {
-            navigate('/tablet/join');
-          }, 3000);
-        }
-        return;
-      }
-      setTeam(statusData.team);
-
-      // Verificar estado del juego
-      const gameData = await sessionsAPI.getById(statusData.game_session.id);
-      const sessionId = statusData.game_session.id;
-      setGameSessionId(sessionId);
-
-      // Verificar si debemos mostrar la intro de la etapa
-      if (gameData.current_stage_number === 1) {
-        const introKey = `tablet_etapa_intro_${sessionId}_1`;
-        const hasSeenIntro = localStorage.getItem(introKey);
-        if (!hasSeenIntro) {
-          setShowEtapaIntro(true);
-        }
-      }
-
-      // Verificar si el juego ha finalizado o está en lobby
-      // Si la sesión finaliza, redirigir al join (excepto en reflexión)
-      if (gameData.status === 'finished' || gameData.status === 'completed') {
-        toast.info('El juego ha finalizado. Redirigiendo...');
-        setTimeout(() => {
-          navigate('/tablet/join');
-        }, 2000);
-        return;
-      }
-
-      if (gameData.status === 'lobby') {
-        toast.info('El juego no ha iniciado. Redirigiendo al lobby...');
-        setTimeout(() => {
-          navigate(`/tablet/lobby?connection_id=${connId}`);
-        }, 2000);
-        return;
-      }
-
-      // Verificar actividad actual
-      const currentActivityName = gameData.current_activity_name?.toLowerCase() || '';
-      const currentStageNumber = gameData.current_stage_number;
-
-      if (currentStageNumber !== 1 || !currentActivityName.includes('personaliz')) {
-        // Redirigir según la actividad actual
-        if (currentStageNumber === 1 && currentActivityName.includes('presentaci')) {
-          // Verificar si se conocen para redirigir a presentación o minijuego
-          try {
-            const persList = await teamPersonalizationsAPI.list({ team: statusData.team.id });
-            const persResults = Array.isArray(persList) ? persList : [persList];
-            if (persResults.length > 0) {
-              const personalization = persResults[0];
-              const knowsEachOther = personalization.team_members_know_each_other;
-              
-              // Si se conocen → minijuego, si no se conocen → presentación
-              if (knowsEachOther === true) {
-                window.location.href = `/tablet/etapa1/minijuego/?connection_id=${connId}`;
-              } else {
-                window.location.href = `/tablet/etapa1/presentacion/?connection_id=${connId}`;
-              }
-            } else {
-              // Si no hay personalización, redirigir a presentación por defecto
-              window.location.href = `/tablet/etapa1/presentacion/?connection_id=${connId}`;
-            }
-          } catch (error) {
-            // Si no se puede obtener personalización, redirigir a presentación por defecto
-            window.location.href = `/tablet/etapa1/presentacion/?connection_id=${connId}`;
-          }
-        } else {
-          window.location.href = `/tablet/lobby?connection_id=${connId}`;
-        }
-        return;
-      }
-
-      setCurrentActivityId(gameData.current_activity);
-
-      // Obtener personalización existente
-      try {
-        const persList = await teamPersonalizationsAPI.list({ team: statusData.team.id });
-        const persResults = Array.isArray(persList) ? persList : [persList];
-        if (persResults.length > 0) {
-          const existingPers = persResults[0];
-          setPersonalization(existingPers);
-          setTeamName(existingPers.team_name || '');
-          setKnowEachOther(existingPers.team_members_know_each_other);
-          setSubmitted(true);
-        }
-      } catch (error) {
-        console.error('Error loading personalization:', error);
-      }
-
-      // Iniciar temporizador solo si no está ya iniciado o si cambió la actividad
-      if (gameData.current_activity) {
-        if (gameData.current_activity !== currentActivityId) {
-          // Si cambió la actividad, resetear el estado de tiempo agotado
-          timeExpiredRef.current = false;
-          // Limpiar intervalo anterior si existe
-          if (timerIntervalRef.current) {
-            clearInterval(timerIntervalRef.current);
-            timerIntervalRef.current = null;
-          }
-          startTimer(gameData.current_activity, statusData.game_session.id);
-        } else if (!timerIntervalRef.current) {
-          // Si no hay intervalo pero es la misma actividad, iniciar
-          startTimer(gameData.current_activity, statusData.game_session.id);
-        }
-      }
-
-      setLoading(false);
-    } catch (error: any) {
-      console.error('Error loading team info:', error);
-      toast.error('Error de conexión: ' + (error.message || 'Error desconocido'));
-      setLoading(false);
-    }
-  };
 
   const startTimer = async (activityId: number, gameSessionId: number) => {
     // Si ya hay un intervalo corriendo, no iniciar otro
@@ -274,11 +331,6 @@ export function TabletPersonalizacion() {
 
       toast.success('✓ Personalización guardada exitosamente');
       setSubmitted(true);
-      
-      // Recargar información del equipo
-      setTimeout(() => {
-        loadTeamInfo(connectionId);
-      }, 1000);
     } catch (error: any) {
       toast.error('Error: ' + (error.message || 'Error desconocido'));
     } finally {

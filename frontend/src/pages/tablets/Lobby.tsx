@@ -65,6 +65,7 @@ export function TabletLobby() {
   const [progress, setProgress] = useState(0);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const activityCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const loadingMessages = [
     'Preparando tu misión',
@@ -73,8 +74,8 @@ export function TabletLobby() {
     'Iniciando el juego'
   ];
 
-  // Obtener connection_id de la URL o localStorage
-  const connectionId = searchParams.get('connection_id') || localStorage.getItem('tabletConnectionId');
+  // Obtener connection_id de la URL o localStorage (asegurar que sea string)
+  const connectionId = String(searchParams.get('connection_id') || localStorage.getItem('tabletConnectionId') || '').trim();
 
   useEffect(() => {
     if (!connectionId) {
@@ -82,9 +83,108 @@ export function TabletLobby() {
       return;
     }
 
-    loadLobby();
+    const loadInitialData = async () => {
+      try {
+        // Obtener estado de la conexión de la tablet (con reintento si es 404)
+        let statusData;
+        let retries = 0;
+        const maxRetries = 3;
+        
+        while (retries < maxRetries) {
+          try {
+            statusData = await tabletConnectionsAPI.getStatus(connectionId);
+            break; // Si funciona, salir del loop
+          } catch (error: any) {
+            if (error.response?.status === 404 && retries < maxRetries - 1) {
+              // Si es 404 y aún hay reintentos, esperar un poco y reintentar
+              retries++;
+              await new Promise(resolve => setTimeout(resolve, 1000)); // Esperar 1 segundo
+              continue;
+            } else if (error.response?.status === 404) {
+              // Si es 404 y no hay más reintentos, mostrar error
+              toast.error('Conexión no encontrada. Por favor reconecta.');
+              setTimeout(() => {
+                navigate('/tablet/join');
+              }, 3000);
+              setLoading(false);
+              return;
+            } else {
+              // Otro tipo de error, re-lanzar
+              throw error;
+            }
+          }
+        }
 
-    // Auto-refresh cada 3 segundos
+        if (!statusData || !statusData.team || !statusData.game_session) {
+          toast.error('Conexión no válida');
+          navigate('/tablet/join');
+          setLoading(false);
+          return;
+        }
+
+        setMyTeamId(statusData.team.id);
+        
+        // Cargar lobby inicial (esto también carga el gameData)
+        await loadLobby();
+
+        // Obtener gameData para guardar valores iniciales usando el endpoint lobby que ya funciona
+        try {
+          // Usar el endpoint lobby que ya sabemos que funciona sin autenticación
+          const lobbyData = await sessionsAPI.getLobby(statusData.game_session.id);
+          const gameData = lobbyData.game_session;
+          
+          // Guardar valores iniciales para comparación
+          const initialActivityId = gameData.current_activity;
+          const initialActivityName = gameData.current_activity_name || '';
+          const initialSessionStageId = gameData.current_session_stage;
+          const initialStageNumber = gameData.current_stage_number;
+
+          // Verificar actividad y etapa periódicamente (COMO EN ETAPA 2)
+          activityCheckIntervalRef.current = setInterval(async () => {
+            try {
+              // Usar lobby en lugar de getById para evitar problemas de autenticación
+              const updatedLobbyData = await sessionsAPI.getLobby(statusData.game_session.id);
+              const updatedSession = updatedLobbyData.game_session;
+              
+              // Verificar si cambió la actividad o etapa
+              const activityChanged = updatedSession.current_activity !== initialActivityId || 
+                                     (updatedSession.current_activity_name || '') !== initialActivityName;
+              const stageChanged = updatedSession.current_stage_number !== initialStageNumber;
+              
+              if (activityChanged || stageChanged) {
+                // Limpiar intervalos
+                if (activityCheckIntervalRef.current) {
+                  clearInterval(activityCheckIntervalRef.current);
+                  activityCheckIntervalRef.current = null;
+                }
+                if (intervalRef.current) {
+                  clearInterval(intervalRef.current);
+                  intervalRef.current = null;
+                }
+                
+                // Redirigir según la nueva actividad
+                await determineAndRedirectToActivity(statusData.game_session.id);
+              }
+            } catch (error) {
+              console.error('Error verificando actividad:', error);
+            }
+          }, 3000); // Verificar cada 3 segundos
+        } catch (error) {
+          console.error('Error obteniendo gameData inicial:', error);
+          // Continuar sin la verificación de cambios si falla
+        }
+
+      } catch (error: any) {
+        console.error('Error loading initial data:', error);
+        const errorMessage = error.response?.data?.error || error.message || 'Error desconocido';
+        toast.error('Error de conexión: ' + errorMessage);
+        setLoading(false);
+      }
+    };
+
+    loadInitialData();
+
+    // Auto-refresh cada 3 segundos (mantener para actualizar lobby)
     intervalRef.current = setInterval(() => {
       loadLobby();
     }, 3000);
@@ -96,6 +196,9 @@ export function TabletLobby() {
       if (progressIntervalRef.current) {
         clearInterval(progressIntervalRef.current);
         progressIntervalRef.current = null;
+      }
+      if (activityCheckIntervalRef.current) {
+        clearInterval(activityCheckIntervalRef.current);
       }
     };
   }, [connectionId, navigate]);
@@ -217,7 +320,9 @@ export function TabletLobby() {
 
   const determineAndRedirectToActivity = async (gameSessionId: number) => {
     try {
-      const gameData = await sessionsAPI.getById(gameSessionId);
+      // Usar lobby en lugar de getById para evitar problemas de autenticación
+      const lobbyData = await sessionsAPI.getLobby(gameSessionId);
+      const gameData = lobbyData.game_session;
       const currentActivityName = gameData.current_activity_name;
       const currentActivityId = gameData.current_activity;
       const currentStageNumber = gameData.current_stage_number;

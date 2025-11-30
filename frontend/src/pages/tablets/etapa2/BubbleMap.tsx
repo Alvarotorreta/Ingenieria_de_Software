@@ -1172,7 +1172,9 @@ export function TabletBubbleMap() {
         setTeam(teamData);
         setGameSessionId(gameSession.id);
 
-        const gameSessionData = await sessionsAPI.getById(gameSession.id);
+        // Usar lobby en lugar de getById para evitar problemas de autenticación
+        const lobbyData = await sessionsAPI.getLobby(gameSession.id);
+        const gameSessionData = lobbyData.game_session;
         
         // Guardar valores iniciales para comparación
         const initialActivityId = gameSessionData.current_activity;
@@ -1246,7 +1248,9 @@ export function TabletBubbleMap() {
         // Verificar actividad y etapa periódicamente
         activityCheckIntervalRef.current = setInterval(async () => {
           try {
-            const updatedSession = await sessionsAPI.getById(gameSession.id);
+            // Usar lobby en lugar de getById para evitar problemas de autenticación
+            const updatedLobbyData = await sessionsAPI.getLobby(gameSession.id);
+            const updatedSession = updatedLobbyData.game_session;
             
             // Verificar si cambió la actividad o el nombre de la actividad
             const activityChanged = updatedSession.current_activity !== initialActivityId || 

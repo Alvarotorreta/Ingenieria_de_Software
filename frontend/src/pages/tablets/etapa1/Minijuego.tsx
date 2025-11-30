@@ -108,8 +108,9 @@ export function TabletMinijuego() {
         setPersonalization(null);
       }
 
-      // Verificar estado del juego
-      const gameData = await sessionsAPI.getById(statusData.game_session.id);
+      // Verificar estado del juego (usar lobby en lugar de getById para evitar problemas de autenticación)
+      const lobbyData = await sessionsAPI.getLobby(statusData.game_session.id);
+      const gameData = lobbyData.game_session;
       const sessionId = statusData.game_session.id;
 
       // Verificar si debemos mostrar la intro de la etapa

@@ -198,7 +198,9 @@ export function TabletPresentacionPitch() {
       setTeam(teamData);
       setGameSessionId(statusData.game_session.id);
 
-      const gameData: GameSession = await sessionsAPI.getById(statusData.game_session.id);
+      // Usar lobby en lugar de getById para evitar problemas de autenticación
+      const lobbyData = await sessionsAPI.getLobby(statusData.game_session.id);
+      const gameData: GameSession = lobbyData.game_session;
       const sessionId = statusData.game_session.id;
 
       // Verificar si debemos mostrar la intro de la etapa

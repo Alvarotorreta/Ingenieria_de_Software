@@ -105,8 +105,9 @@ export function TabletResultadosEtapa1() {
       setTeam(statusData.team);
       setGameSessionId(statusData.game_session.id);
 
-      // Verificar estado del juego
-      const gameData = await sessionsAPI.getById(statusData.game_session.id);
+      // Verificar estado del juego (usar lobby en lugar de getById para evitar problemas de autenticación)
+      const lobbyData = await sessionsAPI.getLobby(statusData.game_session.id);
+      const gameData = lobbyData.game_session;
 
       // Verificar si el profesor avanzó a la siguiente etapa
       const currentActivityId = gameData.current_activity;

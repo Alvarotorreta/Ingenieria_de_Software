@@ -9,6 +9,7 @@ export function TabletVideoInstitucional() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const activityCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   // Videos aleatorios sobre emprendimiento y educación
   const videoUrls = [
@@ -28,64 +29,103 @@ export function TabletVideoInstitucional() {
       navigate('/tablet/join');
       return;
     }
-    loadGameState(connId);
+    
+    const loadInitialData = async () => {
+      try {
+        const statusData = await tabletConnectionsAPI.getStatus(connId);
+        
+        if (!statusData.game_session || !statusData.game_session.id) {
+          setLoading(false);
+          return;
+        }
 
-    // Polling cada 2 segundos para detectar rápidamente cuando el profesor inicia la Etapa 1
-    intervalRef.current = setInterval(() => {
-      loadGameState(connId);
-    }, 2000);
+        const gameSessionId = statusData.game_session.id;
+        
+        // Usar lobby en lugar de getById para evitar problemas de autenticación
+        const lobbyData = await sessionsAPI.getLobby(gameSessionId);
+        const gameData = lobbyData.game_session;
+        
+        // Guardar valores iniciales para comparación
+        const initialActivityId = gameData.current_activity;
+        const initialActivityName = gameData.current_activity_name || '';
+        const initialSessionStageId = gameData.current_session_stage;
+        const initialStageNumber = gameData.current_stage_number;
+
+        // Si la sesión finaliza, redirigir al join
+        if (gameData.status === 'finished' || gameData.status === 'completed') {
+          setTimeout(() => navigate('/tablet/join'), 2000);
+          return;
+        }
+
+        // Si ya hay actividad, redirigir inmediatamente
+        if (gameData.current_activity_name && gameData.current_stage_number) {
+          const normalizedName = gameData.current_activity_name.toLowerCase();
+          if (normalizedName.includes('personaliz')) {
+            window.location.href = `/tablet/loading?redirect=/tablet/etapa1/personalizacion&connection_id=${connId}`;
+            return;
+          } else if (normalizedName.includes('presentaci')) {
+            window.location.href = `/tablet/etapa1/presentacion?connection_id=${connId}`;
+            return;
+          }
+        }
+
+        setLoading(false);
+
+        // Verificar actividad y etapa periódicamente (COMO EN ETAPA 2)
+        activityCheckIntervalRef.current = setInterval(async () => {
+          try {
+            // Usar lobby en lugar de getById para evitar problemas de autenticación
+            const updatedLobbyData = await sessionsAPI.getLobby(gameSessionId);
+            const updatedSession = updatedLobbyData.game_session;
+            
+            // Verificar si cambió la actividad o etapa
+            const activityChanged = updatedSession.current_activity !== initialActivityId || 
+                                   (updatedSession.current_activity_name || '') !== initialActivityName;
+            const stageChanged = updatedSession.current_stage_number !== initialStageNumber;
+            
+            if (activityChanged || stageChanged) {
+              // Limpiar intervalos
+              if (activityCheckIntervalRef.current) {
+                clearInterval(activityCheckIntervalRef.current);
+                activityCheckIntervalRef.current = null;
+              }
+              
+              // Redirigir según la nueva actividad
+              const newActivityName = (updatedSession.current_activity_name || '').toLowerCase();
+              const newStageNumber = updatedSession.current_stage_number;
+              
+              if (newStageNumber === 1 && newActivityName.includes('personaliz')) {
+                window.location.href = `/tablet/loading?redirect=/tablet/etapa1/personalizacion&connection_id=${connId}`;
+                return;
+              } else if (newStageNumber === 1 && newActivityName.includes('presentaci')) {
+                window.location.href = `/tablet/etapa1/presentacion?connection_id=${connId}`;
+                return;
+              } else if (newStageNumber && newStageNumber > 1) {
+                window.location.href = `/tablet/lobby?connection_id=${connId}`;
+                return;
+              }
+            }
+          } catch (error) {
+            console.error('Error verificando actividad:', error);
+          }
+        }, 2000); // Verificar cada 2 segundos
+      } catch (error) {
+        console.error('Error loading game state:', error);
+        setLoading(false);
+      }
+    };
+
+    loadInitialData();
 
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
+      if (activityCheckIntervalRef.current) {
+        clearInterval(activityCheckIntervalRef.current);
+      }
     };
   }, [searchParams, navigate]);
-
-  const loadGameState = async (connId: string) => {
-    try {
-      // Obtener información de la conexión
-      const statusData = await tabletConnectionsAPI.getStatus(connId);
-      
-      if (!statusData.game_session || !statusData.game_session.id) {
-        setLoading(false);
-        return;
-      }
-
-      const gameSessionId = statusData.game_session.id;
-
-      // Obtener estado del juego
-      const gameData = await sessionsAPI.getById(gameSessionId);
-      
-      // Si la sesión finaliza, redirigir al join (excepto en reflexión)
-      if (gameData.status === 'finished' || gameData.status === 'completed') {
-        setTimeout(() => navigate('/tablet/join'), 2000);
-        return;
-      }
-
-      // Si hay una actividad establecida (Personalización), redirigir a pantalla de carga y luego a Personalización
-      if (gameData.current_activity_name && gameData.current_stage_number) {
-        console.log('🔄 Profesor inició Etapa 1, redirigiendo desde Video:', gameData.current_activity_name);
-        const normalizedName = gameData.current_activity_name.toLowerCase();
-        if (normalizedName.includes('personaliz')) {
-          console.log('✅ Redirigiendo a pantalla de carga antes de Personalización');
-          window.location.href = `/tablet/loading?redirect=/tablet/etapa1/personalizacion&connection_id=${connId}`;
-          return;
-        } else if (normalizedName.includes('presentaci')) {
-          console.log('✅ Redirigiendo a Presentación');
-          window.location.href = `/tablet/etapa1/presentacion?connection_id=${connId}`;
-          return;
-        }
-      }
-
-      // Las tablets permanecen en el video institucional hasta que haya una actividad establecida
-
-      setLoading(false);
-    } catch (error) {
-      console.error('Error loading game state:', error);
-      setLoading(false);
-    }
-  };
 
 
   if (loading) {

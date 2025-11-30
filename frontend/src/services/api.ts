@@ -19,14 +19,27 @@ api.interceptors.request.use(
     const currentPath = window.location.pathname;
     const isTabletRoute = currentPath.startsWith('/tablet/');
     
-    // También verificar si la URL de la petición es de tablet connections o game-sessions/lobby
-    const isTabletConnectionEndpoint = config.url?.includes('/tablet-connections/') || 
-                                      config.url?.includes('/tablet-connections') ||
-                                      (config.url?.includes('/game-sessions/') && config.url?.includes('/lobby/'));
+    // Verificar si la URL de la petición es de endpoints de tablets (más específico)
+    const url = config.url || '';
+    const isTabletConnectionEndpoint = url.includes('/tablet-connections/') || 
+                                      url.includes('/tablet-connections') ||
+                                      url.includes('tablet-connections/connect') ||
+                                      url.includes('tablet-connections/status');
+    
+    // Verificar endpoints de game-sessions que no requieren autenticación (para tablets)
+    const isTabletGameSessionEndpoint = (url.includes('/game-sessions/') && url.includes('/lobby/')) ||
+                                       (url.includes('/game-sessions/') && url.includes('/activity_timer/')) ||
+                                       (url.includes('/game-sessions/') && url.includes('/stage_results/'));
+    
+    // Verificar otros endpoints de tablets que no requieren autenticación
+    const isTabletAPIEndpoint = url.includes('/team-bubble-maps/') ||
+                                url.includes('/team-activity-progress/') ||
+                                url.includes('/team-personalizations/') ||
+                                url.includes('/session-stages/');
     
     // Si estamos en una ruta de tablet o haciendo petición a endpoint de tablet, 
     // asegurarnos de que no se envíe el token (y limpiarlo si está presente en headers)
-    if (isTabletRoute || isTabletConnectionEndpoint) {
+    if (isTabletRoute || isTabletConnectionEndpoint || isTabletGameSessionEndpoint || isTabletAPIEndpoint) {
       delete config.headers.Authorization;
     } else {
       // Solo agregar token en rutas que no son de tablet
@@ -61,13 +74,24 @@ api.interceptors.response.use(
       error.response.data = fixEncodingRecursive(error.response.data);
     }
     
+    // No mostrar errores 403 en consola cuando se verifica el perfil de administrador
+    // (es esperado que profesores reciban 403 al intentar acceder al endpoint de admin)
+    if (error.response?.status === 403 && error.config?.url?.includes('/auth/administrators/me/')) {
+      // Silenciar este error específico, es esperado cuando un profesor verifica si es admin
+      return Promise.reject(error);
+    }
+    
     if (error.response?.status === 401) {
       const currentPath = window.location.pathname;
-      // Solo manejar 401 en rutas de profesor, no en tablets
-      if (currentPath.startsWith('/profesor/')) {
+      // No redirigir automáticamente durante el proceso de login
+      // Solo manejar 401 en rutas de profesor que NO sean login, no en tablets
+      if (currentPath.startsWith('/profesor/') && !currentPath.includes('/login')) {
         localStorage.removeItem('authToken');
         localStorage.removeItem('refreshToken');
-        window.location.href = '/profesor/login';
+        // Solo redirigir si no estamos en el proceso de login
+        if (!currentPath.includes('/registro')) {
+          window.location.href = '/profesor/login';
+        }
       }
       // En rutas de tablet, no hacer nada (las tablets no requieren autenticación)
       // El error se manejará en el componente

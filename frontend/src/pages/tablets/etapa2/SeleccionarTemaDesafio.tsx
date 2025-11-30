@@ -118,7 +118,9 @@ export function TabletSeleccionarTemaDesafio() {
       setTeam(statusData.team);
       setGameSessionId(statusData.game_session.id);
 
-      const gameData: GameSession = await sessionsAPI.getById(statusData.game_session.id);
+      // Usar lobby en lugar de getById para evitar problemas de autenticación
+      const lobbyData = await sessionsAPI.getLobby(statusData.game_session.id);
+      const gameData: GameSession = lobbyData.game_session;
       
       const sessionId = statusData.game_session.id;
 
@@ -298,8 +300,9 @@ export function TabletSeleccionarTemaDesafio() {
 
   const loadTopics = async (gameSessionId: number) => {
     try {
-      // Obtener información de la sesión para obtener la facultad
-      const sessionData = await sessionsAPI.getById(gameSessionId);
+      // Obtener información de la sesión para obtener la facultad (usar lobby en lugar de getById)
+      const lobbyData = await sessionsAPI.getLobby(gameSessionId);
+      const sessionData = lobbyData.game_session;
 
       if (!sessionData.course) {
         toast.error('Error: No se pudo obtener la información del curso');
