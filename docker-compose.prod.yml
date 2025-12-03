@@ -1,4 +1,26 @@
 services:
+  db:
+    image: mysql:8.0.40
+    container_name: mision_emprende_db_prod
+    restart: always
+    environment:
+      - MYSQL_DATABASE=${DATABASE_NAME}
+      - MYSQL_USER=${DATABASE_USER}
+      - MYSQL_PASSWORD=${DATABASE_PASSWORD}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+    volumes:
+      - db_prod_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    networks:
+      - mision_emprende_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
   redis:
     image: redis:7.2-alpine
     container_name: mision_emprende_redis_prod
@@ -33,7 +55,7 @@ services:
       - .env.prod
     environment:
       - DEBUG=False
-      - DATABASE_HOST=${DATABASE_HOST}
+      - DATABASE_HOST=db
       - DATABASE_PORT=${DATABASE_PORT}
       - DATABASE_NAME=${DATABASE_NAME}
       - DATABASE_USER=${DATABASE_USER}
@@ -46,6 +68,8 @@ services:
       - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
       - FRONTEND_URL=${FRONTEND_URL}
     depends_on:
+      db:
+        condition: service_healthy
       redis:
         condition: service_healthy
     networks:
@@ -72,6 +96,7 @@ services:
       - mision_emprende_network
 
 volumes:
+  db_prod_data:
   redis_prod_data:
   static_volume:
   media_volume:
