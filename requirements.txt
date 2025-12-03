@@ -77,6 +77,7 @@ faker==30.2.0  # Versión estable (evita 37.x que puede tener cambios mayores)
 # DESARROLLO Y DEBUGGING
 # ============================================
 django-debug-toolbar==5.0.1  # Versión compatible con Django 5.0 (6.x requiere Django 5.2+)
+django-extensions==3.2.3  # Herramientas de desarrollo para Django
 ipython==8.27.0  # Versión estable de IPython 8.x (evita 9.x que requiere Python 3.12+)
 
 # ============================================
