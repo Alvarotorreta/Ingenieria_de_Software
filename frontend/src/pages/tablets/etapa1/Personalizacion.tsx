@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Users, Clock, Loader2, CheckCircle2, XCircle, Gamepad2, Coins, Hand, UserPlus } from 'lucide-react';
+import { Users, Clock, Loader2, CheckCircle2, XCircle, Gamepad2, Coins, Hand, UserPlus, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { EtapaIntroModal } from '@/components/EtapaIntroModal';
+import { UBotPersonalizacionModal } from '@/components/UBotPersonalizacionModal';
 import { BackgroundMusic } from '@/components/BackgroundMusic';
 import { toast } from 'sonner';
 import { tabletConnectionsAPI, sessionsAPI, teamPersonalizationsAPI } from '@/services';
@@ -37,7 +37,7 @@ export function TabletPersonalizacion() {
   const [connectionId, setConnectionId] = useState<string | null>(null);
   const [gameSessionId, setGameSessionId] = useState<number | null>(null);
   const [currentActivityId, setCurrentActivityId] = useState<number | null>(null);
-  const [showEtapaIntro, setShowEtapaIntro] = useState(false);
+  const [showUBotModal, setShowUBotModal] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const timeExpiredRef = useRef<boolean>(false);
@@ -73,12 +73,17 @@ export function TabletPersonalizacion() {
         const initialSessionStageId = gameData.current_session_stage;
         const initialStageNumber = gameData.current_stage_number;
 
-        // Verificar si debemos mostrar la intro de la etapa
+        // Mostrar U-Bot directamente si no se ha visto
         if (gameData.current_stage_number === 1) {
-          const introKey = `tablet_etapa_intro_${sessionId}_1`;
-          const hasSeenIntro = localStorage.getItem(introKey);
-          if (!hasSeenIntro) {
-            setShowEtapaIntro(true);
+          const connId = searchParams.get('connection_id') || localStorage.getItem('tabletConnectionId');
+          if (connId) {
+            const hasSeenUBot = localStorage.getItem(`ubot_modal_personalizacion_${connId}`);
+            if (!hasSeenUBot) {
+              setTimeout(() => {
+                setShowUBotModal(true);
+                localStorage.setItem(`ubot_modal_personalizacion_${connId}`, 'true');
+              }, 500);
+            }
           }
         }
 
@@ -144,6 +149,20 @@ export function TabletPersonalizacion() {
           }
         } catch (error) {
           console.error('Error loading personalization:', error);
+        }
+
+        // Verificar si se debe mostrar el modal de U-Bot
+        // Solo si ya se vio el modal de Etapa 1 antes pero no se ha visto U-Bot
+        const hasSeenEtapaIntro = gameSessionId 
+          ? localStorage.getItem(`tablet_etapa_intro_${gameSessionId}_1`)
+          : null;
+        const hasSeenUBot = localStorage.getItem(`ubot_modal_personalizacion_${connId}`);
+        
+        if (hasSeenEtapaIntro && !hasSeenUBot && statusData.team) {
+          setTimeout(() => {
+            setShowUBotModal(true);
+            localStorage.setItem(`ubot_modal_personalizacion_${connId}`, 'true');
+          }, 500);
         }
 
         // Iniciar timer si hay actividad
@@ -427,26 +446,48 @@ export function TabletPersonalizacion() {
       <div className="relative z-10 p-3 sm:p-4">
         <div className="max-w-6xl mx-auto relative z-20">
         {/* Header Mejorado */}
-        <div className="bg-white rounded-xl shadow-xl p-3 sm:p-4 mb-3 sm:mb-4">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 flex-1 min-w-0">
-              <div
-                className="w-12 h-12 rounded-full flex items-center justify-center text-white text-lg font-bold shadow-md flex-shrink-0"
-                style={{ backgroundColor: getTeamColorHex(team.color) }}
-              >
-                {team.color.charAt(0).toUpperCase()}
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="text-base sm:text-lg font-bold text-gray-800 truncate">{team.name}</h3>
-                <p className="text-xs sm:text-sm text-gray-600 truncate">Equipo {team.color}</p>
-              </div>
-            </div>
-            <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900 px-3 py-1.5 rounded-full font-bold text-xs sm:text-sm flex items-center gap-1.5 flex-shrink-0 shadow-sm">
-              <Coins className="w-4 h-4" />
-              <span>{team.tokens_total || 0}</span>
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white/95 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-2xl p-4 sm:p-6 mb-4 sm:mb-6 flex items-center justify-between flex-wrap gap-4"
+        >
+          <div className="flex items-center gap-3 sm:gap-4">
+            <motion.div
+              whileHover={{ scale: 1.1, rotate: 5 }}
+              whileTap={{ scale: 0.95 }}
+              className="w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center text-white text-lg sm:text-xl font-bold shadow-lg"
+              style={{ backgroundColor: getTeamColorHex(team.color) }}
+            >
+              {team.color.charAt(0).toUpperCase()}
+            </motion.div>
+            <div>
+              <h3 className="text-lg sm:text-xl font-bold text-gray-800">
+                {team.name?.replace(/^Equipo\s+/i, 'Start-up ') || `Start-up ${team.color}`}
+              </h3>
+              <p className="text-xs sm:text-sm text-gray-600">Start-up {team.color}</p>
             </div>
           </div>
-        </div>
+          <div className="flex items-center gap-2">
+            {team && (
+              <motion.button
+                onClick={() => setShowUBotModal(true)}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="bg-gradient-to-r from-pink-500 to-pink-600 text-white px-5 py-2.5 rounded-full font-semibold text-sm sm:text-base flex items-center gap-2 shadow-lg"
+              >
+                <Bot className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span>U-Bot</span>
+              </motion.button>
+            )}
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="bg-gradient-to-r from-[#093c92] to-blue-700 text-white px-5 py-2.5 rounded-full font-semibold text-sm sm:text-base flex items-center gap-2 shadow-lg"
+            >
+              <Coins className="w-4 h-4 sm:w-5 sm:h-5" /> {team.tokens_total || 0} Tokens
+            </motion.div>
+          </div>
+        </motion.div>
 
         {/* Formulario Mejorado */}
         <motion.div
@@ -457,10 +498,10 @@ export function TabletPersonalizacion() {
           {/* Título y Descripción */}
           <div className="mb-4 sm:mb-5">
             <h2 className="text-xl sm:text-2xl font-bold text-[#093c92] mb-2">
-              1. Personalización del Equipo
+              1. Registro de Identidad
             </h2>
             <p className="text-gray-600 text-sm">
-              Define el nombre de tu equipo y si ya se conocen entre ustedes
+              Definan el nombre de su Start-up y estado actual.
             </p>
           </div>
 
@@ -478,12 +519,12 @@ export function TabletPersonalizacion() {
             {/* Campo Nombre del Equipo */}
             <div className="space-y-2">
               <Label htmlFor="teamName" className="text-[#093c92] font-semibold text-sm">
-                Nombre del Equipo
+                Nombre de la Start-up
               </Label>
               <Input
                 id="teamName"
                 type="text"
-                placeholder="Ej: Los Emprendedores, Los Innovadores..."
+                placeholder="Ej: Rocket Labs, Alpha Solutions, Futuro S.A..."
                 value={teamName}
                 onChange={(e) => setTeamName(e.target.value)}
                 maxLength={100}
@@ -496,7 +537,7 @@ export function TabletPersonalizacion() {
             {/* Pregunta sobre conocimiento */}
             <div className="space-y-3">
               <Label className="text-[#093c92] font-semibold text-sm sm:text-base block">
-                ¿Los miembros del equipo ya se conocen?
+                Estado de conexión del equipo:
               </Label>
               <div className="grid grid-cols-2 gap-3">
                 <motion.button
@@ -549,7 +590,7 @@ export function TabletPersonalizacion() {
                   ✓ Entregado
                 </>
               ) : (
-                'Entregar Personalización'
+                'FUNDAR STARTUP'
               )}
             </Button>
           </form>
@@ -557,18 +598,17 @@ export function TabletPersonalizacion() {
         </div>
       </div>
 
-      {/* Modal de Introducción de Etapa */}
-      <EtapaIntroModal
-        etapaNumero={1}
-        isOpen={showEtapaIntro}
-        onClose={() => {
-          setShowEtapaIntro(false);
-          // Guardar en localStorage que se vio la intro
-          if (gameSessionId) {
-            localStorage.setItem(`tablet_etapa_intro_${gameSessionId}_1`, 'true');
-          }
-        }}
-      />
+      {/* Modal de U-Bot para Personalización */}
+      {team && (
+        <UBotPersonalizacionModal
+          isOpen={showUBotModal}
+          onClose={() => setShowUBotModal(false)}
+          onIniciar={() => {
+            setShowUBotModal(false);
+          }}
+          teamColor={team.color}
+        />
+      )}
 
       {/* Música de fondo */}
       <BackgroundMusic storageKey="tablet_backgroundMusicEnabled" />

@@ -12,9 +12,10 @@ import {
   BookOpen,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { EtapaIntroModal } from '@/components/EtapaIntroModal';
+import { UBotEtapa2Modal } from '@/components/UBotEtapa2Modal';
+import { Bot } from 'lucide-react';
 import { BackgroundMusic } from '@/components/BackgroundMusic';
-import { sessionsAPI, tabletConnectionsAPI, challengesAPI, teamActivityProgressAPI, academicAPI } from '@/services';
+import { sessionsAPI, tabletConnectionsAPI, challengesAPI, teamActivityProgressAPI, academicAPI, teamPersonalizationsAPI } from '@/services';
 import { toast } from 'sonner';
 
 interface Team {
@@ -53,10 +54,327 @@ interface GameSession {
 
 type Step = 'topic' | 'challenge';
 
+// Mapeo de iconos por ID de tema (se usa como respaldo si la BD no tiene icono)
+// Basado en los temas que existen en la base de datos según update_challenges.py
+const topicIconsMap: Record<number, string> = {
+  // Temas principales del sistema (orden puede variar según creación en BD)
+  1: '🏥',  // Salud
+  2: '📚',  // Educación
+  3: '🌱',  // Sustentabilidad
+};
+
+// Mapeo de iconos por nombre de tema (respaldo adicional)
+// Prioridad: Temas principales del sistema (Salud, Educación, Sustentabilidad)
+const topicIconsByName: Record<string, string> = {
+  // Temas principales del sistema (exactos como están en la BD)
+  'salud': '🏥',
+  'Salud': '🏥',
+  'health': '🏥',
+  
+  'educación': '📚',
+  'Educación': '📚',
+  'educacion': '📚',
+  'Educacion': '📚',
+  'education': '📚',
+  
+  'sustentabilidad': '🌱',
+  'Sustentabilidad': '🌱',
+  'sostenibilidad': '🌱',
+  'Sostenibilidad': '🌱',
+  
+  // Variaciones y temas relacionados
+  'medicina': '🏥',
+  'bienestar': '🏥',
+  'aprendizaje': '📚',
+  'enseñanza': '📚',
+  'académico': '📚',
+  'academico': '📚',
+  'universidad': '🎓',
+  'colegio': '📚',
+  'escuela': '📚',
+  'fitness': '💪',
+  'ejercicio': '💪',
+  'nutrición': '🥗',
+  'nutricion': '🥗',
+  
+  // Tecnología
+  'tecnología': '💡',
+  'tecnologia': '💡',
+  'tech': '💡',
+  'digital': '💡',
+  'software': '💻',
+  'aplicación': '📱',
+  'aplicacion': '📱',
+  'app': '📱',
+  'innovación': '💡',
+  'innovacion': '💡',
+  'startup': '🚀',
+  
+  // Negocios
+  'negocio': '💼',
+  'business': '💼',
+  'emprendimiento': '💼',
+  'empresa': '💼',
+  'comercio': '🏪',
+  'ventas': '💰',
+  'marketing': '📢',
+  'finanzas': '💰',
+  'economía': '📈',
+  'economia': '📈',
+  
+  // Hogar
+  'hogar': '🏠',
+  'home': '🏠',
+  'casa': '🏠',
+  'familia': '👨‍👩‍👧‍👦',
+  'decoración': '🛋️',
+  'decoracion': '🛋️',
+  'muebles': '🪑',
+  
+  // Comida
+  'comida': '🍽️',
+  'food': '🍽️',
+  'restaurante': '🍽️',
+  'gastronomía': '👨‍🍳',
+  'gastronomia': '👨‍🍳',
+  'cocina': '👨‍🍳',
+  'bebida': '🥤',
+  'café': '☕',
+  'cafe': '☕',
+  
+  // Transporte
+  'transporte': '🚗',
+  'transport': '🚗',
+  'movilidad': '🚗',
+  'vehículo': '🚗',
+  'vehiculo': '🚗',
+  'automóvil': '🚗',
+  'automovil': '🚗',
+  'delivery': '🚚',
+  'logística': '📦',
+  'logistica': '📦',
+  
+  // Deportes
+  'deporte': '⚽',
+  'sport': '⚽',
+  'fútbol': '⚽',
+  'futbol': '⚽',
+  'fitness': '💪',
+  'gimnasio': '🏋️',
+  'yoga': '🧘',
+  'running': '🏃',
+  
+  // Música
+  'música': '🎵',
+  'musica': '🎵',
+  'music': '🎵',
+  'entretenimiento': '🎬',
+  'cine': '🎬',
+  'teatro': '🎭',
+  
+  // Juegos
+  'juego': '🎮',
+  'game': '🎮',
+  'gaming': '🎮',
+  'videojuego': '🎮',
+  'esports': '🎮',
+  
+  // Fotografía
+  'fotografía': '📷',
+  'fotografia': '📷',
+  'photo': '📷',
+  'cámara': '📷',
+  'camara': '📷',
+  'video': '🎥',
+  
+  // Arte
+  'arte': '🎨',
+  'art': '🎨',
+  'diseño': '🎨',
+  'diseno': '🎨',
+  'creativo': '🎨',
+  'pintura': '🖌️',
+  'ilustración': '✏️',
+  'ilustracion': '✏️',
+  
+  // Viajes
+  'viaje': '✈️',
+  'travel': '✈️',
+  'turismo': '✈️',
+  'tourism': '✈️',
+  'hotel': '🏨',
+  'vacaciones': '🏖️',
+  
+  // Moda
+  'moda': '👗',
+  'fashion': '👗',
+  'estilo': '👗',
+  'ropa': '👕',
+  'accesorios': '💍',
+  
+  // Servicios
+  'servicio': '🔧',
+  'service': '🔧',
+  'herramienta': '🔧',
+  'tool': '🔧',
+  'reparación': '🔨',
+  'reparacion': '🔨',
+  'mantenimiento': '🛠️',
+  
+  // Social
+  'social': '👥',
+  'community': '👥',
+  'comunidad': '👥',
+  'personas': '👥',
+  'redes': '📱',
+  'networking': '🤝',
+  
+  // Amor y relaciones
+  'amor': '❤️',
+  'love': '❤️',
+  'relación': '💑',
+  'relacion': '💑',
+  'pareja': '💑',
+  
+  // Sostenibilidad
+  'sostenibilidad': '🌱',
+  'sustentabilidad': '🌱',
+  'medio ambiente': '🌍',
+  'ecología': '🌿',
+  'ecologia': '🌿',
+  'verde': '🌱',
+  'reciclaje': '♻️',
+  
+  // Otros
+  'mascota': '🐾',
+  'pet': '🐾',
+  'animal': '🐾',
+  'libro': '📖',
+  'lectura': '📖',
+  'cultura': '🏛️',
+  'evento': '🎉',
+  'celebración': '🎊',
+  'celebracion': '🎊',
+};
+
+// Función para obtener el icono del tema
+const getTopicIcon = (topic: Topic): string => {
+  // 1. Si tiene icono en la BD y NO es "?" (problema de encoding), usarlo
+  if (topic.icon && topic.icon !== '?' && topic.icon.trim() !== '') {
+    return topic.icon;
+  }
+  
+  // 2. Si el icono es "?" o está vacío, buscar por ID en el mapeo
+  if (topicIconsMap[topic.id]) {
+    return topicIconsMap[topic.id];
+  }
+  
+  // 3. Buscar por nombre exacto primero (case-sensitive)
+  if (topicIconsByName[topic.name]) {
+    return topicIconsByName[topic.name];
+  }
+  
+  // 4. Buscar por nombre (case-insensitive)
+  const nameLower = topic.name.toLowerCase();
+  for (const [key, icon] of Object.entries(topicIconsByName)) {
+    if (nameLower === key.toLowerCase() || nameLower.includes(key.toLowerCase())) {
+      return icon;
+    }
+  }
+  
+  // 5. Por defecto
+  return '📚';
+};
+
+// Mapeo de iconos por ID de desafío (se usa como respaldo si la BD no tiene icono)
+const challengeIconsMap: Record<number, string> = {
+  // Los IDs pueden variar según la creación en BD
+};
+
+// Mapeo de iconos por título de desafío (respaldo adicional)
+// Basado en los desafíos que existen en update_challenges.py
+const challengeIconsByTitle: Record<string, string> = {
+  // Salud
+  'autogestión de tratamientos': '🏥',
+  'autogestion de tratamientos': '🏥',
+  'autogestión': '🏥',
+  'tratamientos': '🏥',
+  'obesidad': '⚖️',
+  'sobrepeso': '⚖️',
+  'envejecimiento activo': '🚶',
+  'envejecimiento': '🚶',
+  'adultos mayores': '🚶',
+  
+  // Educación
+  'educación financiera accesible': '💰',
+  'educacion financiera accesible': '💰',
+  'educación financiera': '💰',
+  'educacion financiera': '💰',
+  'financiera': '💰',
+  'inicio de vida laboral': '🎓',
+  'vida laboral': '🎓',
+  'primer empleo': '🎓',
+  'empleo': '🎓',
+  'tecnología adultos mayores': '📱',
+  'tecnologia adultos mayores': '📱',
+  'tecnología': '📱',
+  'tecnologia': '📱',
+  'adultos mayores tecnología': '📱',
+  
+  // Sustentabilidad
+  'contaminación por fast fashion': '👕',
+  'contaminacion por fast fashion': '👕',
+  'fast fashion': '👕',
+  'contaminación': '👕',
+  'contaminacion': '👕',
+  'moda': '👕',
+  'acceso al agua en la agricultura': '💧',
+  'acceso al agua': '💧',
+  'agua': '💧',
+  'agricultura': '💧',
+  'gestión de residuos electrónicos': '♻️',
+  'gestion de residuos electronicos': '♻️',
+  'residuos electrónicos': '♻️',
+  'residuos electronicos': '♻️',
+  'residuos': '♻️',
+  'reciclaje': '♻️',
+  'desechos electrónicos': '♻️',
+};
+
+// Función para obtener el icono del desafío
+const getChallengeIcon = (challenge: Challenge): string => {
+  // 1. Si tiene icono en la BD y NO es "?" (problema de encoding), usarlo
+  if (challenge.icon && challenge.icon !== '?' && challenge.icon.trim() !== '') {
+    return challenge.icon;
+  }
+  
+  // 2. Si el icono es "?" o está vacío, buscar por ID en el mapeo
+  if (challengeIconsMap[challenge.id]) {
+    return challengeIconsMap[challenge.id];
+  }
+  
+  // 3. Buscar por título exacto primero (case-insensitive)
+  const titleLower = challenge.title.toLowerCase();
+  if (challengeIconsByTitle[titleLower]) {
+    return challengeIconsByTitle[titleLower];
+  }
+  
+  // 4. Buscar por palabras clave en el título
+  for (const [key, icon] of Object.entries(challengeIconsByTitle)) {
+    if (titleLower.includes(key)) {
+      return icon;
+    }
+  }
+  
+  // 5. Por defecto
+  return '🎯';
+};
+
 export function TabletSeleccionarTemaDesafio() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [team, setTeam] = useState<Team | null>(null);
+  const [personalization, setPersonalization] = useState<{ team_name?: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentStep, setCurrentStep] = useState<Step>('topic');
   const [topics, setTopics] = useState<Topic[]>([]);
@@ -71,7 +389,7 @@ export function TabletSeleccionarTemaDesafio() {
   const [gameSessionId, setGameSessionId] = useState<number | null>(null);
   const [currentActivityId, setCurrentActivityId] = useState<number | null>(null);
   const [sessionStageId, setSessionStageId] = useState<number | null>(null);
-  const [showEtapaIntro, setShowEtapaIntro] = useState(false);
+  const [showUBotModal, setShowUBotModal] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const scrollPositionRef = useRef<number>(0);
@@ -118,18 +436,33 @@ export function TabletSeleccionarTemaDesafio() {
       setTeam(statusData.team);
       setGameSessionId(statusData.game_session.id);
 
+      // Cargar personalización del equipo para obtener el nombre personalizado
+      try {
+        const persList = await teamPersonalizationsAPI.list({ team: statusData.team.id });
+        const persResults = Array.isArray(persList) ? persList : [persList];
+        if (persResults.length > 0 && persResults[0]) {
+          setPersonalization(persResults[0]);
+        }
+      } catch (error) {
+        // Si no hay personalización, continuar sin ella
+        setPersonalization(null);
+      }
+
       // Usar lobby en lugar de getById para evitar problemas de autenticación
       const lobbyData = await sessionsAPI.getLobby(statusData.game_session.id);
       const gameData: GameSession = lobbyData.game_session;
       
       const sessionId = statusData.game_session.id;
 
-      // Verificar si debemos mostrar la intro de la etapa
-      if (gameData.current_stage_number === 2) {
-        const introKey = `tablet_etapa_intro_${sessionId}_2`;
-        const hasSeenIntro = localStorage.getItem(introKey);
-        if (!hasSeenIntro) {
-          setShowEtapaIntro(true);
+      // Mostrar modal de U-Bot si no se ha visto
+      if (gameData.current_stage_number === 2 && isInitialLoad) {
+        const ubotKey = `ubot_etapa2_${sessionId}`;
+        const hasSeenUBot = localStorage.getItem(ubotKey);
+        if (!hasSeenUBot) {
+          setTimeout(() => {
+            setShowUBotModal(true);
+            localStorage.setItem(ubotKey, 'true');
+          }, 500);
         }
       }
 
@@ -241,13 +574,39 @@ export function TabletSeleccionarTemaDesafio() {
       
       const progress = Array.isArray(progressList) ? progressList[0] : null;
 
-
       if (progress) {
         // Si hay desafío seleccionado, entonces el tema también está confirmado
         if (progress.selected_challenge) {
           const challenge = typeof progress.selected_challenge === 'object' 
             ? progress.selected_challenge 
             : { id: progress.selected_challenge };
+          
+          // Buscar el challenge en el array para obtener la URL completa si está disponible
+          const challengeFromArray = challenges.find(c => c.id === challenge.id);
+          
+          // Priorizar la URL completa del array sobre la ruta relativa del progress
+          let finalImageUrl = challenge.persona_image_url;
+          if (challengeFromArray?.persona_image_url) {
+            // Si el array tiene URL completa, usarla
+            if (challengeFromArray.persona_image_url.startsWith('http://') || challengeFromArray.persona_image_url.startsWith('https://')) {
+              finalImageUrl = challengeFromArray.persona_image_url;
+            } else if (finalImageUrl && (finalImageUrl.startsWith('http://') || finalImageUrl.startsWith('https://'))) {
+              // Si el progress tiene URL completa, usarla
+            } else if (challengeFromArray.persona_image_url) {
+              // Si el array tiene ruta relativa pero el progress no tiene nada, usar la del array
+              finalImageUrl = challengeFromArray.persona_image_url;
+            }
+          } else if (selectedChallenge && selectedChallenge.id === challenge.id && selectedChallenge.persona_image_url) {
+            // Si no hay challenge en el array, preservar la imagen del selectedChallenge actual
+            if (!finalImageUrl || finalImageUrl === '') {
+              finalImageUrl = selectedChallenge.persona_image_url;
+            }
+          }
+          
+          const finalChallenge = {
+            ...challenge,
+            persona_image_url: finalImageUrl
+          } as Challenge;
           
           // Si hay tema seleccionado, marcarlo como confirmado y cargar desafíos
           if (progress.selected_topic) {
@@ -261,7 +620,7 @@ export function TabletSeleccionarTemaDesafio() {
               await loadChallenges(topic.id);
             }
             
-            setSelectedChallenge(challenge as Challenge);
+            setSelectedChallenge(finalChallenge);
             setPendingChallengeId(null);
             
             // Cambiar al paso de desafíos si hay desafío confirmado
@@ -269,7 +628,7 @@ export function TabletSeleccionarTemaDesafio() {
               setCurrentStep('challenge');
             }
           } else {
-            setSelectedChallenge(challenge as Challenge);
+            setSelectedChallenge(finalChallenge);
             setPendingChallengeId(null);
           }
         } else if (progress.selected_topic) {
@@ -345,7 +704,22 @@ export function TabletSeleccionarTemaDesafio() {
     try {
       const challengesList = await challengesAPI.getChallenges({ topic: topicId });
       const challengesArray = Array.isArray(challengesList) ? challengesList : [];
-      setChallenges(challengesArray);
+      
+      // Preservar imágenes de challenges que ya estaban en el estado (si tienen imagen)
+      setChallenges(prevChallenges => {
+        const updated = challengesArray.map((newChallenge: Challenge) => {
+          const existingChallenge = prevChallenges.find(c => c.id === newChallenge.id);
+          if (existingChallenge && existingChallenge.persona_image_url && 
+              (!newChallenge.persona_image_url || newChallenge.persona_image_url === '')) {
+            return {
+              ...newChallenge,
+              persona_image_url: existingChallenge.persona_image_url
+            };
+          }
+          return newChallenge;
+        });
+        return updated;
+      });
     } catch (error: any) {
       throw error;
     }
@@ -437,25 +811,50 @@ export function TabletSeleccionarTemaDesafio() {
       const challengeResponse = await teamActivityProgressAPI.selectChallenge(formData);
 
       let challenge = challenges.find((c) => c.id === pendingChallengeId);
+      
       if (!challenge && challengeResponse?.selected_challenge) {
         challenge = challengeResponse.selected_challenge as Challenge;
       }
       
       if (challenge) {
-        const challengeImageUrl = challengeResponse?.selected_challenge?.persona_image_url || challenge.persona_image_url;
+        // Priorizar URL completa del array sobre ruta relativa del response
+        const responseImageUrl = challengeResponse?.selected_challenge?.persona_image_url;
+        const arrayImageUrl = challenge.persona_image_url;
+        
+        let challengeImageUrl = arrayImageUrl; // Por defecto usar la del array
+        
+        // Si el array tiene URL completa, usarla siempre
+        if (arrayImageUrl && (arrayImageUrl.startsWith('http://') || arrayImageUrl.startsWith('https://'))) {
+          challengeImageUrl = arrayImageUrl;
+        } 
+        // Si el response tiene URL completa y el array no, usar la del response
+        else if (responseImageUrl && (responseImageUrl.startsWith('http://') || responseImageUrl.startsWith('https://'))) {
+          challengeImageUrl = responseImageUrl;
+        }
+        // Si el response tiene ruta relativa y el array no tiene nada, usar la del response
+        else if (responseImageUrl && (!arrayImageUrl || arrayImageUrl === '')) {
+          challengeImageUrl = responseImageUrl;
+        }
+        // Si el array tiene ruta relativa, mantenerla
+        else if (arrayImageUrl) {
+          challengeImageUrl = arrayImageUrl;
+        }
         
         setChallenges(prevChallenges => {
-          return prevChallenges.map(c => 
+          const updated = prevChallenges.map(c => 
             c.id === challenge.id
               ? { ...c, persona_image_url: challengeImageUrl }
               : c
           );
+          return updated;
         });
         
-        setSelectedChallenge({
+        const newSelectedChallenge = {
           ...challenge,
           persona_image_url: challengeImageUrl
-        });
+        };
+        
+        setSelectedChallenge(newSelectedChallenge);
         setPendingChallengeId(null);
         
         if (challengeResponse?.selected_topic) {
@@ -470,12 +869,6 @@ export function TabletSeleccionarTemaDesafio() {
         }
         
         toast.success('✓ Desafío y tema confirmados exitosamente');
-        
-        if (connectionId) {
-          setTimeout(() => {
-            loadGameState(connectionId, false);
-          }, 500);
-        }
       } else {
         toast.error('Error: No se pudo encontrar el desafío confirmado');
       }
@@ -602,7 +995,7 @@ export function TabletSeleccionarTemaDesafio() {
       </div>
 
       {/* Contenido */}
-      <div className="relative z-10 max-w-6xl mx-auto p-4 sm:p-6">
+      <div className="relative z-0 max-w-6xl mx-auto p-4 sm:p-6">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -619,32 +1012,55 @@ export function TabletSeleccionarTemaDesafio() {
               {team.color.charAt(0).toUpperCase()}
             </motion.div>
             <div>
-              <h3 className="text-lg sm:text-xl font-bold text-gray-800">{team.name}</h3>
-              <p className="text-xs sm:text-sm text-gray-600">Equipo {team.color}</p>
+              <h3 className="text-lg sm:text-xl font-bold text-gray-800">
+                {personalization?.team_name 
+                  ? `Start-up ${personalization.team_name}` 
+                  : (team.name?.replace(/^Equipo\s+/i, 'Start-up ') || `Start-up ${team.color}`)
+                }
+              </h3>
+              <p className="text-xs sm:text-sm text-gray-600">Start-up {team.color}</p>
             </div>
           </div>
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="bg-gradient-to-r from-[#093c92] to-blue-700 text-white px-5 py-2.5 rounded-full font-semibold text-sm sm:text-base flex items-center gap-2 shadow-lg"
-          >
-            <Award className="w-4 h-4 sm:w-5 sm:h-5" /> {team.tokens_total || 0} Tokens
-          </motion.div>
-        </motion.div>
-
-        {/* Temporizador */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="bg-yellow-50/95 backdrop-blur-sm border-2 border-yellow-400/80 text-yellow-900 p-3 sm:p-4 rounded-xl mb-4 sm:mb-6 text-center shadow-lg"
-        >
-          <p className="font-bold text-sm sm:text-base flex items-center justify-center gap-2">
-            <Clock className="w-4 h-4 sm:w-5 sm:h-5 animate-pulse" /> Tiempo restante: <span className="text-yellow-800 font-black">{timerRemaining}</span>
-          </p>
+          <div className="flex items-center gap-2">
+            {team && (
+              <motion.div
+                onClick={() => setShowUBotModal(true)}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="bg-gradient-to-r from-pink-500 to-pink-600 text-white px-5 py-2.5 rounded-full font-semibold text-sm sm:text-base flex items-center gap-2 shadow-lg cursor-pointer"
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    setShowUBotModal(true);
+                  }
+                }}
+              >
+                <Bot className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span>U-Bot</span>
+              </motion.div>
+            )}
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="bg-gradient-to-r from-[#093c92] to-blue-700 text-white px-5 py-2.5 rounded-full font-semibold text-sm sm:text-base flex items-center gap-2 shadow-lg"
+            >
+              <Award className="w-4 h-4 sm:w-5 sm:h-5" /> {team.tokens_total || 0} Tokens
+            </motion.div>
+          </div>
         </motion.div>
 
         {/* Contenedor Principal */}
-        <div>
+        <div className="relative">
+          {/* Temporizador en esquina superior derecha */}
+          <div className="absolute top-0 right-0 bg-yellow-50 border-2 border-yellow-300 rounded-lg px-3 py-2 shadow-sm z-10" style={{ isolation: 'isolate' }}>
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-yellow-700" />
+              <span className="text-yellow-800 font-semibold text-sm sm:text-base">
+                <span className="font-bold">{timerRemaining}</span>
+              </span>
+            </div>
+          </div>
           <AnimatePresence mode="wait">
             {currentStep === 'topic' ? (
               <motion.div
@@ -652,7 +1068,7 @@ export function TabletSeleccionarTemaDesafio() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                className="bg-white/95 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-2xl p-6 sm:p-8 md:p-10 lg:p-12"
+                className="relative z-0 bg-white/95 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-2xl p-6 sm:p-8 md:p-10 lg:p-12 pr-24 sm:pr-32"
               >
                 <div className="text-center mb-8 sm:mb-10">
                   <motion.div
@@ -671,7 +1087,7 @@ export function TabletSeleccionarTemaDesafio() {
                     transition={{ delay: 0.2 }}
                     className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-[#093c92] mb-3 drop-shadow-sm"
                   >
-                    Elige tu Temática
+                    Selección del Tema
                   </motion.h1>
                   <motion.p
                     initial={{ opacity: 0, y: 10 }}
@@ -679,7 +1095,7 @@ export function TabletSeleccionarTemaDesafio() {
                     transition={{ delay: 0.3 }}
                     className="text-gray-600 text-base sm:text-lg md:text-xl font-medium"
                   >
-                    ¿Sobre qué quieren emprender?
+                    Hemos detectado oportunidades en {topics.length} sectores críticos. Decidan su objetivo.
                   </motion.p>
                 </div>
 
@@ -727,7 +1143,7 @@ export function TabletSeleccionarTemaDesafio() {
                           transition={{ delay: index * 0.1 + 0.2, type: 'spring' }}
                           className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl mb-3 sm:mb-4 flex-shrink-0"
                         >
-                          {topic.icon || '📚'}
+                          {getTopicIcon(topic)}
                         </motion.div>
                         <h3 className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-[#093c92] mb-2 sm:mb-3 flex-shrink-0">{topic.name}</h3>
                         {topic.description && (
@@ -743,7 +1159,7 @@ export function TabletSeleccionarTemaDesafio() {
                             className="mt-auto pt-2 flex-shrink-0"
                           >
                             <p className="text-blue-600 font-semibold text-xs sm:text-sm flex items-center justify-center gap-1.5 bg-blue-50 px-3 py-1.5 sm:py-2 rounded-full">
-                              <span className="text-base">👆</span> Toca para ver desafíos
+                              [ EXPLORAR TEMA]
                             </p>
                           </motion.div>
                         )}
@@ -776,59 +1192,65 @@ export function TabletSeleccionarTemaDesafio() {
 
             </motion.div>
             ) : (
-            <motion.div
-              key="challenge"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="bg-white/95 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-2xl p-6 sm:p-8 md:p-10 lg:p-12"
-            >
-              <div className="text-center mb-8">
-                <motion.div
-                  animate={{
-                    rotate: [0, 10, -10, 0],
-                    y: [0, -10, 0],
-                  }}
-                  transition={{ duration: 3, repeat: Infinity }}
-                  className="inline-block mb-4"
-                >
-                  <Target className="w-20 h-20 sm:w-24 sm:h-24 text-[#f757ac] mx-auto" />
-                </motion.div>
-                <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-[#093c92] mb-2">
-                  El Desafío
-                </h1>
-                <p className="text-gray-600 text-base sm:text-lg md:text-xl mb-4">
-                  Tema: <span className="font-semibold text-[#093c92]">
-                    {pendingTopicId ? topics.find(t => t.id === pendingTopicId)?.name || '---' : 'No seleccionado'}
-                  </span>
-                </p>
-                {!selectedChallenge && (
+              <motion.div
+                key="challenge"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="relative z-0 bg-white/95 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-2xl p-6 sm:p-8 md:p-10 lg:p-12 pr-24 sm:pr-32"
+                style={{ isolation: 'isolate' }}
+              >
+              {/* Botón Cambiar Tema en esquina superior izquierda */}
+              {!selectedChallenge && (
+                <div className="absolute top-0 left-0 z-10 bg-white/90 backdrop-blur-sm px-2 py-1">
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     onClick={() => {
                       setCurrentStep('topic');
                       setPendingChallengeId(null);
                       setPendingTopicId(null);
                     }}
-                    className="mb-4"
+                    className="h-auto p-2 hover:bg-gray-100 text-gray-700 font-semibold text-xs sm:text-sm rounded-sm"
                     disabled={submitting}
+                    size="sm"
                   >
-                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    <ArrowLeft className="w-3.5 h-3.5 mr-1.5" />
                     Cambiar Tema
                   </Button>
-                )}
-              </div>
+                </div>
+              )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+              <div className="relative z-30 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
                 {challenges.map((challenge, index) => {
                   const isSelected = selectedChallenge?.id === challenge.id;
                   const isPending = pendingChallengeId === challenge.id && !selectedChallenge;
 
-                  // La imagen viene directamente del backend - simplemente usarla
-                  const challengeImageUrl = challenge.persona_image_url;
+                  // Función helper para convertir ruta relativa a URL completa
+                  const getImageUrl = (imageSrc: string | undefined): string => {
+                    if (!imageSrc) return '';
+                    if (imageSrc.startsWith('http://') || imageSrc.startsWith('https://')) {
+                      return imageSrc;
+                    }
+                    const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+                    const baseUrl = apiBaseUrl.replace('/api', '');
+                    return `${baseUrl}${imageSrc.startsWith('/') ? '' : '/'}${imageSrc}`;
+                  };
 
-                  // Usar icono del modelo
-                  const icon = challenge.icon || '🎯';
+                  // Priorizar la URL del array (tiene URL completa) sobre selectedChallenge (puede tener ruta relativa)
+                  // Solo usar selectedChallenge si el array no tiene imagen
+                  let challengeImageUrl = challenge.persona_image_url;
+                  if (isSelected && selectedChallenge?.persona_image_url) {
+                    // Si el array no tiene imagen o tiene ruta relativa, usar selectedChallenge
+                    if (!challenge.persona_image_url || (!challenge.persona_image_url.startsWith('http://') && !challenge.persona_image_url.startsWith('https://'))) {
+                      challengeImageUrl = selectedChallenge.persona_image_url;
+                    }
+                  }
+                  
+                  // Normalizar la URL (convertir ruta relativa a URL completa si es necesario)
+                  challengeImageUrl = getImageUrl(challengeImageUrl);
+
+                  // Usar función para obtener icono (maneja "?" de encoding)
+                  const icon = getChallengeIcon(challenge);
 
                   // Colores de gradiente para cada desafío (rotando entre diferentes colores)
                   const gradientColors = [
@@ -862,7 +1284,7 @@ export function TabletSeleccionarTemaDesafio() {
                           handleChallengeSelect(challenge, e);
                         }
                       }}
-                      className={`h-full flex flex-col rounded-xl cursor-pointer overflow-hidden transition-all border-4 ${
+                      className={`relative z-30 h-full flex flex-col rounded-xl cursor-pointer overflow-hidden transition-all border-4 ${
                         isSelected
                           ? 'ring-4 ring-green-500 shadow-2xl border-green-500'
                           : isPending
@@ -870,10 +1292,9 @@ export function TabletSeleccionarTemaDesafio() {
                           : 'border-blue-300 shadow-xl hover:border-blue-500 hover:shadow-2xl hover:ring-4 hover:ring-blue-200 active:scale-[0.98]'
                       }`}
                     >
-                      {/* Top Section - Gradient with Icon and Title - FIXED HEIGHT */}
-                      <div className={`bg-gradient-to-br ${gradientColor} p-6 text-white flex-shrink-0 h-40 flex flex-col items-center justify-center`}>
-                        <div className="text-5xl mb-3">{icon}</div>
-                        <h3 className="text-lg font-bold text-center leading-tight h-12 flex items-center justify-center">
+                      {/* Top Section - Gradient with Title - FIXED HEIGHT */}
+                      <div className={`bg-gradient-to-br ${gradientColor} p-6 text-white flex-shrink-0 h-32 flex flex-col items-center justify-center`}>
+                        <h3 className="text-lg font-bold text-center leading-tight flex items-center justify-center">
                           {challenge.title}
                         </h3>
                       </div>
@@ -883,7 +1304,7 @@ export function TabletSeleccionarTemaDesafio() {
                         {/* Description - Always visible */}
                         {challenge.description && (
                           <div className="mb-4">
-                            <p className="text-sm text-gray-700 leading-relaxed">
+                            <p className="text-sm text-gray-700 leading-relaxed font-medium">
                               {challenge.description}
                             </p>
                           </div>
@@ -908,16 +1329,16 @@ export function TabletSeleccionarTemaDesafio() {
                                 )}
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-2">
-                                  <span className="font-semibold text-gray-800 text-sm">
+                                  <span className="font-bold text-gray-900 text-base">
                                     {personaName}
                                   </span>
                                   {personaAge && (
-                                    <span className="text-sm text-gray-500">
+                                    <span className="text-sm text-gray-600 font-medium">
                                       {personaAge} años
                                     </span>
                                   )}
                                 </div>
-                                <p className="text-sm text-gray-600 italic leading-relaxed">
+                                <p className="text-sm text-gray-700 italic leading-relaxed">
                                   "{personaStory}"
                                 </p>
                               </div>
@@ -1021,37 +1442,21 @@ export function TabletSeleccionarTemaDesafio() {
                 </motion.div>
               )}
 
-              {selectedChallenge && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="text-center p-6 sm:p-8 bg-green-50 border-2 border-green-300 rounded-xl"
-                >
-                  <p className="text-base sm:text-lg font-semibold text-green-800 mb-2">
-                    ✓ Desafío confirmado exitosamente
-                  </p>
-                  <p className="text-sm sm:text-base text-gray-600">
-                    Esperando a que el profesor avance a la siguiente actividad...
-                  </p>
-                </motion.div>
-              )}
             </motion.div>
           )}
         </AnimatePresence>
         </div>
       </div>
 
-      {/* Modal de Introducción de Etapa */}
-      <EtapaIntroModal
-        etapaNumero={2}
-        isOpen={showEtapaIntro}
-        onClose={() => {
-          setShowEtapaIntro(false);
-          if (gameSessionId) {
-            localStorage.setItem(`tablet_etapa_intro_${gameSessionId}_2`, 'true');
-          }
-        }}
-      />
+      {/* Modal de U-Bot para Etapa 2 */}
+      {team && (
+        <UBotEtapa2Modal
+          isOpen={showUBotModal}
+          onClose={() => setShowUBotModal(false)}
+          onContinuar={() => setShowUBotModal(false)}
+          teamColor={team.color}
+        />
+      )}
 
       {/* Música de fondo */}
       <BackgroundMusic storageKey="tablet_backgroundMusicEnabled" />

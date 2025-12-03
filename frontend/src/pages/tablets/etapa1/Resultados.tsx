@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Trophy, Medal, Award, Coins, Loader2, Users, CheckCircle2, Clock } from 'lucide-react';
+import { Trophy, Medal, Award, Coins, Loader2, Users, CheckCircle2, Clock, Bot } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Confetti } from '@/components/Confetti';
 import { BackgroundMusic } from '@/components/BackgroundMusic';
+import { UBotResultadosModal } from '@/components/UBotResultadosModal';
 import { sessionsAPI, tabletConnectionsAPI } from '@/services';
 import { toast } from 'sonner';
 
@@ -67,7 +68,9 @@ export function TabletResultadosEtapa1() {
   const [myRank, setMyRank] = useState<number>(0);
   const [connectionId, setConnectionId] = useState<string | null>(null);
   const [gameSessionId, setGameSessionId] = useState<number | null>(null);
+  const [showUBotModal, setShowUBotModal] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const ubotModalShownRef = useRef(false);
 
   useEffect(() => {
     const connId = searchParams.get('connection_id') || localStorage.getItem('tabletConnectionId');
@@ -103,7 +106,8 @@ export function TabletResultadosEtapa1() {
       }
       
       setTeam(statusData.team);
-      setGameSessionId(statusData.game_session.id);
+      const sessionId = statusData.game_session.id;
+      setGameSessionId(sessionId);
 
       // Verificar estado del juego (usar lobby en lugar de getById para evitar problemas de autenticación)
       const lobbyData = await sessionsAPI.getLobby(statusData.game_session.id);
@@ -349,12 +353,50 @@ export function TabletResultadosEtapa1() {
         if (myTeam) {
           setMyTeamResult(myTeam);
           setMyRank(rank);
+          
+          // Mostrar modal de U-Bot después de cargar los resultados
+          const modalKey = `ubot_resultados_${gameSessionId}_${resultsData.stage_number}`;
+          const hasSeenModal = localStorage.getItem(modalKey);
+          
+          if (!hasSeenModal && !ubotModalShownRef.current) {
+            setTimeout(() => {
+              setShowUBotModal(true);
+              localStorage.setItem(modalKey, 'true');
+              ubotModalShownRef.current = true;
+            }, 500);
+          }
         }
       }
     } catch (error: any) {
       console.error('Error cargando resultados:', error);
       toast.error('Error al cargar resultados: ' + (error.response?.data?.error || error.message || 'Error desconocido'));
     }
+  };
+
+  // Función para formatear el nombre del startup
+  const getStartupDisplayName = (teamName: string | null | undefined, teamColor?: string): string => {
+    if (!teamName) {
+      // Si no hay nombre, usar el color del equipo
+      if (teamColor) {
+        return `Start-up ${teamColor.charAt(0).toUpperCase() + teamColor.slice(1)}`;
+      }
+      return 'Start-up';
+    }
+    
+    const fixedName = fixEncoding(teamName);
+    
+    // Verificar si es un nombre genérico de equipo (sin personalización)
+    const genericPattern = /^Equipo\s+(Rojo|Verde|Azul|Amarillo|Naranja|Morado|Rosa|Celeste)$/i;
+    if (genericPattern.test(fixedName)) {
+      // Extraer el color y convertir a "Start-up {Color}"
+      const match = fixedName.match(/^Equipo\s+(.+)$/i);
+      if (match) {
+        return `Start-up ${match[1]}`;
+      }
+    }
+    
+    // Si tiene personalización, mostrar "Start-up: {nombre}"
+    return `Start-up: ${fixedName}`;
   };
 
   const getTeamColorHex = (color: string) => {
@@ -422,6 +464,27 @@ export function TabletResultadosEtapa1() {
     if (rank === 3) return '🥉';
     return `${rank}°`;
   };
+
+  // Mostrar modal de U-Bot al cargar los resultados (solo una vez)
+  // IMPORTANTE: Este useEffect debe estar ANTES de cualquier return condicional
+  useEffect(() => {
+    if (results && myTeamResult && myRank > 0 && gameSessionId && !ubotModalShownRef.current) {
+      const modalKey = `ubot_resultados_${gameSessionId}_${results.stage_number}`;
+      const hasSeenModal = localStorage.getItem(modalKey);
+      
+      if (!hasSeenModal) {
+        // Pequeño delay para asegurar que el componente esté completamente renderizado
+        setTimeout(() => {
+          setShowUBotModal(true);
+          localStorage.setItem(modalKey, 'true');
+          ubotModalShownRef.current = true;
+        }, 300);
+      } else {
+        // Si ya se vio, marcar el ref para no intentar mostrarlo de nuevo
+        ubotModalShownRef.current = true;
+      }
+    }
+  }, [results, myTeamResult, myRank, gameSessionId]);
 
   if (loading) {
     return (
@@ -496,25 +559,43 @@ export function TabletResultadosEtapa1() {
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-xl shadow-xl p-3 sm:p-4 flex-shrink-0"
+            className="bg-white/95 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-2xl p-4 sm:p-6 mb-4 sm:mb-6 flex items-center justify-between flex-wrap gap-4"
           >
-            <div className="flex items-center justify-between gap-3 sm:gap-4">
-              <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-                <div
-                  className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center text-white text-base sm:text-lg font-bold shadow-lg flex-shrink-0"
-                  style={{ backgroundColor: getTeamColorHex(team.color) }}
-                >
-                  {team.color.charAt(0).toUpperCase()}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-base sm:text-lg font-bold text-gray-800 truncate">{team.name}</h3>
-                  <p className="text-xs sm:text-sm text-gray-600 truncate">Equipo {team.color}</p>
-                </div>
+            <div className="flex items-center gap-3 sm:gap-4">
+              <motion.div
+                whileHover={{ scale: 1.1, rotate: 5 }}
+                whileTap={{ scale: 0.95 }}
+                className="w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center text-white text-lg sm:text-xl font-bold shadow-lg"
+                style={{ backgroundColor: getTeamColorHex(team.color) }}
+              >
+                {team.color.charAt(0).toUpperCase()}
+              </motion.div>
+              <div>
+                <h3 className="text-lg sm:text-xl font-bold text-gray-800">
+                  {myTeamResult ? getStartupDisplayName(myTeamResult.team_name, myTeamResult.team_color) : getStartupDisplayName(team.name, team.color)}
+                </h3>
+                <p className="text-xs sm:text-sm text-gray-600">
+                  Equipo {myTeamResult ? myTeamResult.team_color : team.color}
+                </p>
               </div>
-              <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl font-bold text-sm sm:text-base flex items-center gap-2 flex-shrink-0 shadow-md">
-                <Coins className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span>{team.tokens_total || 0}</span>
-              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <motion.button
+                onClick={() => setShowUBotModal(true)}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="bg-gradient-to-r from-pink-500 to-pink-600 text-white px-5 py-2.5 rounded-full font-semibold text-sm sm:text-base flex items-center gap-2 shadow-lg"
+              >
+                <Bot className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span>U-Bot</span>
+              </motion.button>
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="bg-gradient-to-r from-[#093c92] to-blue-700 text-white px-5 py-2.5 rounded-full font-semibold text-sm sm:text-base flex items-center gap-2 shadow-lg"
+              >
+                <Coins className="w-4 h-4 sm:w-5 sm:h-5" /> {team.tokens_total || 0} Tokens
+              </motion.div>
             </div>
           </motion.div>
 
@@ -529,7 +610,7 @@ export function TabletResultadosEtapa1() {
             <h2 className="text-xl sm:text-2xl font-bold mb-1 sm:mb-2">
               {myRank}° Lugar
             </h2>
-            <p className="text-sm sm:text-base opacity-90 truncate">{fixEncoding(myTeamResult.team_name)}</p>
+            <p className="text-sm sm:text-base opacity-90 truncate">{getStartupDisplayName(myTeamResult.team_name, myTeamResult.team_color)}</p>
           </motion.div>
 
           {/* Tokens */}
@@ -542,12 +623,14 @@ export function TabletResultadosEtapa1() {
             <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 border-2 border-yellow-300 rounded-xl p-3 sm:p-4 text-center shadow-lg">
               <Coins className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-600 mx-auto mb-2" />
               <div className="text-xl sm:text-2xl font-bold text-yellow-700 mb-1">+{myTeamResult.tokens_stage}</div>
-              <div className="text-xs text-yellow-800 font-semibold">Tokens Etapa</div>
+              <div className="text-xs text-yellow-800 font-semibold">Capital Levantado (Ronda {results.stage_number})</div>
             </div>
             <div className="bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-300 rounded-xl p-3 sm:p-4 text-center shadow-lg">
               <Coins className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 mx-auto mb-2" />
               <div className="text-xl sm:text-2xl font-bold text-blue-700 mb-1">{myTeamResult.tokens_total}</div>
-              <div className="text-xs text-blue-800 font-semibold">Tokens Totales</div>
+              <div className="text-xs text-blue-800 font-semibold">
+                {results.stage_number === 4 ? 'Valoración Final (Capital)' : 'Valoración Total de la Start-up'}
+              </div>
             </div>
           </motion.div>
 
@@ -563,7 +646,7 @@ export function TabletResultadosEtapa1() {
                 <Users className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
               </div>
               <h2 className="text-lg sm:text-xl font-bold text-[#093c92]">
-                Clasificación <span className="text-gray-500 font-normal text-sm sm:text-base">({teamsOrdered.length} equipos)</span>
+                {results.stage_number === 4 ? '🏁 Ranking Final de Mercado' : 'Competencia de Mercado'}
               </h2>
             </div>
             <div className="space-y-2">
@@ -606,7 +689,7 @@ export function TabletResultadosEtapa1() {
                           isMyTeam ? 'text-blue-800 font-bold' : 'text-gray-700'
                         }`}
                       >
-                        {fixEncoding(teamResult.team_name)} {isMyTeam && <span className="text-xs text-blue-600">(Tú)</span>}
+                        {getStartupDisplayName(teamResult.team_name, teamResult.team_color)} {isMyTeam && <span className="text-xs text-blue-600">(Ustedes)</span>}
                       </span>
                       <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0 bg-yellow-50 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-yellow-200">
                         <Coins className="w-3 h-3 sm:w-4 sm:h-4 text-yellow-600" />
@@ -631,7 +714,7 @@ export function TabletResultadosEtapa1() {
             >
               <h3 className="text-sm sm:text-base font-bold text-[#093c92] mb-3 flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" />
-                Actividades
+                Checklist de Misión
               </h3>
               <div className="space-y-2">
                 {myTeamResult.activities_progress.map((activity, index) => (
@@ -650,7 +733,7 @@ export function TabletResultadosEtapa1() {
                       {activity.status === 'completed' ? (
                         <>
                           <CheckCircle2 className="w-3 h-3 inline mr-1" />
-                          <span className="hidden sm:inline">Completada</span>
+                          <span className="hidden sm:inline">Misión Cumplida</span>
                           <span className="sm:hidden">✓</span>
                         </>
                       ) : (
@@ -682,6 +765,18 @@ export function TabletResultadosEtapa1() {
           </motion.div>
         </div>
       </div>
+
+      {/* Modal de U-Bot para Resultados */}
+      {team && (
+        <UBotResultadosModal
+          isOpen={showUBotModal}
+          onClose={() => setShowUBotModal(false)}
+          rank={myRank}
+          teamColor={team.color}
+          stageNumber={results?.stage_number || 1}
+          tokensTotal={myTeamResult?.tokens_total || 0}
+        />
+      )}
 
       {/* Música de fondo */}
       <BackgroundMusic storageKey="tablet_backgroundMusicEnabled" />

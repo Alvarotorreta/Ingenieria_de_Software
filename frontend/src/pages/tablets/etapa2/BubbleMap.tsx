@@ -3,9 +3,10 @@ import { createPortal } from 'react-dom';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  Loader2, Award, Clock, Lightbulb, X, Plus, Edit2, Trash2, UserCircle, Send, Target
+  Loader2, Award, Clock, Lightbulb, X, Plus, Edit2, Trash2, UserCircle, Send, Target, Bot, Coins
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { UBotBubbleMapModal } from '@/components/UBotBubbleMapModal';
 import { 
   sessionsAPI, 
   challengesAPI, 
@@ -613,6 +614,7 @@ export function TabletBubbleMap() {
   const [selectedTopic, setSelectedTopic] = useState<{ id: number; name: string; icon?: string; description?: string } | null>(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showTopicChallengeModal, setShowTopicChallengeModal] = useState(false);
+  const [showUBotModal, setShowUBotModal] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   
   // Estado del bubble map (basado en mapa2)
@@ -645,6 +647,7 @@ export function TabletBubbleMap() {
   const nodesRef = useRef<BubbleNode[]>([]);
   const personNameRef = useRef<string>('');
   const profileImageRef = useRef<string>('');
+  const noActivityCountRef = useRef<number>(0);
 
   // Detección móvil (basado en mapa2)
   useEffect(() => {
@@ -1182,14 +1185,15 @@ export function TabletBubbleMap() {
         const initialSessionStageId = gameSessionData.current_session_stage;
         
         // Verificar si la actividad actual es Bubble Map
-        const currentActivityNameLower = (initialActivityName || '').toLowerCase();
+        const currentActivityNameLower = (initialActivityName || '').toLowerCase().trim();
+        
         if (currentActivityNameLower && !currentActivityNameLower.includes('bubble') && !currentActivityNameLower.includes('mapa')) {
           // Si no es Bubble Map, redirigir a la actividad correspondiente
-          if (currentActivityNameLower.includes('tema') || currentActivityNameLower.includes('seleccionar') || currentActivityNameLower.includes('desafio') || currentActivityNameLower.includes('desafío')) {
-            window.location.href = `/tablet/etapa2/seleccionar-tema/?connection_id=${connectionId}`;
+          if (currentActivityNameLower.includes('resultado') || currentActivityNameLower.includes('resultados')) {
+            navigate(`/tablet/etapa2/resultados/?connection_id=${connectionId}`, { replace: true });
             return;
-          } else if (currentActivityNameLower.includes('resultado')) {
-            window.location.href = `/tablet/etapa2/resultados/?connection_id=${connectionId}`;
+          } else if (currentActivityNameLower.includes('tema') || currentActivityNameLower.includes('seleccionar') || currentActivityNameLower.includes('desafio') || currentActivityNameLower.includes('desafío')) {
+            navigate(`/tablet/etapa2/seleccionar-tema/?connection_id=${connectionId}`, { replace: true });
             return;
           }
         }
@@ -1245,6 +1249,18 @@ export function TabletBubbleMap() {
           await startTimer(initialActivityId, gameSession.id);
         }
 
+        // Mostrar modal de U-Bot si no se ha visto
+        if (gameSession.id) {
+          const ubotKey = `ubot_bubblemap_${gameSession.id}`;
+          const hasSeenUBot = localStorage.getItem(ubotKey);
+          if (!hasSeenUBot) {
+            setTimeout(() => {
+              setShowUBotModal(true);
+              localStorage.setItem(ubotKey, 'true');
+            }, 500);
+          }
+        }
+
         // Verificar actividad y etapa periódicamente
         activityCheckIntervalRef.current = setInterval(async () => {
           try {
@@ -1254,8 +1270,57 @@ export function TabletBubbleMap() {
             
             // Verificar si cambió la actividad o el nombre de la actividad
             const activityChanged = updatedSession.current_activity !== initialActivityId || 
-                                   updatedSession.current_activity_name !== initialActivityName;
+                                   (updatedSession.current_activity_name || '') !== (initialActivityName || '');
             const stageChanged = updatedSession.current_session_stage !== initialSessionStageId;
+            
+            // Verificar a qué actividad redirigir (siempre verificar, no solo si cambió)
+            const newActivityName = (updatedSession.current_activity_name || '').toLowerCase().trim();
+            const newStageNumber = updatedSession.current_stage_number;
+            
+            // PRIORIDAD 1: Si el nombre de la actividad contiene "resultado" o "resultados", redirigir inmediatamente
+            if (newActivityName.includes('resultado') || newActivityName.includes('resultados')) {
+              if (activityCheckIntervalRef.current) {
+                clearInterval(activityCheckIntervalRef.current);
+                activityCheckIntervalRef.current = null;
+              }
+              // Usar navigate para redirección más confiable, con fallback a window.location
+              try {
+                navigate(`/tablet/etapa2/resultados/?connection_id=${connectionId}`, { replace: true });
+              } catch (error) {
+                window.location.href = `/tablet/etapa2/resultados/?connection_id=${connectionId}`;
+              }
+              return;
+            }
+            
+            // PRIORIDAD 2: Si no hay actividad actual (null) y estamos en etapa 2, probablemente terminó y vamos a resultados
+            // Verificar también el estado de la sesión para confirmar
+            const sessionStatus = updatedSession.status;
+            
+            if (!updatedSession.current_activity && !updatedSession.current_activity_name && newStageNumber === 2) {
+              // Incrementar contador de verificaciones sin actividad
+              noActivityCountRef.current += 1;
+              
+              // Si el estado de la sesión indica que está completada o finalizada, redirigir inmediatamente
+              // O si inicialmente había una actividad (estábamos en bubble map) y ahora no hay, redirigir
+              // O si hemos verificado varias veces sin actividad (más de 2 veces = 6+ segundos), redirigir
+              if (sessionStatus === 'completed' || sessionStatus === 'finished' || 
+                  initialActivityId !== null || initialActivityName !== null ||
+                  noActivityCountRef.current >= 3) {
+                if (activityCheckIntervalRef.current) {
+                  clearInterval(activityCheckIntervalRef.current);
+                  activityCheckIntervalRef.current = null;
+                }
+                try {
+                  navigate(`/tablet/etapa2/resultados/?connection_id=${connectionId}`, { replace: true });
+                } catch (error) {
+                  window.location.href = `/tablet/etapa2/resultados/?connection_id=${connectionId}`;
+                }
+                return;
+              }
+            } else {
+              // Si hay actividad, resetear el contador
+              noActivityCountRef.current = 0;
+            }
             
             if (activityChanged || stageChanged) {
               // Limpiar intervalos
@@ -1264,34 +1329,31 @@ export function TabletBubbleMap() {
                 activityCheckIntervalRef.current = null;
               }
               
-              // Verificar a qué actividad redirigir
-              const newActivityName = (updatedSession.current_activity_name || '').toLowerCase();
-              const newStageNumber = updatedSession.current_stage_number;
-              
               // Si la etapa cambió o se completó, redirigir a resultados o siguiente etapa
               if (stageChanged || (!updatedSession.current_activity && !updatedSession.current_activity_name)) {
-                if (newStageNumber === 2 && !updatedSession.current_activity) {
-                  window.location.href = `/tablet/etapa2/resultados/?connection_id=${connectionId}`;
+                if (newStageNumber === 2 && (!updatedSession.current_activity || newActivityName.includes('resultado'))) {
+                  navigate(`/tablet/etapa2/resultados/?connection_id=${connectionId}`, { replace: true });
                   return;
                 } else if (newStageNumber === 3) {
-                  window.location.href = `/tablet/etapa3/prototipo/?connection_id=${connectionId}`;
+                  navigate(`/tablet/etapa3/prototipo/?connection_id=${connectionId}`, { replace: true });
                   return;
                 } else {
-                  window.location.href = `/tablet/loading?redirect=/tablet/etapa2/seleccionar-tema&connection_id=${connectionId}`;
+                  navigate(`/tablet/loading?redirect=/tablet/etapa2/seleccionar-tema&connection_id=${connectionId}`, { replace: true });
                   return;
                 }
               }
               
               // Si cambió la actividad pero sigue siendo etapa 2
               if (newActivityName.includes('tema') || newActivityName.includes('seleccionar') || newActivityName.includes('desafio') || newActivityName.includes('desafío')) {
-                window.location.href = `/tablet/etapa2/seleccionar-tema/?connection_id=${connectionId}`;
+                navigate(`/tablet/etapa2/seleccionar-tema/?connection_id=${connectionId}`, { replace: true });
                 return;
-              } else if (newActivityName.includes('resultado')) {
-                window.location.href = `/tablet/etapa2/resultados/?connection_id=${connectionId}`;
+              } else if (newActivityName.includes('resultado') || newActivityName.includes('resultados')) {
+                navigate(`/tablet/etapa2/resultados/?connection_id=${connectionId}`, { replace: true });
                 return;
-              } else {
-                // Por defecto, redirigir a loading
-                window.location.href = `/tablet/loading?redirect=/tablet/etapa2/bubble-map&connection_id=${connectionId}`;
+              } else if (!newActivityName.includes('bubble') && !newActivityName.includes('mapa')) {
+                // Si la actividad cambió y no es bubble map ni ninguna de las anteriores, redirigir a resultados por defecto
+                navigate(`/tablet/etapa2/resultados/?connection_id=${connectionId}`, { replace: true });
+                return;
               }
             }
           } catch (error) {
@@ -1367,33 +1429,65 @@ export function TabletBubbleMap() {
       <div className="relative z-10 p-3 sm:p-4">
         <div className="max-w-6xl mx-auto relative z-20">
         {/* Header Mejorado - Igual que otras actividades */}
-        <div className="bg-white rounded-xl shadow-xl p-3 sm:p-4 mb-3 sm:mb-4">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 flex-1 min-w-0">
-              <div
-                className="w-12 h-12 rounded-full flex items-center justify-center text-white text-lg font-bold shadow-md flex-shrink-0"
-            style={{ backgroundColor: getTeamColorHex(team.color) }}
-          >
-            {team.color.charAt(0).toUpperCase()}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white/95 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-2xl p-4 sm:p-6 mb-4 sm:mb-6 flex items-center justify-between flex-wrap gap-4"
+        >
+          <div className="flex items-center gap-3 sm:gap-4">
+            <motion.div
+              whileHover={{ scale: 1.1, rotate: 5 }}
+              whileTap={{ scale: 0.95 }}
+              className="w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center text-white text-lg sm:text-xl font-bold shadow-lg"
+              style={{ backgroundColor: getTeamColorHex(team.color) }}
+            >
+              {team.color.charAt(0).toUpperCase()}
+            </motion.div>
+            <div>
+              <h3 className="text-lg sm:text-xl font-bold text-gray-800">{team.name}</h3>
+              <p className="text-xs sm:text-sm text-gray-600">Equipo {team.color}</p>
+            </div>
           </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="text-base sm:text-lg font-bold text-gray-800 truncate">{team.name}</h3>
-                <p className="text-xs sm:text-sm text-gray-600 truncate">Equipo {team.color}</p>
+          <div className="flex items-center gap-2">
+              {team && (
+                <motion.button
+                  onClick={() => setShowUBotModal(true)}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="bg-gradient-to-r from-pink-500 to-pink-600 text-white px-5 py-2.5 rounded-full font-semibold text-sm sm:text-base flex items-center gap-2 shadow-lg"
+                >
+                  <Bot className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span>U-Bot</span>
+                </motion.button>
+              )}
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="bg-gradient-to-r from-[#093c92] to-blue-700 text-white px-5 py-2.5 rounded-full font-semibold text-sm sm:text-base flex items-center gap-2 shadow-lg"
+            >
+              <Coins className="w-4 h-4 sm:w-5 sm:h-5" /> {team.tokens_total || 0} Tokens
+            </motion.div>
           </div>
-        </div>
-            <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900 px-3 py-1.5 rounded-full font-bold text-xs sm:text-sm flex items-center gap-1.5 flex-shrink-0 shadow-sm">
-              <Award className="w-4 h-4" />
-              <span>{team.tokens_total || 0}</span>
-        </div>
-      </div>
-        </div>
+        </motion.div>
 
         {/* Contenedor Principal Mejorado - Igual que otras actividades */}
               <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-xl shadow-xl p-4 sm:p-6"
+          className="relative bg-white rounded-xl shadow-xl p-4 sm:p-6 pr-24 sm:pr-32"
         >
+          {/* Temporizador en esquina superior derecha */}
+          {timerRemaining !== '--:--' && (
+            <div className="absolute top-0 right-0 bg-yellow-50 border-2 border-yellow-300 rounded-lg px-3 py-2 shadow-sm z-10">
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-yellow-700" />
+                <span className="text-yellow-800 font-semibold text-sm sm:text-base">
+                  <span className="font-bold">{timerRemaining}</span>
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Título y Descripción */}
           <div className="mb-4 sm:mb-5">
             <div className="flex items-center gap-3 mb-2">
@@ -1421,22 +1515,7 @@ export function TabletBubbleMap() {
                               </button>
                           )}
                             </div>
-            <p className="text-gray-600 text-sm sm:text-base">
-              Completa el mapa de empatía con preguntas y respuestas sobre la persona
-            </p>
                           </div>
-
-          {/* Temporizador Mejorado - Igual que otras actividades */}
-          {timerRemaining !== '--:--' && (
-            <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-3 mb-4 sm:mb-5">
-              <div className="flex items-center justify-center gap-2">
-                <Clock className="w-4 h-4 text-yellow-700" />
-                <span className="text-yellow-800 font-semibold text-sm sm:text-base">
-                  Tiempo restante: <span className="font-bold">{timerRemaining}</span>
-                                </span>
-                            </div>
-                              </div>
-          )}
 
           {/* Contenido del Bubble Map - Igual que mapa2 */}
           {isMobile ? (
@@ -1465,31 +1544,6 @@ export function TabletBubbleMap() {
               </div>
           )}
 
-          {/* Botón de acción */}
-          <div className="mt-4 sm:mt-5 flex justify-end">
-            <Button
-              onClick={handleSaveBubbleMap}
-              disabled={saving || nodes.length === 0 || isSubmitted}
-              className={`${isSubmitted ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-500 hover:bg-green-600'} text-white`}
-            >
-              {saving ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Finalizando...
-                </>
-              ) : isSubmitted ? (
-                <>
-                  <Award className="w-4 h-4 mr-2" />
-                  Finalizado
-                </>
-              ) : (
-                <>
-                  <Send className="w-4 h-4 mr-2" />
-                  Finalizar
-                </>
-              )}
-            </Button>
-          </div>
             </motion.div>
       </div>
           </div>
@@ -1661,6 +1715,16 @@ export function TabletBubbleMap() {
           </div>,
         document.body
         )}
+
+      {/* Modal de U-Bot para Bubble Map */}
+      {team && (
+        <UBotBubbleMapModal
+          isOpen={showUBotModal}
+          onClose={() => setShowUBotModal(false)}
+          onContinuar={() => setShowUBotModal(false)}
+          teamColor={team.color}
+        />
+      )}
     </div>
   );
 }

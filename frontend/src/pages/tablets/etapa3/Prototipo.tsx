@@ -8,14 +8,17 @@ import {
   CheckCircle2,
   X,
   Clock,
-  Coins,
+  Award,
   Info,
   Camera,
   Box,
+  Bot,
+  Coins,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { EtapaIntroModal } from '@/components/EtapaIntroModal';
+import { UBotPrototipoModal } from '@/components/UBotPrototipoModal';
 import { BackgroundMusic } from '@/components/BackgroundMusic';
 import { 
   sessionsAPI, 
@@ -46,6 +49,7 @@ export function TabletPrototipo() {
   const [currentActivityId, setCurrentActivityId] = useState<number | null>(null);
   const [currentSessionStageId, setCurrentSessionStageId] = useState<number | null>(null);
   const [showEtapaIntro, setShowEtapaIntro] = useState(false);
+  const [showUBotModal, setShowUBotModal] = useState(false);
   const [timerRemaining, setTimerRemaining] = useState<string>('--:--');
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -104,12 +108,15 @@ export function TabletPrototipo() {
       const gameData = lobbyData.game_session;
       const sessionId = statusData.game_session.id;
 
-      // Verificar si debemos mostrar la intro de la etapa
+      // Mostrar modal de U-Bot si no se ha visto
       if (gameData.current_stage_number === 3) {
-        const introKey = `tablet_etapa_intro_${sessionId}_3`;
-        const hasSeenIntro = localStorage.getItem(introKey);
-        if (!hasSeenIntro) {
-          setShowEtapaIntro(true);
+        const ubotKey = `ubot_prototipo_${sessionId}`;
+        const hasSeenUBot = localStorage.getItem(ubotKey);
+        if (!hasSeenUBot) {
+          setTimeout(() => {
+            setShowUBotModal(true);
+            localStorage.setItem(ubotKey, 'true');
+          }, 500);
         }
       }
 
@@ -419,97 +426,95 @@ export function TabletPrototipo() {
       <div className="relative z-10 p-3 sm:p-4">
         <div className="max-w-6xl mx-auto relative z-20">
           {/* Header Mejorado */}
-          <div className="bg-white rounded-xl shadow-xl p-3 sm:p-4 mb-3 sm:mb-4">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3 flex-1 min-w-0">
-                <div
-                  className="w-12 h-12 rounded-full flex items-center justify-center text-white text-lg font-bold shadow-md flex-shrink-0"
-                  style={{ backgroundColor: getTeamColorHex(team.color) }}
-                >
-                  {team.color.charAt(0).toUpperCase()}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-base sm:text-lg font-bold text-gray-800 truncate">{team.name}</h3>
-                  <p className="text-xs sm:text-sm text-gray-600 truncate">Equipo {team.color}</p>
-                </div>
-              </div>
-              <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900 px-3 py-1.5 rounded-full font-bold text-xs sm:text-sm flex items-center gap-1.5 flex-shrink-0 shadow-sm">
-                <Coins className="w-4 h-4" />
-                <span>{team.tokens_total || 0}</span>
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white/95 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-2xl p-4 sm:p-6 mb-4 sm:mb-6 flex items-center justify-between flex-wrap gap-4"
+          >
+            <div className="flex items-center gap-3 sm:gap-4">
+              <motion.div
+                whileHover={{ scale: 1.1, rotate: 5 }}
+                whileTap={{ scale: 0.95 }}
+                className="w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center text-white text-lg sm:text-xl font-bold shadow-lg"
+                style={{ backgroundColor: getTeamColorHex(team.color) }}
+              >
+                {team.color.charAt(0).toUpperCase()}
+              </motion.div>
+              <div>
+                <h3 className="text-lg sm:text-xl font-bold text-gray-800">{team.name}</h3>
+                <p className="text-xs sm:text-sm text-gray-600">Equipo {team.color}</p>
               </div>
             </div>
-          </div>
+            <div className="flex items-center gap-2">
+              {team && (
+                <motion.button
+                  onClick={() => setShowUBotModal(true)}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="bg-gradient-to-r from-pink-500 to-pink-600 text-white px-5 py-2.5 rounded-full font-semibold text-sm sm:text-base flex items-center gap-2 shadow-lg"
+                >
+                  <Bot className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span>U-Bot</span>
+                </motion.button>
+              )}
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="bg-gradient-to-r from-[#093c92] to-blue-700 text-white px-5 py-2.5 rounded-full font-semibold text-sm sm:text-base flex items-center gap-2 shadow-lg"
+              >
+                <Coins className="w-4 h-4 sm:w-5 sm:h-5" /> {team.tokens_total || 0} Tokens
+              </motion.div>
+            </div>
+          </motion.div>
 
           {/* Contenedor Principal Mejorado */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-xl shadow-xl p-4 sm:p-6"
+            className="bg-white rounded-xl shadow-xl p-4 sm:p-6 relative"
           >
+            {/* Temporizador en esquina superior derecha */}
+            {timerRemaining !== '--:--' && (
+              <div className="absolute top-0 right-0 bg-yellow-50 border-2 border-yellow-300 rounded-lg px-3 py-2 shadow-sm z-10" style={{ isolation: 'isolate' }}>
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-yellow-700" />
+                  <span className="text-yellow-800 font-semibold text-sm sm:text-base">
+                    <span className="font-bold">{timerRemaining}</span>
+                  </span>
+                </div>
+              </div>
+            )}
             {/* Título y Descripción */}
-            <div className="mb-4 sm:mb-5">
+            <div className="mb-4 sm:mb-5 pr-24 sm:pr-32">
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-[#093c92] to-[#f757ac] rounded-lg flex items-center justify-center shadow-md">
                   <Box className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                 </div>
                 <h1 className="text-xl sm:text-2xl font-bold text-[#093c92]">
-                  Subida de Prototipo Lego
+                  Registro de Prototipo (MVP)
                 </h1>
               </div>
               <p className="text-gray-600 text-sm sm:text-base">
-                Construye físicamente tu prototipo con legos y súbelo aquí
+                Sube la evidencia de tu solución física.
               </p>
             </div>
-
-            {/* Temporizador Mejorado */}
-            {timerRemaining !== '--:--' && (
-              <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-3 mb-4 sm:mb-5">
-                <div className="flex items-center justify-center gap-2">
-                  <Clock className="w-4 h-4 text-yellow-700" />
-                  <span className="text-yellow-800 font-semibold text-sm sm:text-base">
-                    Tiempo restante: <span className="font-bold">{timerRemaining}</span>
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {/* Información sobre qué construir */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="bg-green-50 border-2 border-green-300 p-3 sm:p-4 rounded-lg mb-3 sm:mb-4"
-            >
-              <h3 className="text-base sm:text-lg font-bold text-green-800 mb-2 flex items-center gap-2">
-                <Info className="w-4 h-4 sm:w-5 sm:h-5" />
-                ¿Qué construir con legos?
-              </h3>
-              <p className="text-gray-700 text-xs sm:text-sm mb-2">
-                Basándote en el desafío que seleccionaste en la Etapa 2 (Empatía), construye un{' '}
-                <strong>prototipo físico con legos</strong> que represente tu solución al problema identificado.
-              </p>
-              <p className="text-gray-700 text-xs sm:text-sm">
-                El prototipo debe ser una representación tangible de cómo tu equipo imagina que se podría resolver el desafío. Usa los legos para crear una maqueta, modelo o representación visual de tu solución.
-              </p>
-            </motion.div>
 
             {/* Instrucciones */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
+              transition={{ delay: 0.1 }}
               className="bg-blue-50 border-2 border-blue-300 p-3 sm:p-4 rounded-lg mb-3 sm:mb-4"
             >
               <h3 className="text-base sm:text-lg font-bold text-blue-800 mb-2 flex items-center gap-2">
                 <Camera className="w-4 h-4 sm:w-5 sm:h-5" />
-                Instrucciones para subir el prototipo:
+                Instrucciones:
               </h3>
-              <ul className="list-disc list-inside space-y-1.5 text-gray-700 text-xs sm:text-sm">
-                <li>Construye físicamente tu prototipo con legos</li>
-                <li>Toma una foto del prototipo con la cámara de la tablet</li>
-                <li>O sube una imagen desde la galería</li>
-                <li>Revisa la vista previa y confirma la subida</li>
-              </ul>
+              <ol className="list-decimal list-inside space-y-1.5 text-gray-700 text-xs sm:text-sm">
+                <li>Construye el modelo de tu idea.</li>
+                <li>Toma una foto clara.</li>
+                <li>Confirma el envío.</li>
+              </ol>
             </motion.div>
 
             {/* Prototipo ya subido */}
@@ -546,7 +551,7 @@ export function TabletPrototipo() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
-                className="border-2 border-dashed border-gray-300 rounded-lg p-4 sm:p-6 text-center mb-3 sm:mb-4"
+                className="border-2 border-dashed border-gray-300 rounded-lg p-8 sm:p-12 md:p-16 text-center mb-3 sm:mb-4 min-h-[300px] sm:min-h-[400px] flex flex-col items-center justify-center"
               >
                 <input
                   ref={fileInputRef}
@@ -558,22 +563,16 @@ export function TabletPrototipo() {
                 />
 
                 {!previewUrl ? (
-                  <div>
-                    <Upload className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400 mx-auto mb-3 sm:mb-4" />
-                    <p className="text-gray-600 text-sm sm:text-base mb-4 sm:mb-6 font-medium">
-                      Cuando hayas terminado de construir tu prototipo con legos, toma una foto o sube una imagen:
-                    </p>
+                  <div className="w-full flex flex-col items-center justify-center">
+                    <Upload className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 text-gray-400 mx-auto mb-6 sm:mb-8" />
                     <Button
                       onClick={() => fileInputRef.current?.click()}
                       size="lg"
-                      className="bg-[#093c92] hover:bg-[#082d6e] text-white px-6 sm:px-8 py-4 sm:py-6 text-base sm:text-lg font-semibold"
+                      className="bg-[#093c92] hover:bg-[#082d6e] text-white px-8 sm:px-12 md:px-16 py-5 sm:py-6 md:py-7 text-lg sm:text-xl md:text-2xl font-semibold w-full max-w-md"
                     >
-                      <Camera className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                      Tomar Foto o Seleccionar Imagen
+                      <Camera className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 mr-3" />
+                      [ TOMAR FOTO ]
                     </Button>
-                    <p className="text-gray-500 text-xs sm:text-sm mt-3 sm:mt-4 italic">
-                      Puedes usar la cámara de la tablet o seleccionar una imagen de la galería
-                    </p>
                   </div>
                 ) : (
                   <div>
@@ -606,7 +605,7 @@ export function TabletPrototipo() {
                         ) : (
                           <>
                             <CheckCircle2 className="w-4 h-4 mr-2" />
-                            Subir Prototipo
+                            [ SUBIR FOTO ]
                           </>
                         )}
                       </Button>
@@ -619,17 +618,15 @@ export function TabletPrototipo() {
         </div>
       </div>
 
-      {/* Modal de Introducción de Etapa */}
-      <EtapaIntroModal
-        etapaNumero={3}
-        isOpen={showEtapaIntro}
-        onClose={() => {
-          setShowEtapaIntro(false);
-          if (gameSessionId) {
-            localStorage.setItem(`tablet_etapa_intro_${gameSessionId}_3`, 'true');
-          }
-        }}
-      />
+      {/* Modal de U-Bot */}
+      {team && (
+        <UBotPrototipoModal
+          isOpen={showUBotModal}
+          onClose={() => setShowUBotModal(false)}
+          onContinuar={() => setShowUBotModal(false)}
+          teamColor={team.color}
+        />
+      )}
 
       {/* Música de fondo */}
       <BackgroundMusic storageKey="tablet_backgroundMusicEnabled" />

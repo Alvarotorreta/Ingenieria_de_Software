@@ -2,17 +2,18 @@ import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  Loader2, Clock, Mic, Star, FileText, Target, Lightbulb, CheckCircle2, Image as ImageIcon, Eye, Coins, Users
+  Loader2, Clock, Mic, Star, FileText, Target, Lightbulb, CheckCircle2, Image as ImageIcon, Eye, Coins, Users, Bot, Award
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { EtapaIntroModal } from '@/components/EtapaIntroModal';
+import { UBotPresentacionPitchModal } from '@/components/UBotPresentacionPitchModal';
 import { BackgroundMusic } from '@/components/BackgroundMusic';
 import { 
   sessionsAPI, 
   sessionStagesAPI, 
   peerEvaluationsAPI, 
-  tabletConnectionsAPI 
+  tabletConnectionsAPI,
+  teamPersonalizationsAPI
 } from '@/services';
 import { toast } from 'sonner';
 
@@ -20,7 +21,8 @@ interface Team {
   id: number;
   name: string;
   color: string;
-  tokens: number;
+  tokens?: number;
+  tokens_total?: number;
 }
 
 interface PresentationStatus {
@@ -49,11 +51,12 @@ export function TabletPresentacionPitch() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [team, setTeam] = useState<Team | null>(null);
+  const [personalization, setPersonalization] = useState<{ team_name?: string } | null>(null);
   const [gameSessionId, setGameSessionId] = useState<number | null>(null);
   const [sessionStageId, setSessionStageId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [connectionId, setConnectionId] = useState<string | null>(null);
-  const [showEtapaIntro, setShowEtapaIntro] = useState(false);
+  const [showUBotModal, setShowUBotModal] = useState(false);
   const [presentationStatus, setPresentationStatus] = useState<PresentationStatus | null>(null);
   const [timerRemaining, setTimerRemaining] = useState<string>('01:30');
   const [evaluationSubmitted, setEvaluationSubmitted] = useState(false);
@@ -136,6 +139,26 @@ export function TabletPresentacionPitch() {
     }
   }, [team?.id, gameSessionId, presentationStatus?.presentation_state, presentationStatus?.current_presentation_team_id]);
 
+  // Mostrar modal de U-Bot solo cuando el equipo está preparándose
+  useEffect(() => {
+    if (!team || !presentationStatus) return;
+    
+    const isMyTurn = presentationStatus.current_presentation_team_id === team.id;
+    const presentationState = presentationStatus.presentation_state || 'not_started';
+    const isPreparing = presentationState === 'preparing' && isMyTurn;
+    
+    if (isPreparing && gameSessionId && team) {
+      const ubotKey = `ubot_presentacion_pitch_${gameSessionId}_${team.id}`;
+      const hasSeenUBot = localStorage.getItem(ubotKey);
+      if (!hasSeenUBot) {
+        setTimeout(() => {
+          setShowUBotModal(true);
+          localStorage.setItem(ubotKey, 'true');
+        }, 500);
+      }
+    }
+  }, [presentationStatus, gameSessionId, team]);
+
   // Cargar evaluaciones automáticamente cuando el equipo está esperando evaluaciones
   useEffect(() => {
     if (!team || !gameSessionId || !presentationStatus) {
@@ -198,19 +221,22 @@ export function TabletPresentacionPitch() {
       setTeam(teamData);
       setGameSessionId(statusData.game_session.id);
 
+      // Cargar personalización del equipo
+      try {
+        const persList = await teamPersonalizationsAPI.list({ team: teamData.id });
+        const persArray = Array.isArray(persList) ? persList : (Array.isArray(persList.results) ? persList.results : []);
+        if (persArray.length > 0) {
+          setPersonalization(persArray[0]);
+        }
+      } catch (error) {
+        console.error('Error cargando personalización:', error);
+      }
+
       // Usar lobby en lugar de getById para evitar problemas de autenticación
       const lobbyData = await sessionsAPI.getLobby(statusData.game_session.id);
       const gameData: GameSession = lobbyData.game_session;
       const sessionId = statusData.game_session.id;
 
-      // Verificar si debemos mostrar la intro de la etapa
-      if (gameData.current_stage_number === 4) {
-        const introKey = `tablet_etapa_intro_${sessionId}_4`;
-        const hasSeenIntro = localStorage.getItem(introKey);
-        if (!hasSeenIntro) {
-          setShowEtapaIntro(true);
-        }
-      }
 
       // Si la sesión finaliza, redirigir al join (excepto en reflexión)
       if (gameData.status === 'finished' || gameData.status === 'completed') {
@@ -683,7 +709,7 @@ export function TabletPresentacionPitch() {
     const evaluatedTeam = presentationStatus.teams.find(
       t => t.id === presentationStatus.current_presentation_team_id
     );
-    return evaluatedTeam?.name || '';
+    return getTeamName(evaluatedTeam);
   };
 
   const getMyPosition = () => {
@@ -737,6 +763,26 @@ export function TabletPresentacionPitch() {
 
   const isMyTurn = presentationStatus.current_presentation_team_id === team.id;
   const presentationState = presentationStatus.presentation_state || 'not_started';
+
+  // Función helper para obtener el nombre del equipo (con personalización si existe)
+  const getTeamDisplayName = (): string => {
+    if (!team) return '';
+    if (personalization?.team_name) {
+      return personalization.team_name;
+    }
+    // Si el nombre del equipo es "Equipo [Color]", devolver solo el color
+    const match = team.name?.match(/^Equipo\s+(.+)$/i);
+    return match ? match[1] : (team.name || team.color);
+  };
+
+  // Función helper para obtener el nombre de cualquier equipo
+  const getTeamName = (teamData: Team | null | undefined): string => {
+    if (!teamData) return '';
+    // Si el nombre del equipo es "Equipo [Color]", devolver solo el color
+    const match = teamData.name?.match(/^Equipo\s+(.+)$/i);
+    return match ? match[1] : (teamData.name || teamData.color);
+  };
+
   const isEvaluating = presentationState === 'evaluating' && !isMyTurn;
   const isPresenting = presentationState === 'presenting' && isMyTurn;
   const isPreparing = presentationState === 'preparing' && isMyTurn;
@@ -782,23 +828,46 @@ export function TabletPresentacionPitch() {
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-xl shadow-xl p-3 sm:p-4 mb-3 sm:mb-4 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4"
+          className="bg-white/95 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-2xl p-4 sm:p-6 mb-4 sm:mb-6 flex items-center justify-between flex-wrap gap-4"
         >
-            <div className="flex items-center gap-3 sm:gap-4">
-            <div
-                className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center text-white font-bold text-base sm:text-lg shadow-lg flex-shrink-0"
+          <div className="flex items-center gap-3 sm:gap-4">
+            <motion.div
+              whileHover={{ scale: 1.1, rotate: 5 }}
+              whileTap={{ scale: 0.95 }}
+              className="w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center text-white text-lg sm:text-xl font-bold shadow-lg"
               style={{ backgroundColor: getTeamColorHex(team.color) }}
             >
               {team.color.charAt(0).toUpperCase()}
-            </div>
+            </motion.div>
             <div>
-                <h3 className="text-base sm:text-lg font-bold text-[#093c92]">{team.name}</h3>
-                <p className="text-xs sm:text-sm text-gray-600">Equipo {team.color}</p>
+              <h3 className="text-lg sm:text-xl font-bold text-gray-800">
+                {personalization?.team_name 
+                  ? `Start-up ${personalization.team_name}` 
+                  : (team.name?.replace(/^Equipo\s+/i, 'Start-up ') || `Start-up ${team.color}`)
+                }
+              </h3>
+              <p className="text-xs sm:text-sm text-gray-600">Equipo {team.color}</p>
             </div>
           </div>
-            <div className="bg-gradient-to-r from-[#093c92] to-[#f757ac] text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-semibold flex items-center gap-2 text-sm sm:text-base shadow-md">
-              <Coins className="w-4 h-4 sm:w-5 sm:h-5" />
-              {team.tokens} Tokens
+          <div className="flex items-center gap-2">
+            {team && isPreparing && (
+              <motion.button
+                onClick={() => setShowUBotModal(true)}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="bg-gradient-to-r from-pink-500 to-pink-600 text-white px-5 py-2.5 rounded-full font-semibold text-sm sm:text-base flex items-center gap-2 shadow-lg"
+              >
+                <Bot className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span>U-Bot</span>
+              </motion.button>
+            )}
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="bg-gradient-to-r from-[#093c92] to-blue-700 text-white px-5 py-2.5 rounded-full font-semibold text-sm sm:text-base flex items-center gap-2 shadow-lg"
+            >
+              <Award className="w-4 h-4 sm:w-5 sm:h-5" /> {team.tokens_total || team.tokens || 0} Tokens
+            </motion.div>
           </div>
         </motion.div>
 
@@ -824,18 +893,18 @@ export function TabletPresentacionPitch() {
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-gradient-to-r from-[#093c92] via-[#764ba2] to-[#093c92] rounded-xl shadow-xl p-6 sm:p-8 text-center text-white relative overflow-hidden"
+            className="bg-gradient-to-r from-[#093c92] via-[#764ba2] to-[#093c92] rounded-xl shadow-xl p-8 sm:p-12 md:p-16 text-center text-white relative overflow-hidden min-h-[400px] sm:min-h-[500px] flex items-center justify-center"
           >
             <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -mr-20 -mt-20" />
             <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/10 rounded-full -ml-16 -mb-16" />
-            <div className="relative z-10">
-              <div className="text-5xl sm:text-6xl mb-4">🎤</div>
-              <h2 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4">Prepárense para Presentar</h2>
-              <p className="text-sm sm:text-base mb-2 opacity-90">
-              El equipo <span className="font-bold">{team.name}</span> está a punto de presentar su pitch.
+            <div className="relative z-10 w-full">
+              <div className="text-6xl sm:text-7xl md:text-8xl mb-6 sm:mb-8">🎤</div>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-6">⚠️ LLAMADO A ESCENARIO</h2>
+              <p className="text-base sm:text-lg md:text-xl mb-3 sm:mb-4 opacity-90 font-semibold">
+              Start-up <span className="font-bold text-white">{getTeamDisplayName().toUpperCase()}</span> requerida en el Centro de Comando.
             </p>
-              <p className="text-xs sm:text-sm opacity-80">
-              El profesor iniciará la presentación cuando estén listos. Tengan su pitch preparado.
+              <p className="text-sm sm:text-base md:text-lg opacity-80 max-w-2xl mx-auto">
+              El momento ha llegado. Diríjanse al frente de la sala inmediatamente. El Profesor iniciará el cronómetro apenas tomen posición.
             </p>
             </div>
           </motion.div>
@@ -851,7 +920,6 @@ export function TabletPresentacionPitch() {
             <div className="text-center mb-4 sm:mb-6">
               <div className="text-4xl sm:text-5xl mb-3">🎤</div>
               <h2 className="text-xl sm:text-2xl font-bold text-green-600 mb-2">Presentación en Curso</h2>
-              <p className="text-gray-600 text-sm sm:text-base">El equipo {team.name} está presentando su pitch</p>
             </div>
 
             {/* Timer */}
@@ -961,13 +1029,13 @@ export function TabletPresentacionPitch() {
                 Observando Presentación
               </h2>
               <p className="text-gray-600 text-sm sm:text-base mb-2">
-                El equipo <span className="font-bold text-[#093c92]">{getEvaluatedTeamName()}</span> está presentando su pitch
+                La Start-up <span className="font-bold text-[#093c92]">{getEvaluatedTeamName().toUpperCase()}</span> está presentando su pitch
               </p>
               
               {myPosition && (
                 <div className="bg-gradient-to-r from-blue-50 to-blue-100 border-2 border-blue-300 rounded-xl p-3 sm:p-4 mb-4 sm:mb-6 mt-3 sm:mt-4">
                   <p className="text-blue-800 font-semibold text-base sm:text-lg">
-                    📋 Tu equipo presenta {myPosition === 1 ? 'primero' : getPositionText(myPosition)}
+                    📋 Tu Start-up presenta {myPosition === 1 ? 'primero' : getPositionText(myPosition)}
                   </p>
                   {currentPosition && myPosition > currentPosition && (
                     <p className="text-blue-600 text-xs sm:text-sm mt-2">
@@ -1019,9 +1087,9 @@ export function TabletPresentacionPitch() {
           >
             <div className="text-center mb-4 sm:mb-6">
               <div className="text-4xl sm:text-5xl mb-3">⭐</div>
-              <h2 className="text-xl sm:text-2xl font-bold text-yellow-600 mb-2">Evaluación</h2>
+              <h2 className="text-xl sm:text-2xl font-bold text-yellow-600 mb-2">Análisis de Competencia</h2>
               <p className="text-gray-600 text-sm sm:text-base">
-                Evalúa la presentación del equipo {getEvaluatedTeamName()}
+                ¿Invertirías en la Start-up {getEvaluatedTeamName().toUpperCase()}? Valora su potencial.
               </p>
             </div>
 
@@ -1049,7 +1117,7 @@ export function TabletPresentacionPitch() {
               <form onSubmit={handleSubmitEvaluation} className="space-y-3 sm:space-y-4">
                 <div>
                   <label className="block text-xs sm:text-sm font-semibold text-[#093c92] mb-2">
-                    Claridad del Problema (1-10)
+                    Relevancia del Dolor (El Problema) (1-10)
                   </label>
                   <input
                     type="number"
@@ -1064,7 +1132,7 @@ export function TabletPresentacionPitch() {
 
                 <div>
                   <label className="block text-xs sm:text-sm font-semibold text-[#093c92] mb-2">
-                    Calidad de la Solución (1-10)
+                    Potencial de la Solución (El MVP) (1-10)
                   </label>
                   <input
                     type="number"
@@ -1079,7 +1147,7 @@ export function TabletPresentacionPitch() {
 
                 <div>
                   <label className="block text-xs sm:text-sm font-semibold text-[#093c92] mb-2">
-                    Presentación y Comunicación (1-10)
+                    Poder de Convicción (El Pitch) (1-10)
                   </label>
                   <input
                     type="number"
@@ -1094,13 +1162,13 @@ export function TabletPresentacionPitch() {
 
                 <div>
                   <label className="block text-xs sm:text-sm font-semibold text-[#093c92] mb-2">
-                    Feedback (opcional)
+                    Consejo Estratégico (Opcional)
                   </label>
                   <textarea
                     value={evaluationScores.feedback}
                     onChange={(e) => setEvaluationScores({ ...evaluationScores, feedback: e.target.value })}
                     rows={4}
-                    placeholder="Escribe tu feedback aquí..."
+                    placeholder="Escribe tu consejo estratégico aquí..."
                     className="w-full px-3 sm:px-4 py-2 sm:py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#093c92] focus:border-transparent text-sm sm:text-base resize-y"
                   />
                 </div>
@@ -1119,7 +1187,7 @@ export function TabletPresentacionPitch() {
                   ) : (
                     <>
                       <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                      Enviar Evaluación
+                      [ REGISTRAR VALORACIÓN ]
                     </>
                   )}
                 </Button>
@@ -1155,14 +1223,14 @@ export function TabletPresentacionPitch() {
               Esperando Evaluaciones
             </h2>
                 <p className="text-gray-600 text-sm sm:text-base">
-                  Los otros equipos están evaluando tu presentación
+                  La competencia está decidiendo el valor de su propuesta.
                 </p>
               </div>
 
-              {/* Progreso de evaluaciones */}
+              {/* Estado de la Ronda de Inversión */}
               <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 border-2 border-yellow-300 rounded-xl p-3 sm:p-4 mb-4 sm:mb-6">
                 <h3 className="font-semibold text-base sm:text-lg text-[#093c92] mb-3 flex items-center gap-2">
-                  <Users className="w-5 h-5" /> Progreso de Evaluaciones
+                  <Users className="w-5 h-5" /> Estado de la Ronda de Inversión
                 </h3>
                 <div className="w-full bg-gray-200 rounded-full h-3 sm:h-4 mb-2">
                   <div
@@ -1171,7 +1239,7 @@ export function TabletPresentacionPitch() {
                   />
                 </div>
                 <p className="text-xs sm:text-sm text-gray-700 font-semibold">
-                  {evaluationProgress.completed} de {evaluationProgress.total} equipos han evaluado
+                  {evaluationProgress.completed} de {evaluationProgress.total} Start-ups han emitido su voto
                 </p>
               </div>
 
@@ -1248,10 +1316,10 @@ export function TabletPresentacionPitch() {
                         </div>
                       )}
 
-              {/* Lista de Equipos */}
+              {/* Panel de Inversionistas */}
               <div className="space-y-2 sm:space-y-3">
                 <h3 className="font-semibold text-base sm:text-lg text-[#093c92] mb-3 flex items-center gap-2">
-                  <Users className="w-5 h-5" /> Evaluaciones por Equipo
+                  <Users className="w-5 h-5" /> Panel de Inversionistas
                 </h3>
                 {otherTeams.map((otherTeam) => {
                   // Buscar evaluación por evaluator_team o evaluator_team_id
@@ -1280,20 +1348,25 @@ export function TabletPresentacionPitch() {
                             {otherTeam.color.charAt(0).toUpperCase()}
                     </div>
                           <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-sm sm:text-base text-[#093c92] truncate">{otherTeam.name}</p>
-                            <p className="text-xs sm:text-sm text-gray-600">Equipo {otherTeam.color}</p>
+                            <p className="font-semibold text-sm sm:text-base text-[#093c92] truncate">
+                              {(() => {
+                                const match = otherTeam.name?.match(/^Equipo\s+(.+)$/i);
+                                const teamDisplayName = match ? match[1] : (otherTeam.name || otherTeam.color);
+                                return `Start-up ${teamDisplayName}`;
+                              })()}
+                            </p>
                 </div>
                         </div>
                         <div className="flex-shrink-0">
                           {hasEvaluated ? (
                             <div className="flex items-center gap-2">
                               <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
-                              <span className="text-xs sm:text-sm font-semibold text-green-700">Evaluado</span>
+                              <span className="text-xs sm:text-sm font-semibold text-green-700">Votado</span>
                             </div>
                           ) : (
                             <div className="flex items-center gap-2">
-                              <Clock className="w-5 h-5 sm:w-6 sm:h-6 text-gray-400" />
-                              <span className="text-xs sm:text-sm font-semibold text-gray-500">Pendiente</span>
+                              <Clock className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-500" />
+                              <span className="text-xs sm:text-sm font-semibold text-yellow-700">Deliberando...</span>
               </div>
             )}
                         </div>
@@ -1366,14 +1439,14 @@ export function TabletPresentacionPitch() {
               
               {preparingTeam && (
                 <p className="text-gray-600 text-sm sm:text-base mb-3 sm:mb-4">
-                  El equipo <span className="font-bold text-[#093c92]">{preparingTeam.name}</span> se está preparando para presentar.
+                  La Startup <span className="font-bold text-[#093c92]">{getTeamName(preparingTeam).toUpperCase()}</span> está tomando posición en el escenario.
                 </p>
               )}
               
               {myPosition && (
                 <div className="bg-gradient-to-r from-blue-50 to-blue-100 border-2 border-blue-300 rounded-xl p-3 sm:p-4 mb-3 sm:mb-4">
                   <p className="text-blue-800 font-semibold text-base sm:text-lg">
-                    📋 Tu equipo presenta {getPositionText(myPosition)}
+                    📋 Tu Start-up presenta {getPositionText(myPosition)}
                   </p>
                   {currentPosition && myPosition > currentPosition && (
                     <p className="text-blue-600 text-xs sm:text-sm mt-2">
@@ -1395,17 +1468,15 @@ export function TabletPresentacionPitch() {
         </div>
       </div>
 
-      {/* Modal de Introducción de Etapa */}
-      <EtapaIntroModal
-        etapaNumero={4}
-        isOpen={showEtapaIntro}
-        onClose={() => {
-          setShowEtapaIntro(false);
-          if (gameSessionId) {
-            localStorage.setItem(`tablet_etapa_intro_${gameSessionId}_4`, 'true');
-          }
-        }}
-      />
+      {/* Modal de U-Bot */}
+      {team && (
+        <UBotPresentacionPitchModal
+          isOpen={showUBotModal}
+          onClose={() => setShowUBotModal(false)}
+          onContinuar={() => setShowUBotModal(false)}
+          teamColor={team.color}
+        />
+      )}
     </div>
   );
 }

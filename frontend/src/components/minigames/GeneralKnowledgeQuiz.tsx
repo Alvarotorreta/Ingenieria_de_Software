@@ -33,7 +33,10 @@ const OPTION_LABELS = ['A', 'B', 'C', 'D'];
 export function GeneralKnowledgeQuiz({ questions, onComplete, initialIndex = 0, initialSelectedAnswers, onProgressChange }: GeneralKnowledgeQuizProps) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [selectedAnswers, setSelectedAnswers] = useState<Map<number, number>>(initialSelectedAnswers || new Map());
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [feedbackCorrect, setFeedbackCorrect] = useState(false);
   const completedRef = useRef(false);
+  const autoAdvanceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Restaurar índice y respuestas desde el progreso cuando cambian los props
   useEffect(() => {
@@ -54,6 +57,7 @@ export function GeneralKnowledgeQuiz({ questions, onComplete, initialIndex = 0, 
       console.log('[GeneralKnowledgeQuiz] Restaurando índice:', displayIndex, 'de', questions.length, 'preguntas (respuestas dadas:', initialIndex, ')');
       
       setCurrentIndex(displayIndex);
+      setShowFeedback(false);
     }
   }, [initialIndex, questions.length]);
 
@@ -63,6 +67,15 @@ export function GeneralKnowledgeQuiz({ questions, onComplete, initialIndex = 0, 
       setSelectedAnswers(new Map(initialSelectedAnswers));
     }
   }, [initialSelectedAnswers]);
+
+  // Reset feedback cuando cambia la pregunta
+  useEffect(() => {
+    setShowFeedback(false);
+    if (autoAdvanceTimeoutRef.current) {
+      clearTimeout(autoAdvanceTimeoutRef.current);
+      autoAdvanceTimeoutRef.current = null;
+    }
+  }, [currentIndex]);
 
   // Verificar que el índice esté dentro del rango válido
   const totalQuestions = questions.length;
@@ -88,21 +101,33 @@ export function GeneralKnowledgeQuiz({ questions, onComplete, initialIndex = 0, 
   const handleSelectAnswer = (answerIndex: number) => {
     if (!currentQuestion) return;
     
+    // Limpiar timeout anterior si existe
+    if (autoAdvanceTimeoutRef.current) {
+      clearTimeout(autoAdvanceTimeoutRef.current);
+    }
+    
     const newSelectedAnswers = new Map(selectedAnswers);
     newSelectedAnswers.set(currentQuestion.id, answerIndex);
     setSelectedAnswers(newSelectedAnswers);
 
-    // Notificar cambio de progreso
-    if (onProgressChange) {
-      const nextIndex = currentIndex < totalQuestions - 1 ? currentIndex + 1 : currentIndex;
-      onProgressChange(nextIndex, newSelectedAnswers);
-    }
+    // Mostrar feedback inmediatamente
+    const isCorrect = answerIndex === currentQuestion.correct_answer;
+    setFeedbackCorrect(isCorrect);
+    setShowFeedback(true);
 
     // Verificar si todas las preguntas están respondidas
     const allAnswered = newSelectedAnswers.size === totalQuestions;
     
-    // Auto-avanzar después de un breve delay
-    setTimeout(() => {
+    // Auto-avanzar después de mostrar el feedback (2.5 segundos para que el usuario vea el mensaje)
+    autoAdvanceTimeoutRef.current = setTimeout(() => {
+      setShowFeedback(false);
+      
+      // Notificar cambio de progreso antes de avanzar
+      if (onProgressChange) {
+        const nextIndex = currentIndex < totalQuestions - 1 ? currentIndex + 1 : currentIndex;
+        onProgressChange(nextIndex, newSelectedAnswers);
+      }
+      
       if (currentIndex < totalQuestions - 1) {
         const newIndex = currentIndex + 1;
         setCurrentIndex(newIndex);
@@ -117,7 +142,7 @@ export function GeneralKnowledgeQuiz({ questions, onComplete, initialIndex = 0, 
           handleComplete();
         }, 100);
       }
-    }, 500);
+    }, 2500);
   };
 
   const handleComplete = () => {
@@ -260,20 +285,38 @@ export function GeneralKnowledgeQuiz({ questions, onComplete, initialIndex = 0, 
         </div>
 
         {/* Feedback */}
-        {selectedAnswer !== undefined && (
+        {showFeedback && selectedAnswer !== undefined && (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className={`mt-4 p-4 rounded-lg text-center font-semibold ${
-              selectedAnswer === currentQuestion.correct_answer
-                ? 'bg-green-100 text-green-700'
-                : 'bg-red-100 text-red-700'
+            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.3 }}
+            className={`mt-6 p-5 rounded-xl text-center font-bold text-lg shadow-lg border-2 ${
+              feedbackCorrect
+                ? 'bg-green-50 text-green-800 border-green-400'
+                : 'bg-red-50 text-red-800 border-red-400'
             }`}
           >
-            {selectedAnswer === currentQuestion.correct_answer ? (
-              <span>✅ ¡Correcto!</span>
+            {feedbackCorrect ? (
+              <div className="flex flex-col items-center gap-2">
+                <div className="flex items-center justify-center gap-2">
+                  <span className="text-2xl">✅</span>
+                  <span>¡Correcto!</span>
+                </div>
+                <div className="text-base font-semibold mt-1 text-green-700">
+                  Has ganado 1 token
+                </div>
+              </div>
             ) : (
-              <span>❌ Incorrecto. La respuesta correcta es {OPTION_LABELS[currentQuestion.correct_answer]}</span>
+              <div className="flex flex-col items-center gap-2">
+                <div className="flex items-center justify-center gap-2">
+                  <span className="text-2xl">❌</span>
+                  <span>Incorrecto</span>
+                </div>
+                <div className="text-base font-semibold mt-1">
+                  La respuesta correcta es: <span className="text-xl">{OPTION_LABELS[currentQuestion.correct_answer]}</span>
+                </div>
+              </div>
             )}
           </motion.div>
         )}

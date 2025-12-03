@@ -58,14 +58,21 @@ export function TabletVideoInstitucional() {
         }
 
         // Si ya hay actividad, redirigir inmediatamente
-        if (gameData.current_activity_name && gameData.current_stage_number) {
+        // Nota: Instructivo puede tener current_activity_name pero NO current_stage_number (es pre-etapa)
+        if (gameData.current_activity_name) {
           const normalizedName = gameData.current_activity_name.toLowerCase();
-          if (normalizedName.includes('personaliz')) {
-            window.location.href = `/tablet/loading?redirect=/tablet/etapa1/personalizacion&connection_id=${connId}`;
+          if (normalizedName.includes('instructivo') || normalizedName.includes('instrucciones')) {
+            window.location.href = `/tablet/instructivo?connection_id=${connId}`;
             return;
-          } else if (normalizedName.includes('presentaci')) {
-            window.location.href = `/tablet/etapa1/presentacion?connection_id=${connId}`;
-            return;
+          } else if (gameData.current_stage_number) {
+            // Solo verificar estas actividades si hay stage_number (son parte de una etapa)
+            if (normalizedName.includes('personaliz')) {
+              window.location.href = `/tablet/loading?redirect=/tablet/etapa1/personalizacion&connection_id=${connId}`;
+              return;
+            } else if (normalizedName.includes('presentaci')) {
+              window.location.href = `/tablet/etapa1/presentacion?connection_id=${connId}`;
+              return;
+            }
           }
         }
 
@@ -94,12 +101,19 @@ export function TabletVideoInstitucional() {
               const newActivityName = (updatedSession.current_activity_name || '').toLowerCase();
               const newStageNumber = updatedSession.current_stage_number;
               
-              if (newStageNumber === 1 && newActivityName.includes('personaliz')) {
-                window.location.href = `/tablet/loading?redirect=/tablet/etapa1/personalizacion&connection_id=${connId}`;
+              // Instructivo puede tener actividad pero NO stage_number (es pre-etapa)
+              if (newActivityName.includes('instructivo') || newActivityName.includes('instrucciones')) {
+                window.location.href = `/tablet/instructivo?connection_id=${connId}`;
                 return;
-              } else if (newStageNumber === 1 && newActivityName.includes('presentaci')) {
-                window.location.href = `/tablet/etapa1/presentacion?connection_id=${connId}`;
-                return;
+              } else if (newStageNumber === 1) {
+                // Actividades de la Etapa 1
+                if (newActivityName.includes('personaliz')) {
+                  window.location.href = `/tablet/loading?redirect=/tablet/etapa1/personalizacion&connection_id=${connId}`;
+                  return;
+                } else if (newActivityName.includes('presentaci')) {
+                  window.location.href = `/tablet/etapa1/presentacion?connection_id=${connId}`;
+                  return;
+                }
               } else if (newStageNumber && newStageNumber > 1) {
                 window.location.href = `/tablet/lobby?connection_id=${connId}`;
                 return;

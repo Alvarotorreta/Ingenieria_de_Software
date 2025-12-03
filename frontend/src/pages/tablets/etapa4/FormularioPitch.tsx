@@ -2,10 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  Loader2, Clock, Save, CheckCircle2, FileText, Lightbulb, Target, Coins
+  Loader2, Clock, Save, CheckCircle2, FileText, Lightbulb, Target, Award, Bot, Coins
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { EtapaIntroModal } from '@/components/EtapaIntroModal';
+import { UBotFormularioPitchModal } from '@/components/UBotFormularioPitchModal';
 import { BackgroundMusic } from '@/components/BackgroundMusic';
 import { sessionsAPI, tabletConnectionsAPI, teamActivityProgressAPI } from '@/services';
 import { toast } from 'sonner';
@@ -14,7 +14,7 @@ interface Team {
   id: number;
   name: string;
   color: string;
-  tokens: number;
+  tokens_total?: number;
 }
 
 interface GameSession {
@@ -35,7 +35,7 @@ export function TabletFormularioPitch() {
   const [saving, setSaving] = useState(false);
   const [timerRemaining, setTimerRemaining] = useState<string>('--:--');
   const [connectionId, setConnectionId] = useState<string | null>(null);
-  const [showEtapaIntro, setShowEtapaIntro] = useState(false);
+  const [showUBotModal, setShowUBotModal] = useState(false);
   
   const [pitchIntroProblem, setPitchIntroProblem] = useState('');
   const [pitchSolution, setPitchSolution] = useState('');
@@ -102,12 +102,15 @@ export function TabletFormularioPitch() {
       const gameData: GameSession = lobbyData.game_session;
       const sessionId = statusData.game_session.id;
 
-      // Verificar si debemos mostrar la intro de la etapa
+      // Mostrar modal de U-Bot si no se ha visto
       if (gameData.current_stage_number === 4) {
-        const introKey = `tablet_etapa_intro_${sessionId}_4`;
-        const hasSeenIntro = localStorage.getItem(introKey);
-        if (!hasSeenIntro) {
-          setShowEtapaIntro(true);
+        const ubotKey = `ubot_formulario_pitch_${sessionId}`;
+        const hasSeenUBot = localStorage.getItem(ubotKey);
+        if (!hasSeenUBot) {
+          setTimeout(() => {
+            setShowUBotModal(true);
+            localStorage.setItem(ubotKey, 'true');
+          }, 500);
         }
       }
 
@@ -531,62 +534,82 @@ export function TabletFormularioPitch() {
       <div className="relative z-10 p-3 sm:p-4">
         <div className="max-w-6xl mx-auto relative z-20">
           {/* Header Mejorado */}
-          <div className="bg-white rounded-xl shadow-xl p-3 sm:p-4 mb-3 sm:mb-4">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3 flex-1 min-w-0">
-                <div
-                  className="w-12 h-12 rounded-full flex items-center justify-center text-white text-lg font-bold shadow-md flex-shrink-0"
-                  style={{ backgroundColor: getTeamColorHex(team.color) }}
-                >
-                  {team.color.charAt(0).toUpperCase()}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-base sm:text-lg font-bold text-gray-800 truncate">{team.name}</h3>
-                  <p className="text-xs sm:text-sm text-gray-600 truncate">Equipo {team.color}</p>
-                </div>
-              </div>
-              <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900 px-3 py-1.5 rounded-full font-bold text-xs sm:text-sm flex items-center gap-1.5 flex-shrink-0 shadow-sm">
-                <Coins className="w-4 h-4" />
-                <span>{team.tokens || 0}</span>
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white/95 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-2xl p-4 sm:p-6 mb-4 sm:mb-6 flex items-center justify-between flex-wrap gap-4"
+          >
+            <div className="flex items-center gap-3 sm:gap-4">
+              <motion.div
+                whileHover={{ scale: 1.1, rotate: 5 }}
+                whileTap={{ scale: 0.95 }}
+                className="w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center text-white text-lg sm:text-xl font-bold shadow-lg"
+                style={{ backgroundColor: getTeamColorHex(team.color) }}
+              >
+                {team.color.charAt(0).toUpperCase()}
+              </motion.div>
+              <div>
+                <h3 className="text-lg sm:text-xl font-bold text-gray-800">{team.name}</h3>
+                <p className="text-xs sm:text-sm text-gray-600">Equipo {team.color}</p>
               </div>
             </div>
-          </div>
+            <div className="flex items-center gap-2">
+              {team && (
+                <motion.button
+                  onClick={() => setShowUBotModal(true)}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="bg-gradient-to-r from-pink-500 to-pink-600 text-white px-5 py-2.5 rounded-full font-semibold text-sm sm:text-base flex items-center gap-2 shadow-lg"
+                >
+                  <Bot className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span>U-Bot</span>
+                </motion.button>
+              )}
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="bg-gradient-to-r from-[#093c92] to-blue-700 text-white px-5 py-2.5 rounded-full font-semibold text-sm sm:text-base flex items-center gap-2 shadow-lg"
+              >
+                <Award className="w-4 h-4 sm:w-5 sm:h-5" /> {team.tokens_total || 0} Tokens
+              </motion.div>
+            </div>
+          </motion.div>
 
           {/* Contenedor Principal Mejorado */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-xl shadow-xl p-4 sm:p-6 mb-3 sm:mb-4"
-          >
-            {/* Título y Descripción */}
-            <div className="mb-4 sm:mb-5">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-[#093c92] to-[#f757ac] rounded-lg flex items-center justify-center shadow-md">
-                  <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-                </div>
-                <h1 className="text-xl sm:text-2xl font-bold text-[#093c92]">
-                  Formulario de Pitch
-                </h1>
-              </div>
-              <p className="text-gray-600 text-sm sm:text-base">
-                Completa el formulario para crear tu pitch: problema, solución, valor, impacto y cierre
-              </p>
-            </div>
-
-            {/* Temporizador Mejorado */}
+          <div className="relative">
+            {/* Temporizador en esquina superior derecha */}
             {timerRemaining !== '--:--' && (
-              <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-3 mb-3 sm:mb-4">
-                <div className="flex items-center justify-center gap-2">
+              <div className="absolute top-0 right-0 bg-yellow-50 border-2 border-yellow-300 rounded-lg px-3 py-2 shadow-sm z-10" style={{ isolation: 'isolate' }}>
+                <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4 text-yellow-700" />
                   <span className="text-yellow-800 font-semibold text-sm sm:text-base">
-                    Tiempo restante: <span className="font-bold">{timerRemaining}</span>
+                    <span className="font-bold">{timerRemaining}</span>
                   </span>
                 </div>
               </div>
             )}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-xl shadow-xl p-4 sm:p-6 mb-3 sm:mb-4 relative pr-24 sm:pr-32"
+            >
+              {/* Título y Descripción */}
+              <div className="mb-4 sm:mb-5">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-[#093c92] to-[#f757ac] rounded-lg flex items-center justify-center shadow-md">
+                    <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                  </div>
+                  <h1 className="text-xl sm:text-2xl font-bold text-[#093c92]">
+                    Formulario de Pitch
+                  </h1>
+                </div>
+                <p className="text-gray-600 text-sm sm:text-base">
+                  Redacten el discurso que usarán para vender su proyecto.
+                </p>
+              </div>
 
-            {/* Barra de Progreso Mejorada */}
-            {progressPercentage > 0 && (
+              {/* Barra de Progreso Mejorada */}
+              {progressPercentage > 0 && (
               <div className="mb-3 sm:mb-4">
                 <div className="flex justify-between text-xs sm:text-sm text-gray-600 mb-1.5">
                   <span className="font-semibold">Progreso</span>
@@ -599,31 +622,14 @@ export function TabletFormularioPitch() {
                   />
                 </div>
               </div>
-            )}
+              )}
 
-            {/* Info Box Mejorado */}
-            <div className="bg-blue-50 border-2 border-blue-300 p-3 sm:p-4 rounded-lg mb-3 sm:mb-4">
-              <h3 className="text-base sm:text-lg font-bold text-blue-800 mb-2 flex items-center gap-2">
-                <FileText className="w-4 h-4 sm:w-5 sm:h-5" /> Crea tu guion para presentar
-              </h3>
-              <p className="text-gray-700 text-xs sm:text-sm mb-2">
-                Completa los cinco campos del formulario para crear el guion de tu pitch. Basándote en lo que trabajaste en las etapas anteriores:
-              </p>
-              <ul className="text-xs sm:text-sm text-gray-700 space-y-1.5 ml-4">
-                <li><strong>Problema:</strong> Usa el tema y desafío que seleccionaste en la Etapa 2 (Empatía)</li>
-                <li><strong>Solución:</strong> Describe tu solución basándote en el prototipo que construiste en la Etapa 3 (Creatividad)</li>
-                <li><strong>Valor:</strong> Explica el valor que aporta tu solución</li>
-                <li><strong>Impacto:</strong> Describe el impacto que tendrá tu solución</li>
-                <li><strong>Cierre:</strong> Concluye tu pitch de manera impactante</li>
-              </ul>
-            </div>
-
-            {/* Formulario Mejorado */}
-            <div className="space-y-4 sm:space-y-5 pt-3 border-t border-gray-200">
+              {/* Formulario Mejorado */}
+              <div className="space-y-4 sm:space-y-5 pt-3 border-t border-gray-200">
               {/* Problema */}
               <div>
                 <label className="block text-base sm:text-lg font-semibold text-[#093c92] mb-2 flex items-center gap-2">
-                  <Target className="w-4 h-4 sm:w-5 sm:h-5" /> Problema
+                  <Target className="w-4 h-4 sm:w-5 sm:h-5" /> 1. El Dolor (Problema)
                 </label>
                 <textarea
                   value={pitchIntroProblem}
@@ -639,7 +645,7 @@ export function TabletFormularioPitch() {
               {/* Solución */}
               <div>
                 <label className="block text-base sm:text-lg font-semibold text-[#093c92] mb-2 flex items-center gap-2">
-                  <Lightbulb className="w-4 h-4 sm:w-5 sm:h-5" /> Solución
+                  <Lightbulb className="w-4 h-4 sm:w-5 sm:h-5" /> 2. El Rescate (Tu Solución)
                 </label>
                 <textarea
                   value={pitchSolution}
@@ -655,7 +661,7 @@ export function TabletFormularioPitch() {
               {/* Valor */}
               <div>
                 <label className="block text-base sm:text-lg font-semibold text-[#093c92] mb-2 flex items-center gap-2">
-                  <Coins className="w-4 h-4 sm:w-5 sm:h-5" /> Valor
+                  <Coins className="w-4 h-4 sm:w-5 sm:h-5" /> 3. Diferencia (Valor)
                 </label>
                 <textarea
                   value={pitchValue}
@@ -671,7 +677,7 @@ export function TabletFormularioPitch() {
               {/* Impacto */}
               <div>
                 <label className="block text-base sm:text-lg font-semibold text-[#093c92] mb-2 flex items-center gap-2">
-                  <Target className="w-4 h-4 sm:w-5 sm:h-5" /> Impacto
+                  <Target className="w-4 h-4 sm:w-5 sm:h-5" /> 4. El Futuro (Impacto)
                 </label>
                 <textarea
                   value={pitchImpact}
@@ -687,7 +693,7 @@ export function TabletFormularioPitch() {
               {/* Cierre */}
               <div>
                 <label className="block text-base sm:text-lg font-semibold text-[#093c92] mb-2 flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" /> Cierre
+                  <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" /> 5. Golpe Final (Cierre)
                 </label>
                 <textarea
                   value={pitchClosing}
@@ -699,10 +705,10 @@ export function TabletFormularioPitch() {
                   className="w-full text-sm sm:text-base border-2 border-gray-300 rounded-lg px-3 sm:px-4 py-2 sm:py-3 focus:outline-none focus:ring-2 focus:ring-[#093c92] focus:border-transparent resize-y"
                 />
               </div>
-            </div>
+              </div>
 
-            {/* Save Button Mejorado */}
-            <div className="flex justify-center mt-4 sm:mt-5 pt-4 border-t border-gray-200">
+              {/* Save Button Mejorado */}
+              <div className="flex justify-center mt-4 sm:mt-5 pt-4 border-t border-gray-200">
               <Button
                 onClick={handleSavePitch}
                 disabled={saving}
@@ -717,14 +723,14 @@ export function TabletFormularioPitch() {
                 ) : (
                   <>
                     <Save className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                    {isComplete ? 'Actualizar Pitch' : 'Guardar Pitch'}
+                    [ GUARDAR GUION ]
                   </>
                 )}
               </Button>
-            </div>
+              </div>
 
-            {/* Success Message Mejorado */}
-            {hasSaved && isComplete && (
+              {/* Success Message Mejorado */}
+              {hasSaved && isComplete && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -736,21 +742,20 @@ export function TabletFormularioPitch() {
                 </div>
               </motion.div>
             )}
-          </motion.div>
+            </motion.div>
+          </div>
         </div>
       </div>
 
-      {/* Modal de Introducción de Etapa */}
-      <EtapaIntroModal
-        etapaNumero={4}
-        isOpen={showEtapaIntro}
-        onClose={() => {
-          setShowEtapaIntro(false);
-          if (gameSessionId) {
-            localStorage.setItem(`tablet_etapa_intro_${gameSessionId}_4`, 'true');
-          }
-        }}
-      />
+      {/* Modal de U-Bot */}
+      {team && (
+        <UBotFormularioPitchModal
+          isOpen={showUBotModal}
+          onClose={() => setShowUBotModal(false)}
+          onContinuar={() => setShowUBotModal(false)}
+          teamColor={team.color}
+        />
+      )}
 
       {/* Música de fondo */}
       <BackgroundMusic storageKey="tablet_backgroundMusicEnabled" />

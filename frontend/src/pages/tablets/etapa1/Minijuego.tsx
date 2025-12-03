@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Clock, Loader2, CheckCircle2, Coins } from 'lucide-react';
+import { Clock, Loader2, CheckCircle2, Coins, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { EtapaIntroModal } from '@/components/EtapaIntroModal';
 import { BackgroundMusic } from '@/components/BackgroundMusic';
+import { UBotMinijuegoModal } from '@/components/UBotMinijuegoModal';
 import { toast } from 'sonner';
 import { tabletConnectionsAPI, sessionsAPI, teamPersonalizationsAPI, teamActivityProgressAPI } from '@/services';
 import { AnagramGame } from '@/components/minigames/AnagramGame';
@@ -39,7 +39,6 @@ export function TabletMinijuego() {
   const [currentSessionStageId, setCurrentSessionStageId] = useState<number | null>(null);
   // completedItems removido - no se usa realmente, solo se establecía pero nunca se leía
   const [foundWords, setFoundWords] = useState<string[]>([]);
-  const [showEtapaIntro, setShowEtapaIntro] = useState(false);
   const [currentPart, setCurrentPart] = useState<'word_search' | 'anagram' | 'general_knowledge'>('word_search'); // Parte actual del minijuego
   const [generalKnowledgeQuestions, setGeneralKnowledgeQuestions] = useState<any[]>([]);
   const [loadingGeneralKnowledge, setLoadingGeneralKnowledge] = useState(false);
@@ -48,6 +47,7 @@ export function TabletMinijuego() {
   const [generalKnowledgeSelectedAnswers, setGeneralKnowledgeSelectedAnswers] = useState<Map<number, number>>(new Map());
   const previousGeneralKnowledgeAnswersRef = useRef<Map<number, number>>(new Map());
   const [personalization, setPersonalization] = useState<{ team_name?: string } | null>(null);
+  const [showUBotModal, setShowUBotModal] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timeExpiredRef = useRef<boolean>(false);
@@ -118,14 +118,6 @@ export function TabletMinijuego() {
       const gameData = lobbyData.game_session;
       const sessionId = statusData.game_session.id;
 
-      // Verificar si debemos mostrar la intro de la etapa
-      if (gameData.current_stage_number === 1) {
-        const introKey = `tablet_etapa_intro_${sessionId}_1`;
-        const hasSeenIntro = localStorage.getItem(introKey);
-        if (!hasSeenIntro) {
-          setShowEtapaIntro(true);
-        }
-      }
 
       // Verificar si el juego ha finalizado o está en lobby
       if (gameData.status === 'finished' || gameData.status === 'completed') {
@@ -182,6 +174,18 @@ export function TabletMinijuego() {
           if (stages.length > 0) {
             setCurrentSessionStageId(stages[0].id);
           }
+        }
+      }
+
+      // Mostrar modal de U-Bot automáticamente si no se ha visto
+      if (gameData.current_stage_number === 1 && statusData.team) {
+        const ubotKey = `ubot_modal_minijuego_${connId}`;
+        const hasSeenUBot = localStorage.getItem(ubotKey);
+        if (!hasSeenUBot) {
+          setTimeout(() => {
+            setShowUBotModal(true);
+            localStorage.setItem(ubotKey, 'true');
+          }, 500);
         }
       }
 
@@ -1683,60 +1687,75 @@ export function TabletMinijuego() {
       <div className="relative z-10 p-3 sm:p-4">
         <div className="max-w-6xl mx-auto relative z-20">
         {/* Header Mejorado */}
-        <div className="bg-white rounded-xl shadow-xl p-3 sm:p-4 mb-3 sm:mb-4">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 flex-1 min-w-0">
-              <div
-                className="w-12 h-12 rounded-full flex items-center justify-center text-white text-lg font-bold shadow-md flex-shrink-0"
-                style={{ backgroundColor: getTeamColorHex(team.color) }}
-              >
-                {team.color.charAt(0).toUpperCase()}
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="text-base sm:text-lg font-bold text-gray-800 truncate">
-                  {personalization?.team_name 
-                    ? `Equipo ${personalization.team_name}` 
-                    : team.name}
-                </h3>
-                <p className="text-xs sm:text-sm text-gray-600 truncate">
-                  Equipo {team.color}
-                </p>
-              </div>
-            </div>
-            <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900 px-3 py-1.5 rounded-full font-bold text-xs sm:text-sm flex items-center gap-1.5 flex-shrink-0 shadow-sm">
-              <Coins className="w-4 h-4" />
-              <span>{team.tokens_total || 0}</span>
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white/95 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-2xl p-4 sm:p-6 mb-4 sm:mb-6 flex items-center justify-between flex-wrap gap-4"
+        >
+          <div className="flex items-center gap-3 sm:gap-4">
+            <motion.div
+              whileHover={{ scale: 1.1, rotate: 5 }}
+              whileTap={{ scale: 0.95 }}
+              className="w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center text-white text-lg sm:text-xl font-bold shadow-lg"
+              style={{ backgroundColor: getTeamColorHex(team.color) }}
+            >
+              {team.color.charAt(0).toUpperCase()}
+            </motion.div>
+            <div>
+              <h3 className="text-lg sm:text-xl font-bold text-gray-800">
+                {personalization?.team_name 
+                  ? `Start-up ${personalization.team_name}` 
+                  : `Start-up ${team.color}`}
+              </h3>
+              <p className="text-xs sm:text-sm text-gray-600">Equipo {team.color}</p>
             </div>
           </div>
-        </div>
+          <div className="flex items-center gap-2">
+            <motion.button
+              onClick={() => setShowUBotModal(true)}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="bg-gradient-to-r from-pink-500 to-pink-600 text-white px-5 py-2.5 rounded-full font-semibold text-sm sm:text-base flex items-center gap-2 shadow-lg"
+            >
+              <Bot className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span>U-Bot</span>
+            </motion.button>
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="bg-gradient-to-r from-[#093c92] to-blue-700 text-white px-5 py-2.5 rounded-full font-semibold text-sm sm:text-base flex items-center gap-2 shadow-lg"
+            >
+              <Coins className="w-4 h-4 sm:w-5 sm:h-5" /> {team.tokens_total || 0} Tokens
+            </motion.div>
+          </div>
+        </motion.div>
 
         {/* Formulario Mejorado */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-xl shadow-xl p-4 sm:p-6"
+          className="bg-white rounded-xl shadow-xl p-4 sm:p-6 relative"
         >
+          {/* Temporizador en esquina superior derecha */}
+          <div className="absolute top-4 right-4 bg-yellow-50 border-2 border-yellow-300 rounded-lg px-3 py-2 shadow-sm">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-yellow-700" />
+              <span className="text-yellow-800 font-semibold text-sm sm:text-base">
+                <span className="font-bold">{timerRemaining}</span>
+              </span>
+            </div>
+          </div>
+
           {/* Título y Descripción */}
-          <div className="mb-4 sm:mb-5">
+          <div className="mb-4 sm:mb-5 pr-24 sm:pr-32">
             <h2 className="text-xl sm:text-2xl font-bold text-[#093c92] mb-2">
               2. Presentación - Minijuego
             </h2>
-            <p className="text-gray-600 text-sm">
-              {currentGameType === MinigameType.WORD_SEARCH 
-                ? 'Parte 1: Encuentra las palabras en la sopa de letras. Cada palabra encontrada vale 1 token'
-                : 'Parte 2: Adivina las palabras desordenadas. Cada palabra correcta vale 1 token'
-              }
-            </p>
-          </div>
-
-          {/* Temporizador Mejorado */}
-          <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-3 mb-4 sm:mb-5">
-            <div className="flex items-center justify-center gap-2">
-              <Clock className="w-4 h-4 text-yellow-700" />
-              <span className="text-yellow-800 font-semibold text-sm sm:text-base">
-                Tiempo restante: <span className="font-bold">{timerRemaining}</span>
-              </span>
-            </div>
+            {currentGameType !== MinigameType.WORD_SEARCH && (
+              <p className="text-gray-600 text-sm">
+                Parte 2: Adivina las palabras desordenadas. Cada palabra correcta vale 1 token
+              </p>
+            )}
           </div>
 
           {/* Instrucciones */}
@@ -1874,7 +1893,9 @@ export function TabletMinijuego() {
                         if (response.ok) {
                           const data = await response.json();
                           if (data.tokens_earned > 0) {
-                            toast.success(`¡Correcto! +${data.tokens_earned} token`);
+                            toast.success(`✅ ¡Correcto! +${data.tokens_earned} token`, {
+                              duration: 3000,
+                            });
                             // Actualizar tokens del equipo sin recargar toda la página
                             if (connectionId) {
                               const statusData = await tabletConnectionsAPI.getStatus(connectionId);
@@ -1882,6 +1903,11 @@ export function TabletMinijuego() {
                                 setTeam(prev => prev ? { ...prev, tokens_total: statusData.team.tokens_total } : prev);
                               }
                             }
+                          } else {
+                            // Mostrar alerta si la respuesta fue incorrecta
+                            toast.error('❌ Respuesta incorrecta', {
+                              duration: 2000,
+                            });
                           }
                         }
                       }
@@ -1907,6 +1933,7 @@ export function TabletMinijuego() {
                 isCorrect={isCorrect}
                 submitting={submitting}
                 onVerify={verifyAnswer}
+                teamColor={team?.color}
               />
             ) : (
               <div className="text-center text-gray-500">
@@ -1920,6 +1947,7 @@ export function TabletMinijuego() {
               foundWords={foundWords}
               onWordFound={handleWordFound}
               onComplete={handleWordSearchComplete}
+              teamColor={team?.color}
             />
           ) : (
             <div className="text-center text-gray-500">
@@ -1931,20 +1959,20 @@ export function TabletMinijuego() {
         </div>
       </div>
 
-      {/* Modal de Introducción de Etapa */}
-      <EtapaIntroModal
-        etapaNumero={1}
-        isOpen={showEtapaIntro}
-        onClose={() => {
-          setShowEtapaIntro(false);
-          if (gameSessionId) {
-            localStorage.setItem(`tablet_etapa_intro_${gameSessionId}_1`, 'true');
-          }
-        }}
-      />
-
       {/* Música de fondo */}
       <BackgroundMusic storageKey="tablet_backgroundMusicEnabled" />
+
+      {/* Modal de U-Bot */}
+      {team && (
+        <UBotMinijuegoModal
+          isOpen={showUBotModal}
+          onClose={() => setShowUBotModal(false)}
+          onIniciar={() => {
+            setShowUBotModal(false);
+          }}
+          teamColor={team.color}
+        />
+      )}
     </div>
   );
 }

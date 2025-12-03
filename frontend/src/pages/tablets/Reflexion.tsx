@@ -57,24 +57,23 @@ export function TabletReflexion() {
         }
         throw error;
       }
-      setGameSessionId(statusData.game_session.id);
+      const sessionId = statusData.game_session.id;
+      setGameSessionId(sessionId);
       
       // CRÍTICO: En reflexión NO redirigimos aunque la sesión esté finalizada
       // Las tablets deben permanecer aquí para que los estudiantes completen la encuesta del QR
       // NO verificar el status de la sesión aquí para evitar redirecciones automáticas
 
-      // No cargar equipos aquí porque requiere autenticación
-      // El progreso se puede obtener de otra forma si es necesario
-      loadProgress();
-      
       // Cargar QR de evaluación
-      if (statusData.game_session?.id) {
-        loadReflectionQR(statusData.game_session.id);
+      if (sessionId) {
+        loadReflectionQR(sessionId);
       }
       
-      // El total de estudiantes se obtendrá desde loadProgress cuando se cargue el endpoint by_room
-      // Por ahora usar un valor temporal que se actualizará cuando se cargue el progreso
-      setTotalEstudiantes(0); // Se actualizará desde loadProgress
+      // Cargar progreso después de establecer gameSessionId
+      // Usar setTimeout para asegurar que el estado se haya actualizado
+      setTimeout(() => {
+        loadProgress();
+      }, 100);
     } catch (error: any) {
       console.error('Error loading session data:', error);
       toast.error('Error al cargar la información');
@@ -301,12 +300,12 @@ export function TabletReflexion() {
                     <span className="text-gray-700 text-sm sm:text-base font-semibold">Progreso de respuestas</span>
                   </div>
                   <Badge className="bg-gradient-to-r from-[#093c92] to-[#f757ac] text-white border-0 text-xs sm:text-sm shadow-md">
-                    {estudiantesRespondidos} / {totalEstudiantes}
+                    {totalEstudiantes > 0 ? `${estudiantesRespondidos} / ${totalEstudiantes}` : 'Cargando...'}
                   </Badge>
                 </div>
                 <Progress value={porcentajeCompletado} className="h-2 sm:h-3 mb-1.5" />
                 <p className="text-xs sm:text-sm text-gray-600 text-right font-medium">
-                  {porcentajeCompletado.toFixed(0)}% completado
+                  {totalEstudiantes > 0 ? `${porcentajeCompletado.toFixed(0)}% completado` : 'Cargando...'}
                 </p>
               </motion.div>
             </Card>
