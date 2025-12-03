@@ -18,7 +18,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { GroupBadge } from '@/components/GroupBadge';
 import { Confetti } from '@/components/Confetti';
-import { BackgroundMusic } from '@/components/BackgroundMusic';
 import { CancelSessionModal } from '@/components/CancelSessionModal';
 import { sessionsAPI } from '@/services';
 import { toast } from 'sonner';
@@ -617,7 +616,6 @@ export function ProfesorResultadosEtapa1() {
       />
 
       {/* Música de fondo */}
-      <BackgroundMusic storageKey="professor_backgroundMusicEnabled" />
     </div>
   );
 }

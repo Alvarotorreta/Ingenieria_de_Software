@@ -3,7 +3,6 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Clock, Loader2, CheckCircle2, Coins, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { BackgroundMusic } from '@/components/BackgroundMusic';
 import { UBotMinijuegoModal } from '@/components/UBotMinijuegoModal';
 import { toast } from 'sonner';
 import { tabletConnectionsAPI, sessionsAPI, teamPersonalizationsAPI, teamActivityProgressAPI } from '@/services';
@@ -1960,7 +1959,6 @@ export function TabletMinijuego() {
       </div>
 
       {/* Música de fondo */}
-      <BackgroundMusic storageKey="tablet_backgroundMusicEnabled" />
 
       {/* Modal de U-Bot */}
       {team && (

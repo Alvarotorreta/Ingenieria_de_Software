@@ -19,7 +19,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { EtapaIntroModal } from '@/components/EtapaIntroModal';
 import { UBotPrototipoModal } from '@/components/UBotPrototipoModal';
-import { BackgroundMusic } from '@/components/BackgroundMusic';
 import { 
   sessionsAPI, 
   challengesAPI, 
@@ -629,7 +628,6 @@ export function TabletPrototipo() {
       )}
 
       {/* Música de fondo */}
-      <BackgroundMusic storageKey="tablet_backgroundMusicEnabled" />
     </div>
   );
 }

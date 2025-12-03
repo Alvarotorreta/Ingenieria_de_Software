@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { GroupBadge } from '@/components/GroupBadge';
 import { EtapaIntroModal } from '@/components/EtapaIntroModal';
-import { BackgroundMusic } from '@/components/BackgroundMusic';
 import { sessionsAPI, challengesAPI, teamBubbleMapsAPI, teamPersonalizationsAPI, teamActivityProgressAPI } from '@/services';
 import { toast } from 'sonner';
 import { isDevMode } from '@/utils/devMode';
@@ -596,7 +595,6 @@ export function ProfesorBubbleMap() {
         </div>
       </div>
 
-      <BackgroundMusic />
 
       <div className="relative z-10 p-3 sm:p-4 flex-1 flex flex-col min-h-0 overflow-y-auto">
         <div className="max-w-6xl mx-auto w-full flex-1 flex flex-col gap-3 sm:gap-4">

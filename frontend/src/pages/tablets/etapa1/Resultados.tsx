@@ -4,7 +4,6 @@ import { motion } from 'framer-motion';
 import { Trophy, Medal, Award, Coins, Loader2, Users, CheckCircle2, Clock, Bot } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Confetti } from '@/components/Confetti';
-import { BackgroundMusic } from '@/components/BackgroundMusic';
 import { UBotResultadosModal } from '@/components/UBotResultadosModal';
 import { sessionsAPI, tabletConnectionsAPI } from '@/services';
 import { toast } from 'sonner';
@@ -779,7 +778,6 @@ export function TabletResultadosEtapa1() {
       )}
 
       {/* Música de fondo */}
-      <BackgroundMusic storageKey="tablet_backgroundMusicEnabled" />
     </div>
   );
 }

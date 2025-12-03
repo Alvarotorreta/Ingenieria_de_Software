@@ -18,7 +18,6 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { EtapaIntroModal } from '@/components/EtapaIntroModal';
-import { BackgroundMusic } from '@/components/BackgroundMusic';
 import { isDevMode } from '@/utils/devMode';
 import { sessionsAPI, teamsAPI, teamPersonalizationsAPI, teamActivityProgressAPI } from '@/services';
 import { toast } from 'sonner';
@@ -1024,7 +1023,6 @@ export function ProfesorPresentacion() {
       />
 
       {/* Música de fondo */}
-      <BackgroundMusic storageKey="professor_backgroundMusicEnabled" />
     </div>
   );
 }

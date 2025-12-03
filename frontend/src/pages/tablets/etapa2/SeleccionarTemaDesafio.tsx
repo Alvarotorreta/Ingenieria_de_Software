@@ -14,7 +14,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { UBotEtapa2Modal } from '@/components/UBotEtapa2Modal';
 import { Bot } from 'lucide-react';
-import { BackgroundMusic } from '@/components/BackgroundMusic';
 import { sessionsAPI, tabletConnectionsAPI, challengesAPI, teamActivityProgressAPI, academicAPI, teamPersonalizationsAPI } from '@/services';
 import { toast } from 'sonner';
 
@@ -1459,7 +1458,6 @@ export function TabletSeleccionarTemaDesafio() {
       )}
 
       {/* Música de fondo */}
-      <BackgroundMusic storageKey="tablet_backgroundMusicEnabled" />
     </div>
   );
 }

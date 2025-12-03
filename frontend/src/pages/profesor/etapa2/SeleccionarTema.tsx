@@ -7,7 +7,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { EtapaIntroModal } from '@/components/EtapaIntroModal';
-import { BackgroundMusic } from '@/components/BackgroundMusic';
 import { sessionsAPI, teamActivityProgressAPI } from '@/services';
 import { toast } from 'sonner';
 import { isDevMode } from '@/utils/devMode';
@@ -711,7 +710,6 @@ export function ProfesorSeleccionarTema() {
       />
 
       {/* Música de fondo */}
-      <BackgroundMusic storageKey="professor_backgroundMusicEnabled" />
     </div>
   );
 }

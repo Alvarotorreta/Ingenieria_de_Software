@@ -8,7 +8,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { EtapaIntroModal } from '@/components/EtapaIntroModal';
-import { BackgroundMusic } from '@/components/BackgroundMusic';
 import { 
   sessionsAPI, 
   sessionStagesAPI, 
@@ -727,7 +726,6 @@ export function ProfesorPresentacionPitch() {
         </div>
       </div>
 
-      <BackgroundMusic />
 
       <div className="relative z-10 p-3 sm:p-4">
         <div className="max-w-6xl mx-auto">

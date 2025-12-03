@@ -16,7 +16,6 @@ import {
   Bot,
 } from 'lucide-react';
 import { sessionsAPI, tabletConnectionsAPI } from '@/services';
-import { BackgroundMusic } from '@/components/BackgroundMusic';
 import { UBotWelcomeModal } from '@/components/UBotWelcomeModal';
 import { toast } from 'sonner';
 
@@ -802,7 +801,6 @@ export function TabletLobby() {
       </div>
 
       {/* Música de fondo */}
-      <BackgroundMusic storageKey="tablet_backgroundMusicEnabled" />
       
       {/* Modal de U-Bot */}
       {myTeam && (

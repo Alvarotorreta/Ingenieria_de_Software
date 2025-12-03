@@ -5,7 +5,6 @@ import { Users, Clock, Loader2, CheckCircle2, XCircle, ArrowRight, Play, Sparkle
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { EtapaIntroModal } from '@/components/EtapaIntroModal';
-import { BackgroundMusic } from '@/components/BackgroundMusic';
 import { sessionsAPI, teamsAPI, teamPersonalizationsAPI } from '@/services';
 import { toast } from 'sonner';
 import { isDevMode } from '@/utils/devMode';
@@ -319,7 +318,6 @@ export function ProfesorPersonalizacion() {
         </div>
       </div>
 
-      <BackgroundMusic />
 
       <div className="relative z-10 p-3 sm:p-4 flex-1 flex flex-col min-h-0 overflow-y-auto">
         <div className="max-w-6xl mx-auto w-full flex-1 flex flex-col gap-3 sm:gap-4">

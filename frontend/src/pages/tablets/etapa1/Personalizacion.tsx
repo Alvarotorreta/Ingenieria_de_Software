@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { UBotPersonalizacionModal } from '@/components/UBotPersonalizacionModal';
-import { BackgroundMusic } from '@/components/BackgroundMusic';
 import { toast } from 'sonner';
 import { tabletConnectionsAPI, sessionsAPI, teamPersonalizationsAPI } from '@/services';
 
@@ -611,7 +610,6 @@ export function TabletPersonalizacion() {
       )}
 
       {/* Música de fondo */}
-      <BackgroundMusic storageKey="tablet_backgroundMusicEnabled" />
     </div>
   );
 }

@@ -5,7 +5,6 @@ import { Brain, CheckCircle2, Loader2 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { BackgroundMusic } from '@/components/BackgroundMusic';
 import { sessionsAPI, reflectionEvaluationsAPI, tabletConnectionsAPI } from '@/services';
 import { toast } from 'sonner';
 import { fixTextEncoding } from '@/utils/textEncoding';
@@ -196,7 +195,6 @@ export function TabletReflexion() {
         </div>
       </div>
 
-      <BackgroundMusic />
 
       <div className="relative z-10 p-3 sm:p-4 flex items-center justify-center min-h-screen">
         <div className="max-w-6xl w-full mx-auto">

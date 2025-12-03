@@ -4,7 +4,6 @@ import { motion } from 'framer-motion';
 import { Clock, Loader2, CheckCircle2, Coins, Bot, User, GraduationCap, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { UBotPresentacionModal } from '@/components/UBotPresentacionModal';
-import { BackgroundMusic } from '@/components/BackgroundMusic';
 import { toast } from 'sonner';
 import { tabletConnectionsAPI, sessionsAPI, teamPersonalizationsAPI, teamActivityProgressAPI, challengesAPI } from '@/services';
 import { GeneralKnowledgeQuiz } from '@/components/minigames/GeneralKnowledgeQuiz';
@@ -1350,7 +1349,6 @@ export function TabletPresentacion() {
       )}
 
       {/* Música de fondo */}
-      <BackgroundMusic storageKey="tablet_backgroundMusicEnabled" />
     </div>
   );
 }

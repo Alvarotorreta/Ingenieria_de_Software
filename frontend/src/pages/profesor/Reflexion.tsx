@@ -17,7 +17,6 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { BackgroundMusic } from '@/components/BackgroundMusic';
 import { CancelSessionModal } from '@/components/CancelSessionModal';
 import { sessionsAPI, teamsAPI, reflectionEvaluationsAPI } from '@/services';
 import { toast } from 'sonner';
@@ -272,7 +271,6 @@ export function ProfesorReflexion() {
         </div>
       </div>
 
-      <BackgroundMusic />
 
       <div className="relative z-10 p-3 sm:p-4">
         <div className="max-w-6xl mx-auto">

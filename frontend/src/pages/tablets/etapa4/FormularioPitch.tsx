@@ -6,7 +6,6 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { UBotFormularioPitchModal } from '@/components/UBotFormularioPitchModal';
-import { BackgroundMusic } from '@/components/BackgroundMusic';
 import { sessionsAPI, tabletConnectionsAPI, teamActivityProgressAPI } from '@/services';
 import { toast } from 'sonner';
 
@@ -758,7 +757,6 @@ export function TabletFormularioPitch() {
       )}
 
       {/* Música de fondo */}
-      <BackgroundMusic storageKey="tablet_backgroundMusicEnabled" />
     </div>
   );
 }

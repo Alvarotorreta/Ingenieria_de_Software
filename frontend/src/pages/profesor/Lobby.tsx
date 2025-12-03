@@ -16,7 +16,6 @@ import {
   Copy,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { BackgroundMusic } from '@/components/BackgroundMusic';
 import { CancelSessionModal } from '@/components/CancelSessionModal';
 import { sessionsAPI, teamsAPI, tabletConnectionsAPI } from '@/services';
 import { toast } from 'sonner';
@@ -674,7 +673,6 @@ export function ProfesorLobby() {
       />
 
       {/* Música de fondo */}
-      <BackgroundMusic storageKey="professor_backgroundMusicEnabled" />
     </div>
   );
 }

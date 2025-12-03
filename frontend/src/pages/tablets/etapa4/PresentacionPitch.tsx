@@ -7,7 +7,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { UBotPresentacionPitchModal } from '@/components/UBotPresentacionPitchModal';
-import { BackgroundMusic } from '@/components/BackgroundMusic';
 import { 
   sessionsAPI, 
   sessionStagesAPI, 
@@ -820,7 +819,6 @@ export function TabletPresentacionPitch() {
         </div>
       </div>
 
-      <BackgroundMusic />
 
       <div className="relative z-10 p-3 sm:p-4">
       <div className="max-w-6xl mx-auto">
