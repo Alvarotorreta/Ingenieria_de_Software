@@ -5,8 +5,6 @@ services:
     restart: unless-stopped
     environment:
       - MYSQL_DATABASE=mision_emprende2
-      - MYSQL_USER=root
-      - MYSQL_PASSWORD=1234
       - MYSQL_ROOT_PASSWORD=1234
     volumes:
       - db_data:/var/lib/mysql
