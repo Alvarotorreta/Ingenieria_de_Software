@@ -91,6 +91,16 @@ export const sessionsAPI = {
     return response.data;
   },
 
+  setVideoInstitucionalActivity: async (sessionId: number | string) => {
+    const response = await api.post(`/sessions/game-sessions/${sessionId}/set_video_institucional_activity/`);
+    return response.data;
+  },
+
+  setInstructivoActivity: async (sessionId: number | string) => {
+    const response = await api.post(`/sessions/game-sessions/${sessionId}/set_instructivo_activity/`);
+    return response.data;
+  },
+
   getStageResults: async (sessionId: number | string, stageId?: number) => {
     const params = stageId ? { stage_id: stageId } : {};
     const response = await api.get(`/sessions/game-sessions/${sessionId}/stage_results/`, { params });

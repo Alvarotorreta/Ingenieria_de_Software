@@ -61,10 +61,8 @@ class AdminDashboardViewSet(viewsets.ViewSet):
         # Total de alumnos que han jugado (estudiantes únicos en TeamStudent)
         total_students_played = TeamStudent.objects.values('student').distinct().count()
         
-        # Total de profesores activos (con al menos 1 sesión)
-        total_professors_active = Professor.objects.filter(
-            game_sessions__isnull=False
-        ).distinct().count()
+        # Total de profesores registrados (todos los profesores, no solo los que tienen sesiones)
+        total_professors_active = Professor.objects.count()
         
         # Total de sesiones creadas
         total_sessions_created = GameSession.objects.count()
@@ -344,22 +342,20 @@ class AdminDashboardViewSet(viewsets.ViewSet):
         
         total = GameSession.objects.count()
         completed = GameSession.objects.filter(status='completed').count()
-        not_completed = GameSession.objects.filter(status__in=['lobby', 'running']).count()
         cancelled = GameSession.objects.filter(status='cancelled').count()
+        
+        # Calcular porcentajes solo con completadas y canceladas
+        total_for_percentage = completed + cancelled
         
         return Response({
             'total': total,
             'completed': {
                 'count': completed,
-                'percentage': round((completed / total * 100) if total > 0 else 0, 2)
-            },
-            'not_completed': {
-                'count': not_completed,
-                'percentage': round((not_completed / total * 100) if total > 0 else 0, 2)
+                'percentage': round((completed / total_for_percentage * 100) if total_for_percentage > 0 else 0, 2)
             },
             'cancelled': {
                 'count': cancelled,
-                'percentage': round((cancelled / total * 100) if total > 0 else 0, 2)
+                'percentage': round((cancelled / total_for_percentage * 100) if total_for_percentage > 0 else 0, 2)
             }
         })
     
@@ -933,5 +929,67 @@ class AdminDashboardViewSet(viewsets.ViewSet):
             'faculty_id': faculty.id,
             'faculty_name': faculty.name,
             'careers': data
+        })
+    
+    @action(detail=False, methods=['get'])
+    def cancellation_reasons(self, request):
+        """Obtener motivos de cancelación de sesiones canceladas"""
+        if not self._check_admin(request):
+            return Response(
+                {'error': 'Acceso denegado. Se requieren permisos de administrador.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Obtener todas las sesiones canceladas con sus motivos
+        cancelled_sessions = GameSession.objects.filter(
+            status='cancelled'
+        ).exclude(
+            cancellation_reason__isnull=True
+        ).exclude(
+            cancellation_reason=''
+        ).values(
+            'cancellation_reason',
+            'cancellation_reason_other'
+        )
+        
+        # Convertir a lista para poder contar
+        sessions_list = list(cancelled_sessions)
+        total_cancelled = len(sessions_list)
+        
+        # Agrupar por motivo de cancelación
+        reasons_counter = Counter()
+        reasons_details = {}
+        
+        for session in sessions_list:
+            reason = session['cancellation_reason'] or 'Sin motivo'
+            other = session['cancellation_reason_other']
+            
+            reasons_counter[reason] += 1
+            
+            if reason not in reasons_details:
+                reasons_details[reason] = {
+                    'count': 0,
+                    'examples': []
+                }
+            
+            reasons_details[reason]['count'] += 1
+            
+            # Guardar ejemplos de "Otro" (máximo 5)
+            if reason == 'Otro' and other and len(reasons_details[reason]['examples']) < 5:
+                reasons_details[reason]['examples'].append(other)
+        
+        # Formatear respuesta
+        reasons_data = []
+        for reason, count in reasons_counter.most_common():
+            reasons_data.append({
+                'reason': reason,
+                'count': count,
+                'percentage': round((count / total_cancelled * 100) if total_cancelled > 0 else 0, 2),
+                'examples': reasons_details.get(reason, {}).get('examples', [])
+            })
+        
+        return Response({
+            'total_cancelled': total_cancelled,
+            'reasons': reasons_data
         })
 

@@ -17,6 +17,7 @@ import {
   Calendar,
   ChevronRight,
   ChevronLeft,
+  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -58,6 +59,15 @@ const COMPLETION_COLORS = {
   cancelled: '#fa709a',
 };
 
+// Configuración común para gráficos de barras horizontales
+const HORIZONTAL_BAR_CONFIG = {
+  margin: { top: 5, right: 30, left: 20, bottom: 5 },
+  yAxis: {
+    tick: { fontSize: 12 },
+    width: 150,
+  },
+};
+
 interface Metrics {
   total_students_played: number;
   total_professors_active: number;
@@ -76,8 +86,19 @@ interface TimeSeriesData {
 interface GameCompletion {
   total: number;
   completed: { count: number; percentage: number };
-  not_completed: { count: number; percentage: number };
   cancelled: { count: number; percentage: number };
+}
+
+interface CancellationReason {
+  reason: string;
+  count: number;
+  percentage: number;
+  examples: string[];
+}
+
+interface CancellationReasonsData {
+  total_cancelled: number;
+  reasons: CancellationReason[];
 }
 
 interface Stage {
@@ -124,6 +145,9 @@ export function Dashboard() {
   
   // Completación
   const [gameCompletion, setGameCompletion] = useState<GameCompletion | null>(null);
+  const [completionDrillDown, setCompletionDrillDown] = useState<'main' | 'cancellation_reasons'>('main');
+  const [cancellationReasons, setCancellationReasons] = useState<CancellationReasonsData | null>(null);
+  const [loadingCancellationReasons, setLoadingCancellationReasons] = useState(false);
   
   // Drill-down duración
   const [durationDrillDown, setDurationDrillDown] = useState<DrillDownLevel>('main');
@@ -309,6 +333,21 @@ export function Dashboard() {
       setEvaluationComments(data.results || []);
     } catch (error: any) {
       console.error('Error loading comments:', error);
+    }
+  };
+
+  const loadCancellationReasons = async () => {
+    setLoadingCancellationReasons(true);
+    try {
+      const data = await adminDashboardAPI.getCancellationReasons();
+      setCancellationReasons(data);
+      setCompletionDrillDown('cancellation_reasons');
+    } catch (error: any) {
+      toast.error('Error al cargar motivos de cancelación', {
+        description: error.response?.data?.error || 'No se pudieron cargar los motivos',
+      });
+    } finally {
+      setLoadingCancellationReasons(false);
     }
   };
 
@@ -597,56 +636,154 @@ export function Dashboard() {
           {/* Completación de Juegos */}
           {gameCompletion && (
             <Card className="p-6 bg-white/95 backdrop-blur">
-              <h2 className="text-xl font-bold text-gray-800 mb-4">Completación de Juegos</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={[
-                        { name: 'Completadas', value: gameCompletion.completed.count, color: COMPLETION_COLORS.completed },
-                        { name: 'No Completadas', value: gameCompletion.not_completed.count, color: COMPLETION_COLORS.not_completed },
-                        { name: 'Canceladas', value: gameCompletion.cancelled.count, color: COMPLETION_COLORS.cancelled },
-                      ]}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={100}
-                      fill="#8884d8"
-                      dataKey="value"
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-gray-800">Completación de Juegos</h2>
+                {completionDrillDown !== 'main' && (
+                  <Button
+                    onClick={() => {
+                      setCompletionDrillDown('main');
+                      setCancellationReasons(null);
+                    }}
+                    variant="outline"
+                    size="sm"
+                  >
+                    <ChevronLeft className="w-4 h-4 mr-2" />
+                    Volver
+                  </Button>
+                )}
+              </div>
+
+              {completionDrillDown === 'main' ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={[
+                          { name: 'Completadas', value: gameCompletion.completed.count, color: COMPLETION_COLORS.completed },
+                          { name: 'Canceladas', value: gameCompletion.cancelled.count, color: COMPLETION_COLORS.cancelled, clickable: true },
+                        ]}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                        outerRadius={100}
+                        fill="#8884d8"
+                        dataKey="value"
+                        onClick={(data: any) => {
+                          if (data.name === 'Canceladas') {
+                            loadCancellationReasons();
+                          }
+                        }}
+                      >
+                        {[
+                          { name: 'Completadas', value: gameCompletion.completed.count },
+                          { name: 'Canceladas', value: gameCompletion.cancelled.count },
+                        ].map((entry, index) => (
+                          <Cell 
+                            key={`cell-${index}`} 
+                            fill={entry.name === 'Completadas' ? COMPLETION_COLORS.completed : COMPLETION_COLORS.cancelled}
+                            style={entry.name === 'Canceladas' ? { cursor: 'pointer' } : {}}
+                          />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="space-y-3">
+                    <div className="p-4 bg-green-50 rounded-lg">
+                      <p className="text-sm text-gray-600">Completadas</p>
+                      <p className="text-2xl font-bold text-green-700">
+                        {gameCompletion.completed.count} ({gameCompletion.completed.percentage}%)
+                      </p>
+                    </div>
+                    <div 
+                      className="p-4 bg-red-50 rounded-lg cursor-pointer hover:bg-red-100 transition-colors"
+                      onClick={loadCancellationReasons}
                     >
-                      {[
-                        { name: 'Completadas', value: gameCompletion.completed.count },
-                        { name: 'No Completadas', value: gameCompletion.not_completed.count },
-                        { name: 'Canceladas', value: gameCompletion.cancelled.count },
-                      ].map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={Object.values(COMPLETION_COLORS)[index]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="space-y-3">
-                  <div className="p-4 bg-green-50 rounded-lg">
-                    <p className="text-sm text-gray-600">Completadas</p>
-                    <p className="text-2xl font-bold text-green-700">
-                      {gameCompletion.completed.count} ({gameCompletion.completed.percentage}%)
-                    </p>
-                  </div>
-                  <div className="p-4 bg-yellow-50 rounded-lg">
-                    <p className="text-sm text-gray-600">No Completadas</p>
-                    <p className="text-2xl font-bold text-yellow-700">
-                      {gameCompletion.not_completed.count} ({gameCompletion.not_completed.percentage}%)
-                    </p>
-                  </div>
-                  <div className="p-4 bg-red-50 rounded-lg">
-                    <p className="text-sm text-gray-600">Canceladas</p>
-                    <p className="text-2xl font-bold text-red-700">
-                      {gameCompletion.cancelled.count} ({gameCompletion.cancelled.percentage}%)
-                    </p>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-gray-600">Canceladas</p>
+                          <p className="text-2xl font-bold text-red-700">
+                            {gameCompletion.cancelled.count} ({gameCompletion.cancelled.percentage}%)
+                          </p>
+                        </div>
+                        <ChevronRight className="w-5 h-5 text-red-700" />
+                      </div>
+                      <p className="text-xs text-red-600 mt-2">Haz clic para ver motivos</p>
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                // Vista de Motivos de Cancelación con Gráficos
+                <div>
+                  <div className="mb-4">
+                    <p className="text-sm text-gray-600">
+                      Total de sesiones canceladas: <span className="font-semibold text-gray-800">{cancellationReasons?.total_cancelled || 0}</span>
+                    </p>
+                  </div>
+                  {loadingCancellationReasons ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="w-8 h-8 animate-spin text-pink-500" />
+                    </div>
+                  ) : cancellationReasons && cancellationReasons.reasons.length === 0 ? (
+                    <p className="text-center text-gray-500 py-12">No hay motivos de cancelación registrados</p>
+                  ) : cancellationReasons ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <ResponsiveContainer width="100%" height={300}>
+                        <PieChart>
+                          <Pie
+                            data={cancellationReasons.reasons.map((reason, index) => ({
+                              name: reason.reason,
+                              value: reason.count,
+                              percentage: reason.percentage,
+                              color: CHART_COLORS[index % CHART_COLORS.length]
+                            }))}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                            outerRadius={100}
+                            fill="#8884d8"
+                            dataKey="value"
+                          >
+                            {cancellationReasons.reasons.map((reason, index) => (
+                              <Cell 
+                                key={`cell-${index}`} 
+                                fill={CHART_COLORS[index % CHART_COLORS.length]}
+                              />
+                            ))}
+                          </Pie>
+                          <Tooltip 
+                            formatter={(value: number, name: string, props: any) => [
+                              `${value} sesiones (${props.payload.percentage}%)`,
+                              props.payload.name
+                            ]}
+                          />
+                          <Legend />
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <div className="space-y-3">
+                        {cancellationReasons.reasons.map((reason, index) => (
+                          <div key={index} className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1">
+                                <p className="text-sm font-semibold text-gray-800">{reason.reason}</p>
+                                <p className="text-xs text-gray-600 mt-1">
+                                  {reason.count} sesión{reason.count !== 1 ? 'es' : ''} ({reason.percentage}%)
+                                </p>
+                              </div>
+                              <div 
+                                className="w-4 h-4 rounded-full"
+                                style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              )}
             </Card>
           )}
 
@@ -678,10 +815,15 @@ export function Dashboard() {
 
             {durationDrillDown === 'main' && (
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={stages}>
+                <BarChart data={stages} layout="vertical" margin={HORIZONTAL_BAR_CONFIG.margin}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="stage_name" />
-                  <YAxis />
+                  <XAxis type="number" />
+                  <YAxis 
+                    dataKey="stage_name" 
+                    type="category" 
+                    width={HORIZONTAL_BAR_CONFIG.yAxis.width}
+                    tick={HORIZONTAL_BAR_CONFIG.yAxis.tick}
+                  />
                   <Tooltip formatter={(value: number) => formatDuration(value)} />
                   <Bar
                     dataKey="avg_duration_seconds"
@@ -703,10 +845,15 @@ export function Dashboard() {
                   Actividades de {selectedStage.stage_name}
                 </p>
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={activities}>
+                  <BarChart data={activities} layout="vertical" margin={HORIZONTAL_BAR_CONFIG.margin}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="activity_name" angle={-45} textAnchor="end" height={100} />
-                    <YAxis />
+                    <XAxis type="number" />
+                    <YAxis 
+                      dataKey="activity_name" 
+                      type="category" 
+                      width={HORIZONTAL_BAR_CONFIG.yAxis.width}
+                      tick={HORIZONTAL_BAR_CONFIG.yAxis.tick}
+                    />
                     <Tooltip formatter={(value: number) => formatDuration(value)} />
                     <Bar
                       dataKey="avg_duration_seconds"
@@ -760,10 +907,15 @@ export function Dashboard() {
                   <div>
                     <h3 className="text-md font-semibold mb-2">Distribución de Tiempos</h3>
                     <ResponsiveContainer width="100%" height={250}>
-                      <BarChart data={activityAnalysis.histogram}>
+                      <BarChart data={activityAnalysis.histogram} layout="vertical" margin={HORIZONTAL_BAR_CONFIG.margin}>
                         <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="bin_start" />
-                        <YAxis />
+                        <XAxis type="number" />
+                        <YAxis 
+                          dataKey="bin_start" 
+                          type="category" 
+                          width={HORIZONTAL_BAR_CONFIG.yAxis.width}
+                          tick={HORIZONTAL_BAR_CONFIG.yAxis.tick}
+                        />
                         <Tooltip />
                         <Bar dataKey="count" fill="#667eea" />
                       </BarChart>
@@ -830,11 +982,24 @@ export function Dashboard() {
                   Desafíos de {selectedTopic.topic_name}
                 </p>
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={challenges}>
+                  <BarChart data={challenges} layout="vertical" margin={{ ...HORIZONTAL_BAR_CONFIG.margin, left: 200 }}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="challenge_title" angle={-45} textAnchor="end" height={100} />
-                    <YAxis />
-                    <Tooltip />
+                    <XAxis type="number" />
+                    <YAxis 
+                      dataKey="challenge_title" 
+                      type="category" 
+                      width={180}
+                      tick={{ fontSize: 11 }}
+                    />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'white', 
+                        border: '1px solid #ccc',
+                        borderRadius: '8px',
+                        maxWidth: '300px',
+                        wordWrap: 'break-word'
+                      }}
+                    />
                     <Bar
                       dataKey="selection_count"
                       fill="#f093fb"
@@ -913,10 +1078,15 @@ export function Dashboard() {
                   </div>
                 ) : (
                   <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={faculties}>
+                    <BarChart data={faculties} layout="vertical" margin={HORIZONTAL_BAR_CONFIG.margin}>
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="faculty_name" angle={-45} textAnchor="end" height={100} />
-                      <YAxis />
+                      <XAxis type="number" />
+                      <YAxis 
+                        dataKey="faculty_name" 
+                        type="category" 
+                        width={HORIZONTAL_BAR_CONFIG.yAxis.width}
+                        tick={HORIZONTAL_BAR_CONFIG.yAxis.tick}
+                      />
                       <Tooltip />
                       <Bar
                         dataKey="games_count"
@@ -947,10 +1117,15 @@ export function Dashboard() {
                   </div>
                 ) : (
                   <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={careers}>
+                    <BarChart data={careers} layout="vertical" margin={HORIZONTAL_BAR_CONFIG.margin}>
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="career_name" angle={-45} textAnchor="end" height={100} />
-                      <YAxis />
+                      <XAxis type="number" />
+                      <YAxis 
+                        dataKey="career_name" 
+                        type="category" 
+                        width={HORIZONTAL_BAR_CONFIG.yAxis.width}
+                        tick={HORIZONTAL_BAR_CONFIG.yAxis.tick}
+                      />
                       <Tooltip />
                       <Bar dataKey="games_count" fill="#4facfe">
                         {careers.map((entry, index) => (
@@ -995,10 +1170,17 @@ export function Dashboard() {
                       { name: 'Jugaron', value: evaluationResponseRate.total_played - evaluationResponseRate.total_responded },
                       { name: 'Respondieron', value: evaluationResponseRate.total_responded },
                     ]}
+                    layout="vertical"
+                    margin={HORIZONTAL_BAR_CONFIG.margin}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
+                    <XAxis type="number" />
+                    <YAxis 
+                      dataKey="name" 
+                      type="category" 
+                      width={HORIZONTAL_BAR_CONFIG.yAxis.width}
+                      tick={HORIZONTAL_BAR_CONFIG.yAxis.tick}
+                    />
                     <Tooltip />
                     <Bar dataKey="value" fill="#667eea" />
                   </BarChart>
@@ -1023,10 +1205,16 @@ export function Dashboard() {
                           value,
                         }))}
                         layout="vertical"
+                        margin={HORIZONTAL_BAR_CONFIG.margin}
                       >
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis type="number" />
-                        <YAxis dataKey="name" type="category" width={100} />
+                        <YAxis 
+                          dataKey="name" 
+                          type="category" 
+                          width={HORIZONTAL_BAR_CONFIG.yAxis.width}
+                          tick={HORIZONTAL_BAR_CONFIG.yAxis.tick}
+                        />
                         <Tooltip />
                         <Bar dataKey="value" fill="#4facfe" />
                       </BarChart>
@@ -1044,10 +1232,17 @@ export function Dashboard() {
                           name: item.satisfaction || 'Sin respuesta',
                           value: item.count,
                         }))}
+                        layout="vertical"
+                        margin={HORIZONTAL_BAR_CONFIG.margin}
                       >
                         <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} />
-                        <YAxis />
+                        <XAxis type="number" />
+                        <YAxis 
+                          dataKey="name" 
+                          type="category" 
+                          width={HORIZONTAL_BAR_CONFIG.yAxis.width}
+                          tick={HORIZONTAL_BAR_CONFIG.yAxis.tick}
+                        />
                         <Tooltip />
                         <Bar dataKey="value" fill="#43e97b" />
                       </BarChart>
@@ -1065,10 +1260,17 @@ export function Dashboard() {
                           name: item.entrepreneurship_interest || 'Sin respuesta',
                           value: item.count,
                         }))}
+                        layout="vertical"
+                        margin={HORIZONTAL_BAR_CONFIG.margin}
                       >
                         <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} />
-                        <YAxis />
+                        <XAxis type="number" />
+                        <YAxis 
+                          dataKey="name" 
+                          type="category" 
+                          width={HORIZONTAL_BAR_CONFIG.yAxis.width}
+                          tick={HORIZONTAL_BAR_CONFIG.yAxis.tick}
+                        />
                         <Tooltip />
                         <Bar dataKey="value" fill="#fa709a" />
                       </BarChart>

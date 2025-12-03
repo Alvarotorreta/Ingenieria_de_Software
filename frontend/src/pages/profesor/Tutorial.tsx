@@ -33,40 +33,41 @@ export function Tutorial() {
         />
       </div>
 
-      <div className="relative z-10 h-screen flex flex-col items-center justify-center p-2 sm:p-3">
-        <div className="w-full max-w-5xl flex flex-col h-full">
+      <div className="relative z-10 min-h-screen flex flex-col items-center justify-center p-4 sm:p-6">
+        <div className="w-full max-w-6xl">
           <Button
             onClick={() => navigate('/profesor/panel')}
             variant="ghost"
-            className="mb-2 text-white hover:bg-white/20 self-start text-xs sm:text-sm"
+            className="mb-4 text-white hover:bg-white/20 self-start text-sm sm:text-base"
             size="sm"
           >
-            <ArrowLeft className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+            <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
             Volver al Panel
           </Button>
 
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-xl shadow-2xl p-3 sm:p-4 border border-gray-200 w-full flex-1 flex flex-col"
+            className="bg-white rounded-xl shadow-2xl p-4 sm:p-6 border border-gray-200 w-full"
           >
-            <div className="flex items-center justify-center gap-2 mb-2 flex-shrink-0">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gradient-to-br from-[#093c92] to-[#f757ac] rounded-full flex items-center justify-center shadow-lg flex-shrink-0">
-                <Film className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
+            <div className="flex items-center justify-center gap-3 mb-4 sm:mb-6">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-[#093c92] to-[#f757ac] rounded-full flex items-center justify-center shadow-lg">
+                <Film className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </div>
-              <h2 className="text-[#093c92] text-base sm:text-lg font-bold">
+              <h2 className="text-[#093c92] text-xl sm:text-2xl font-bold">
                 Video Instructivo
               </h2>
             </div>
             
             <motion.div 
-              whileHover={{ scale: 1.01 }}
-              className="flex-1 rounded-lg shadow-xl overflow-hidden relative bg-black min-h-0"
+              whileHover={{ scale: 1.005 }}
+              className="rounded-lg shadow-xl overflow-hidden relative bg-black"
+              style={{ aspectRatio: '16/9' }}
             >
               <iframe
                 src={tutorialVideoUrl}
                 title="Tutorial - Cómo Jugar Misión Emprende"
-                className="w-full h-full"
+                className="w-full h-full absolute inset-0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
               />

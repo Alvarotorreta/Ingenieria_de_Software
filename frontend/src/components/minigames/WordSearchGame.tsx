@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, Trophy } from 'lucide-react';
+import { CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { WordSearchData } from './types';
 import { toast } from 'sonner';
@@ -10,6 +10,7 @@ interface WordSearchGameProps {
   foundWords: string[];
   onWordFound: (word: string, cells: Array<{ row: number; col: number }>) => void;
   onComplete: () => void;
+  teamColor?: string;
 }
 
 interface Cell {
@@ -22,7 +23,26 @@ export function WordSearchGame({
   foundWords,
   onWordFound,
   onComplete,
+  teamColor,
 }: WordSearchGameProps) {
+  // Función para convertir color a hex
+  const getTeamColorHex = (color: string) => {
+    const colorMap: Record<string, string> = {
+      Verde: '#28a745',
+      Azul: '#007bff',
+      Rojo: '#dc3545',
+      Amarillo: '#ffc107',
+      Naranja: '#fd7e14',
+      Morado: '#6f42c1',
+      Rosa: '#e83e8c',
+      Cian: '#17a2b8',
+      Gris: '#6c757d',
+      Marrón: '#795548',
+    };
+    return colorMap[color] || '#667eea';
+  };
+
+  const teamColorHex = teamColor ? getTeamColorHex(teamColor) : '#667eea';
   const [selectedCells, setSelectedCells] = useState<Cell[]>([]);
   const [isSelecting, setIsSelecting] = useState(false);
   const [startCell, setStartCell] = useState<Cell | null>(null);
@@ -228,55 +248,55 @@ export function WordSearchGame({
   }, [isSelecting, selectedCells]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 sm:space-y-4">
       {/* Lista de palabras a encontrar */}
-      <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-4 border-2 border-purple-200">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-purple-900 font-bold text-base sm:text-lg">
-            Palabras a encontrar
+      <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-2 sm:p-3 border-2 border-purple-200">
+        <div className="flex items-center gap-3 flex-wrap">
+          <h3 className="text-purple-900 font-bold text-sm sm:text-base flex-shrink-0">
+            Palabras a encontrar:
           </h3>
-          <div className="bg-white rounded-full px-3 py-1 shadow-sm">
-            <span className="text-purple-900 font-semibold text-sm">
-              {foundWords.length}/{data.words.length}
-            </span>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          {data.words.map((word) => {
-            const encontrada = foundWords.includes(word);
-            return (
-              <motion.div
-                key={word}
-                initial={false}
-                animate={{ 
-                  scale: encontrada ? [1, 1.1, 1] : 1,
-                }}
+          <div className="flex gap-1.5 sm:gap-2 overflow-x-auto pb-1 custom-scrollbar flex-1 min-w-0">
+            {data.words.map((word) => {
+              const encontrada = foundWords.includes(word);
+              return (
+                <motion.div
+                  key={word}
+                  initial={false}
+                  animate={{ 
+                    scale: encontrada ? [1, 1.1, 1] : 1,
+                  }}
                 className={`
-                  inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all text-sm font-semibold
+                  flex-shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-md transition-all text-xs sm:text-sm font-semibold
                   ${encontrada 
-                    ? 'bg-green-500 text-white shadow-md' 
+                    ? 'text-white shadow-md' 
                     : 'bg-white text-gray-700 border-2 border-gray-200'
                   }
                 `}
-              >
-                <span className={encontrada ? 'line-through' : ''}>
-                  {word}
-                </span>
-                {encontrada && (
-                  <CheckCircle2 className="w-4 h-4" />
-                )}
-              </motion.div>
-            );
-          })}
+                style={encontrada ? { backgroundColor: teamColorHex } : {}}
+                >
+                  <span className={encontrada ? 'line-through' : ''}>
+                    {word}
+                  </span>
+                  {encontrada && (
+                    <CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                  )}
+                </motion.div>
+              );
+            })}
+          </div>
+          <div className="bg-white rounded-full px-2 py-0.5 shadow-sm flex-shrink-0">
+            <span className="text-purple-900 font-semibold text-xs sm:text-sm">
+              Progreso de Misión: {foundWords.length}/{data.words.length}
+            </span>
+          </div>
         </div>
       </div>
 
       {/* Grid de sopa de letras */}
-      <div className="flex flex-col items-center gap-4">
+      <div className="flex flex-col items-center gap-2 sm:gap-3">
         <div
           ref={gridRef}
-          className="inline-block bg-gradient-to-br from-blue-50 to-purple-50 p-3 sm:p-4 rounded-xl shadow-lg select-none"
+          className="inline-block bg-gradient-to-br from-slate-200 to-slate-300 p-2 sm:p-3 rounded-lg shadow-lg select-none"
           style={{ touchAction: 'none' }}
           onMouseLeave={() => {
             if (isSelecting) {
@@ -300,7 +320,7 @@ export function WordSearchGame({
           }}
         >
           <div 
-            className="grid gap-0.5" 
+            className="grid gap-0.5 sm:gap-1" 
             style={{ 
               gridTemplateColumns: `repeat(${GRID_SIZE}, minmax(0, 1fr))`,
               touchAction: 'none'
@@ -325,15 +345,21 @@ export function WordSearchGame({
                     whileHover={{ scale: encontrada ? 1 : 1.05 }}
                     style={{ touchAction: 'none' }}
                     className={`
-                      w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center cursor-pointer text-sm sm:text-base
-                      font-bold rounded-md transition-all duration-200 select-none
+                      w-7 h-7 sm:w-9 sm:h-9 md:w-10 md:h-10 flex items-center justify-center cursor-pointer text-xs sm:text-sm md:text-base
+                      font-bold rounded transition-all duration-200 select-none
                       ${encontrada 
-                        ? 'bg-green-400 text-white shadow-md' 
+                        ? 'text-white shadow-md' 
                         : seleccionada 
-                          ? 'bg-blue-400 text-white shadow-md' 
-                          : 'bg-white text-gray-700 hover:bg-blue-100'
+                          ? 'text-white shadow-md' 
+                          : 'bg-white text-gray-700 hover:opacity-80'
                       }
                     `}
+                    style={encontrada 
+                      ? { backgroundColor: teamColorHex } 
+                      : seleccionada 
+                        ? { backgroundColor: teamColorHex, opacity: 0.8 }
+                        : {}
+                    }
                   >
                     <span className="pointer-events-none">
                       {letra}
@@ -342,17 +368,6 @@ export function WordSearchGame({
                 );
               })
             )}
-          </div>
-        </div>
-
-        {/* Contador de encontradas */}
-        <div className="bg-gradient-to-br from-yellow-100 to-orange-100 rounded-xl p-4 sm:p-6 text-center shadow-lg w-full max-w-xs">
-          <Trophy className="w-8 h-8 sm:w-10 sm:h-10 text-orange-600 mx-auto mb-2" />
-          <div className="text-3xl sm:text-4xl text-orange-900 font-bold mb-1">
-            {foundWords.length}
-          </div>
-          <div className="text-orange-700 text-sm sm:text-base font-semibold">
-            encontradas
           </div>
         </div>
       </div>

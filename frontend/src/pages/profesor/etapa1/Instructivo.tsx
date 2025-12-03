@@ -1,11 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Loader2, ArrowRight, BookOpen, Code } from 'lucide-react';
+import { Loader2, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { sessionsAPI } from '@/services';
 import { toast } from 'sonner';
-import { isDevMode } from '@/utils/devMode';
 
 interface GameSession {
   id: number;
@@ -23,6 +22,9 @@ export function ProfesorInstructivo() {
   const [loading, setLoading] = useState(true);
   const [advancing, setAdvancing] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // URL del video explicativo del juego (cambiar por el video real)
+  const videoUrl = 'https://www.youtube.com/embed/VIDEO_ID_AQUI'; // Reemplazar con el ID del video real
 
   useEffect(() => {
     if (sessionId) {
@@ -151,90 +153,52 @@ export function ProfesorInstructivo() {
         </div>
 
         <div className="w-full max-w-6xl flex flex-col h-full">
-          {/* Botón Continuar - Arriba */}
-          <div className="w-full mb-3 sm:mb-4 z-20 flex justify-center gap-2 flex-shrink-0">
-            <Button
-              onClick={handleNextActivity}
-              disabled={advancing}
-              className="px-4 sm:px-6 py-2 sm:py-2.5 text-sm sm:text-base font-semibold bg-gradient-to-r from-[#093c92] to-[#f757ac] hover:from-[#072e73] hover:to-[#e6498a] text-white shadow-md hover:shadow-lg transition-all"
-            >
-              {advancing ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Avanzando...
-                </>
-              ) : (
-                <>
-                  Continuar
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </>
-              )}
-            </Button>
-            {/* Botón Dev - Solo en modo desarrollo */}
-            {isDevMode() && (
-              <Button
-                onClick={handleNextActivity}
-                disabled={advancing}
-                className="px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base font-semibold bg-orange-500 hover:bg-orange-600 text-white shadow-md hover:shadow-lg transition-all"
-                title="Modo Dev: Avanzar sin requisitos"
-              >
-                {advancing ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Avanzando...
-                  </>
-                ) : (
-                  <>
-                    <Code className="w-4 h-4 mr-2" />
-                    Dev
-                  </>
-                )}
-              </Button>
-            )}
-          </div>
-
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             className="w-full flex items-center justify-center relative z-20 flex-1 min-h-0"
           >
-            {/* Mensaje informativo - Sin video para el profesor */}
-            <div className="bg-white rounded-xl sm:rounded-2xl shadow-2xl p-6 sm:p-8 md:p-10 border border-gray-200 w-full max-w-3xl flex flex-col items-center justify-center">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-[#093c92] to-[#f757ac] rounded-full flex items-center justify-center mb-6 shadow-lg"
+            {/* Video Container - Responsivo */}
+            <div className="bg-white rounded-xl sm:rounded-2xl shadow-2xl p-3 sm:p-4 md:p-5 border border-gray-200 w-full h-full flex flex-col">
+              <motion.div 
+                whileHover={{ scale: 1.01 }}
+                className="flex-1 rounded-lg sm:rounded-xl shadow-xl overflow-hidden relative bg-black min-h-0"
               >
-                <BookOpen className="w-10 h-10 sm:w-12 sm:h-12 text-white" />
+                <iframe
+                  src={`${videoUrl}?autoplay=0&mute=0&controls=1&rel=0&modestbranding=1`}
+                  title="Instructivo del Juego"
+                  className="w-full h-full"
+                  allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
               </motion.div>
 
-              <motion.h2
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="text-[#093c92] text-xl sm:text-2xl md:text-3xl font-bold mb-4 text-center"
-              >
-                Instructivo del Juego
-              </motion.h2>
+              {/* Botones y texto - En lugar del título */}
+              <div className="text-center mt-3 sm:mt-4 flex-shrink-0 flex flex-col items-center gap-2">
+                {/* Información - Compacta */}
+                <p className="text-gray-600 text-xs sm:text-sm">
+                  Los estudiantes están viendo el instructivo del juego en sus tablets
+                </p>
 
-              <motion.p
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-                className="text-gray-700 text-base sm:text-lg md:text-xl mb-2 text-center"
-              >
-                Los estudiantes están viendo las instrucciones del juego en sus tablets
-              </motion.p>
-
-              <motion.p
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-                className="text-gray-600 text-sm sm:text-base mt-4 text-center"
-              >
-                Presiona "Continuar" cuando todos hayan terminado de leer las instrucciones para iniciar la Etapa 1
-              </motion.p>
+                {/* Botón Continuar */}
+                <Button
+                  onClick={handleNextActivity}
+                  disabled={advancing}
+                  className="px-4 sm:px-6 py-2 sm:py-2.5 text-sm sm:text-base font-semibold bg-gradient-to-r from-[#093c92] to-[#f757ac] hover:from-[#072e73] hover:to-[#e6498a] text-white shadow-md hover:shadow-lg transition-all"
+                >
+                  {advancing ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Avanzando...
+                    </>
+                  ) : (
+                    <>
+                      Continuar
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
           </motion.div>
         </div>

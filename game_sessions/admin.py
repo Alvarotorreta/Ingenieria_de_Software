@@ -2,6 +2,9 @@
 Admin para la app game_sessions
 """
 from django.contrib import admin
+from django.contrib import messages
+from django.http import HttpResponseRedirect
+from django.urls import reverse
 from .models import (
     SessionGroup, GameSession, Team, TeamStudent, TeamPersonalization,
     SessionStage, TeamActivityProgress, TeamBubbleMap, Tablet, TabletConnection,
@@ -11,15 +14,81 @@ from .models import (
 
 @admin.register(SessionGroup)
 class SessionGroupAdmin(admin.ModelAdmin):
-    list_display = ['id', 'professor', 'course', 'total_students', 'number_of_sessions', 'created_at']
-    list_filter = ['professor', 'course', 'created_at']
+    list_display = ['id', 'professor', 'course', 'total_students', 'number_of_sessions', 'created_at_safe', 'game_sessions_count']
+    list_filter = ['professor', 'course']  # Removido 'created_at' para evitar errores de timezone
     search_fields = ['professor__user__username', 'course__name']
     readonly_fields = ['created_at', 'updated_at']
-    date_hierarchy = 'created_at'
+    ordering = ['-id']  # Ordenar por ID en lugar de fecha para evitar problemas con datetime
+    # date_hierarchy removido temporalmente debido a problemas con timezone en MySQL
     
     def get_queryset(self, request):
+        """
+        Obtiene el queryset filtrando registros con valores datetime inválidos
+        """
         qs = super().get_queryset(request)
-        return qs.select_related('professor', 'professor__user', 'course')
+        qs = qs.select_related('professor', 'professor__user', 'course').prefetch_related('game_sessions')
+        return qs
+    
+    def changelist_view(self, request, extra_context=None):
+        """
+        Vista personalizada para manejar errores de datetime en el changelist
+        """
+        try:
+            return super().changelist_view(request, extra_context=extra_context)
+        except ValueError as e:
+            if 'datetime' in str(e).lower() or 'time zone' in str(e).lower():
+                # Si hay un error de datetime, mostrar un mensaje y redirigir
+                messages.error(
+                    request,
+                    'Error al cargar la lista: hay valores de fecha/hora inválidos en la base de datos. '
+                    'Por favor, contacte al administrador del sistema para corregir los datos.'
+                )
+                # Intentar mostrar la lista sin ordenar por fecha
+                try:
+                    # Forzar que no se ordene por created_at
+                    request.GET = request.GET.copy()
+                    if 'o' in request.GET:
+                        # Remover ordenación por created_at si existe
+                        ordering = request.GET.get('o', '')
+                        if 'created_at' in ordering:
+                            request.GET['o'] = '1'  # Ordenar solo por ID
+                    return super().changelist_view(request, extra_context=extra_context)
+                except Exception:
+                    # Si aún falla, redirigir a la página principal del admin
+                    return HttpResponseRedirect(reverse('admin:index'))
+            raise
+    
+    def created_at_safe(self, obj):
+        """Muestra created_at de forma segura, manejando valores inválidos"""
+        try:
+            if obj.created_at:
+                return obj.created_at.strftime('%Y-%m-%d %H:%M:%S')
+            return '-'
+        except (ValueError, AttributeError, TypeError):
+            return 'Fecha inválida'
+    created_at_safe.short_description = 'Creado en'
+    # No usar admin_order_field para evitar problemas con datetime inválidos
+    
+    def game_sessions_count(self, obj):
+        """Muestra el número de sesiones asociadas al grupo"""
+        return obj.game_sessions.count()
+    game_sessions_count.short_description = 'Sesiones'
+    
+    def delete_model(self, request, obj):
+        """
+        Elimina el SessionGroup y todas sus GameSessions asociadas.
+        El signal se encargará de eliminar el grupo automáticamente cuando se elimine la última sesión.
+        """
+        # Primero eliminamos todas las GameSessions del grupo
+        # Esto activará el signal que eliminará el grupo automáticamente cuando se elimine la última sesión
+        game_sessions = list(obj.game_sessions.all())
+        for session in game_sessions:
+            session.delete()
+        
+        # Si el grupo aún existe (no fue eliminado por el signal), lo eliminamos manualmente
+        # Esto puede pasar si no había sesiones asociadas
+        if SessionGroup.objects.filter(pk=obj.pk).exists():
+            obj.delete()
 
 
 @admin.register(GameSession)

@@ -667,6 +667,18 @@ export function ProfesorPresentacionPitch() {
   const currentTeam = currentPresentationTeamId ? getTeamById(currentPresentationTeamId) : null;
   const currentTeamIndex = presentationOrder.findIndex(id => id === currentPresentationTeamId);
   const hasMorePresentations = currentTeamIndex >= 0 && currentTeamIndex < presentationOrder.length - 1;
+
+  // Función helper para obtener el nombre del equipo (con personalización si existe)
+  const getTeamDisplayName = (team: Team | null): string => {
+    if (!team) return '';
+    const pers = team.id ? personalizations[team.id] : null;
+    if (pers?.team_name) {
+      return pers.team_name;
+    }
+    // Si el nombre del equipo es "Equipo [Color]", devolver solo el color
+    const match = team.name?.match(/^Equipo\s+(.+)$/i);
+    return match ? match[1] : (team.name || team.color);
+  };
   const isLastTeam = currentTeamIndex >= 0 && currentTeamIndex === presentationOrder.length - 1;
   
   // Verificar si todas las evaluaciones están completadas para el equipo actual
@@ -898,9 +910,12 @@ export function ProfesorPresentacionPitch() {
                   <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/10 rounded-full -ml-16 -mb-16" />
                   <div className="relative z-10">
                     <div className="text-5xl sm:text-6xl mb-4">🎤</div>
-                    <h2 className="text-2xl sm:text-3xl font-bold mb-3 sm:mb-4">
-                      Iniciar Pitch del Equipo {currentTeam.name}
+                    <h2 className="text-2xl sm:text-3xl font-bold mb-2 sm:mb-3">
+                      Iniciar Pitch - {getTeamDisplayName(currentTeam)}
                     </h2>
+                    <p className="text-base sm:text-lg mb-2 sm:mb-3 opacity-90 font-semibold">
+                      Equipo {currentTeam?.color}
+                    </p>
                     <p className="text-base sm:text-lg mb-4 sm:mb-6 opacity-90">
                       El equipo debe prepararse para presentar. Pueden decidir quién presenta, revisar su pitch, etc.
                     </p>
@@ -918,7 +933,7 @@ export function ProfesorPresentacionPitch() {
                       ) : (
                         <>
                           <Play className="w-5 h-5 mr-2" />
-                          Iniciar Pitch - {currentTeam.name}
+                          Iniciar Pitch - {getTeamDisplayName(currentTeam)}
                         </>
                       )}
                     </Button>
@@ -935,14 +950,6 @@ export function ProfesorPresentacionPitch() {
                       {currentTeam.name} está presentando
                     </h3>
                     <p className="text-green-700 text-sm sm:text-base">El equipo está presentando su pitch</p>
-                  </div>
-
-                  {/* Timer */}
-                  <div className="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-4 sm:p-6 text-center mb-4 sm:mb-6">
-                    <p className="text-yellow-800 font-semibold text-base sm:text-lg mb-2 flex items-center justify-center gap-2">
-                      <Clock className="w-5 h-5" /> Tiempo Restante
-                    </p>
-                    <p className="text-4xl sm:text-5xl font-bold text-yellow-900 font-mono">{timerRemaining}</p>
                   </div>
 
                   {/* Prototipo y Pitch */}
@@ -963,49 +970,6 @@ export function ProfesorPresentacionPitch() {
                         />
                       ) : (
                         <p className="text-gray-400 italic text-center py-6 sm:py-8 text-sm">No hay prototipo</p>
-                      )}
-                    </div>
-
-                    {/* Pitch */}
-                    <div className="bg-white rounded-lg p-3 sm:p-4 shadow-lg border border-gray-200">
-                      <h4 className="font-semibold text-base sm:text-lg text-[#093c92] mb-3 flex items-center gap-2">
-                        <FileText className="w-5 h-5" /> Guion del Pitch
-                      </h4>
-                      {currentTeamPitch ? (
-                        <div className="space-y-3 sm:space-y-4 text-xs sm:text-sm max-h-[400px] overflow-y-auto">
-                          <div>
-                            <h5 className="font-semibold text-[#093c92] mb-1.5 flex items-center gap-1.5">
-                              <Target className="w-4 h-4" /> Problema
-                            </h5>
-                            <p className="text-gray-700 whitespace-pre-wrap bg-gray-50 p-2 rounded border border-gray-200">{currentTeamPitch.intro_problem || 'No completado'}</p>
-                          </div>
-                          <div>
-                            <h5 className="font-semibold text-[#093c92] mb-1.5 flex items-center gap-1.5">
-                              <Lightbulb className="w-4 h-4" /> Solución
-                            </h5>
-                            <p className="text-gray-700 whitespace-pre-wrap bg-gray-50 p-2 rounded border border-gray-200">{currentTeamPitch.solution || 'No completado'}</p>
-                          </div>
-                          <div>
-                            <h5 className="font-semibold text-[#093c92] mb-1.5 flex items-center gap-1.5">
-                              <Coins className="w-4 h-4" /> Valor
-                            </h5>
-                            <p className="text-gray-700 whitespace-pre-wrap bg-gray-50 p-2 rounded border border-gray-200">{currentTeamPitch.value || 'No completado'}</p>
-                          </div>
-                          <div>
-                            <h5 className="font-semibold text-[#093c92] mb-1.5 flex items-center gap-1.5">
-                              <Target className="w-4 h-4" /> Impacto
-                            </h5>
-                            <p className="text-gray-700 whitespace-pre-wrap bg-gray-50 p-2 rounded border border-gray-200">{currentTeamPitch.impact || 'No completado'}</p>
-                          </div>
-                          <div>
-                            <h5 className="font-semibold text-[#093c92] mb-1.5 flex items-center gap-1.5">
-                              <CheckCircle2 className="w-4 h-4" /> Cierre
-                            </h5>
-                            <p className="text-gray-700 whitespace-pre-wrap bg-gray-50 p-2 rounded border border-gray-200">{currentTeamPitch.closing || 'No completado'}</p>
-                          </div>
-                        </div>
-                      ) : (
-                        <p className="text-gray-400 italic text-center py-6 sm:py-8 text-sm">No hay guion</p>
                       )}
                     </div>
                   </div>

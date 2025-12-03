@@ -88,5 +88,11 @@ export const adminDashboardAPI = {
     const response = await api.get(`/admin/dashboard/${facultyId}/faculty_careers_games/`);
     return response.data;
   },
+
+  // Motivos de cancelación
+  getCancellationReasons: async () => {
+    const response = await api.get('/admin/dashboard/cancellation_reasons/');
+    return response.data;
+  },
 };
 

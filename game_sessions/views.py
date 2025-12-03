@@ -1063,6 +1063,286 @@ class GameSessionViewSet(viewsets.ModelViewSet):
         
         return Response(response_data)
 
+    @action(detail=True, methods=['post'])
+    def set_video_institucional_activity(self, request, pk=None):
+        """
+        Establecer la actividad "Video Institucional" como actividad actual
+        Esto se usa cuando el profesor está en VideoInstitucional y necesita establecerla como current_activity
+        antes de avanzar a Instructivo
+        """
+        game_session = self.get_object()
+        
+        if game_session.status != 'running':
+            return Response(
+                {'error': 'El juego no está en ejecución'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        from challenges.models import Stage, Activity
+        from .models import SessionStage, Team, TeamActivityProgress
+        from django.utils import timezone
+        
+        # Obtener Etapa 1
+        stage_1 = Stage.objects.filter(number=1, is_active=True).first()
+        if not stage_1:
+            return Response(
+                {'error': 'La Etapa 1 no existe o no está activa'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Buscar la actividad "Video Institucional"
+        video_activity = Activity.objects.filter(
+            stage=stage_1,
+            name__icontains='Video Institucional',
+            is_active=True
+        ).first()
+        
+        if not video_activity:
+            return Response(
+                {'error': 'La actividad Video Institucional no existe'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Asegurar que la actividad "Instructivo" existe con el order_number correcto
+        # Video Institucional = 1, Instructivo = 2, Personalización = 3, Presentación = 4
+        from challenges.models import ActivityType
+        instructivo_type, _ = ActivityType.objects.get_or_create(
+            code='instructivo',
+            defaults={
+                'name': 'Instructivo',
+                'description': 'Instructivo del juego',
+                'is_active': True
+            }
+        )
+        
+        instructivo_activity = Activity.objects.filter(
+            stage=stage_1,
+            name__icontains='Instructivo',
+            is_active=True
+        ).first()
+        
+        if not instructivo_activity:
+            # Crear Instructivo con order_number 2
+            instructivo_activity = Activity.objects.create(
+                stage=stage_1,
+                activity_type=instructivo_type,
+                name='Instructivo',
+                description='Instructivo del juego - Instrucciones para los estudiantes',
+                order_number=2,
+                is_active=True
+            )
+            
+            # Reorganizar: Personalización -> 3, Presentación -> 4
+            personalizacion = Activity.objects.filter(
+                stage=stage_1,
+                name__icontains='Personalización',
+                is_active=True
+            ).exclude(id=instructivo_activity.id).first()
+            
+            if personalizacion and personalizacion.order_number != 3:
+                personalizacion.order_number = 3
+                personalizacion.save()
+            
+            presentacion = Activity.objects.filter(
+                stage=stage_1,
+                name__icontains='Presentación',
+                is_active=True
+            ).exclude(id=instructivo_activity.id).first()
+            
+            if presentacion and presentacion.order_number != 4:
+                presentacion.order_number = 4
+                presentacion.save()
+        
+        # Establecer etapa y actividad
+        game_session.current_stage = stage_1
+        game_session.current_activity = video_activity
+        game_session.save()
+        
+        # Crear SessionStage si no existe
+        activity_start_time = timezone.now()
+        session_stage, created = SessionStage.objects.get_or_create(
+            game_session=game_session,
+            stage=stage_1,
+            defaults={
+                'status': 'in_progress',
+                'started_at': activity_start_time
+            }
+        )
+        
+        if not created:
+            session_stage.status = 'in_progress'
+            if not session_stage.started_at:
+                session_stage.started_at = activity_start_time
+            session_stage.save()
+        
+        # Inicializar progreso para todos los equipos en Video Institucional
+        teams = Team.objects.filter(game_session=game_session)
+        for team in teams:
+            progress, created = TeamActivityProgress.objects.get_or_create(
+                team=team,
+                activity=video_activity,
+                session_stage=session_stage,
+                defaults={
+                    'status': 'in_progress',
+                    'started_at': activity_start_time
+                }
+            )
+            if not created:
+                progress.status = 'in_progress'
+                progress.started_at = activity_start_time
+                progress.save()
+        
+        game_session.refresh_from_db()
+        serializer = self.get_serializer(game_session)
+        return Response({
+            **serializer.data,
+            'message': 'Actividad Video Institucional establecida',
+            'current_activity_name': video_activity.name,
+            'current_activity_id': video_activity.id,
+            'current_stage_number': stage_1.number
+        })
+
+    @action(detail=True, methods=['post'])
+    def set_instructivo_activity(self, request, pk=None):
+        """
+        Establecer la actividad "Instructivo" como actividad actual
+        El Instructivo es previo a las etapas (como Video Institucional)
+        NO establece current_stage ni SessionStage - solo current_activity
+        """
+        game_session = self.get_object()
+        
+        if game_session.status != 'running':
+            return Response(
+                {'error': 'El juego no está en ejecución'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        from challenges.models import Stage, Activity, ActivityType
+        from django.utils import timezone
+        
+        # Obtener Etapa 1 (solo para buscar/crear la actividad, no para establecerla)
+        stage_1 = Stage.objects.filter(number=1, is_active=True).first()
+        if not stage_1:
+            return Response(
+                {'error': 'La Etapa 1 no existe o no está activa'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Buscar o crear el tipo de actividad "Instructivo"
+        instructivo_type, _ = ActivityType.objects.get_or_create(
+            code='instructivo',
+            defaults={
+                'name': 'Instructivo',
+                'description': 'Instructivo del juego',
+                'is_active': True
+            }
+        )
+        
+        # Buscar o crear la actividad "Instructivo"
+        # Nota: Aunque la actividad está asociada a stage_1 en la BD, no establecemos current_stage
+        instructivo_activity = Activity.objects.filter(
+            stage=stage_1,
+            name__icontains='Instructivo',
+            is_active=True
+        ).first()
+        
+        if not instructivo_activity:
+            # Primero reorganizar las actividades existentes para hacer espacio
+            # Reorganizar Personalización -> 3 (si no está ya en 3)
+            personalizacion = Activity.objects.filter(
+                stage=stage_1,
+                name__icontains='Personalización',
+                is_active=True
+            ).first()
+            
+            if personalizacion:
+                # Si Personalización está en order_number 2, moverla a 3
+                if personalizacion.order_number == 2:
+                    personalizacion.order_number = 3
+                    personalizacion.save()
+                # Si está en otro número y no es 3, también moverla a 3
+                elif personalizacion.order_number != 3:
+                    # Verificar que no haya otra actividad en 3
+                    conflict_3 = Activity.objects.filter(
+                        stage=stage_1,
+                        order_number=3,
+                        is_active=True
+                    ).exclude(id=personalizacion.id).first()
+                    
+                    if conflict_3:
+                        # Si hay conflicto, mover la actividad en 3 a 4
+                        conflict_3.order_number = 4
+                        conflict_3.save()
+                    
+                    personalizacion.order_number = 3
+                    personalizacion.save()
+            
+            # Reorganizar Presentación -> 4 (si no está ya en 4)
+            presentacion = Activity.objects.filter(
+                stage=stage_1,
+                name__icontains='Presentación',
+                is_active=True
+            ).first()
+            
+            if presentacion and presentacion.order_number != 4:
+                # Verificar que no haya otra actividad en 4
+                conflict_4 = Activity.objects.filter(
+                    stage=stage_1,
+                    order_number=4,
+                    is_active=True
+                ).exclude(id=presentacion.id).first()
+                
+                if conflict_4:
+                    # Si hay conflicto, mover la actividad en 4 a 5
+                    conflict_4.order_number = 5
+                    conflict_4.save()
+                
+                presentacion.order_number = 4
+                presentacion.save()
+            
+            # Verificar una última vez que no haya actividad en order_number=2
+            existing_activity_2 = Activity.objects.filter(
+                stage=stage_1,
+                order_number=2,
+                is_active=True
+            ).exclude(name__icontains='Instructivo').first()
+            
+            if existing_activity_2:
+                # Si todavía hay una actividad en 2, moverla a un número más alto
+                existing_activity_2.order_number = 5
+                existing_activity_2.save()
+            
+            # Ahora crear Instructivo con order_number 2
+            instructivo_activity = Activity.objects.create(
+                stage=stage_1,
+                activity_type=instructivo_type,
+                name='Instructivo',
+                description='Instructivo del juego - Instrucciones para los estudiantes',
+                order_number=2,
+                is_active=True
+            )
+        
+        # Establecer SOLO current_activity (NO current_stage, NO SessionStage)
+        # El Instructivo es previo a las etapas, igual que Video Institucional
+        game_session.current_activity = instructivo_activity
+        # NO establecer current_stage - permanece None hasta que se inicie la Etapa 1
+        game_session.save()
+        
+        # Refrescar desde la base de datos
+        game_session.refresh_from_db()
+        
+        serializer = self.get_serializer(game_session)
+        response_data = {
+            **serializer.data,
+            'message': 'Actividad Instructivo establecida',
+            'current_activity_name': instructivo_activity.name,
+            'current_activity_id': instructivo_activity.id,
+            'current_stage_number': None,  # No hay etapa aún
+            'current_stage_name': None
+        }
+        
+        return Response(response_data)
+
     @action(detail=True, methods=['post'], parser_classes=[JSONParser])
     def complete_stage(self, request, pk=None):
         """
@@ -1395,8 +1675,8 @@ class GameSessionViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
         
-        # Obtener todos los equipos
-        teams = Team.objects.filter(game_session=game_session)
+        # Obtener todos los equipos con su personalización
+        teams = Team.objects.filter(game_session=game_session).select_related('personalization')
         
         # Calcular resultados para cada equipo
         results = []
@@ -1451,9 +1731,21 @@ class GameSessionViewSet(viewsets.ModelViewSet):
                     'completed_at': completed_at
                 })
             
+            # Obtener el nombre personalizado si existe, sino usar el nombre del equipo
+            personalized_name = team.name  # Por defecto: "Equipo Rojo", "Equipo Verde", etc.
+            try:
+                # Intentar acceder a la personalización (OneToOneField)
+                if hasattr(team, 'personalization'):
+                    personalization = getattr(team, 'personalization', None)
+                    if personalization and personalization.team_name:
+                        personalized_name = personalization.team_name
+            except Exception as e:
+                # Si no hay personalización o hay algún error, usar el nombre del equipo
+                pass
+            
             results.append({
                 'team_id': team.id,
-                'team_name': team.name,
+                'team_name': personalized_name,
                 'team_color': team.color,
                 'tokens_stage': stage_tokens,
                 'tokens_total': total_tokens,

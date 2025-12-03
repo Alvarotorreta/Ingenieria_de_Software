@@ -92,45 +92,6 @@ git checkout master
   git checkout f0631c25fe58a7dd4df3ced8833ac660d409e2a8
   ```
 
-### Commit #5
-- **Hash completo:** `1f54494f07dfbd60152d916ddf3726724dc1b0f3`
-- **Hash corto:** `1f54494`
-- **Fecha:** 2025-11-26 22:58:17 -0300
-- **Mensaje:** minijuego listo
-- **Descripción:**
-  - Corregido cálculo de `total_questions` en backend para siempre usar 5 (no el número de respuestas dadas)
-  - Eliminadas secciones de progreso visual innecesarias en Presentacion.tsx y Minijuego.tsx
-  - Eliminados botones de navegación "Parte 1", "Parte 2", "Parte 3" en Minijuego.tsx
-  - Corregida vista del profesor para mostrar correctamente "1/5" en lugar de "1/1" para Conocimiento General
-  - Mejorado manejo de errores y logging en submit_general_knowledge
-  - Agregado logger al inicio de submit_general_knowledge para evitar errores
-  - Frontend ahora siempre usa 5 como total de preguntas, independientemente del backend
-- **Para volver aquí:**
-  ```bash
-  git checkout 1f54494f07dfbd60152d916ddf3726724dc1b0f3
-  ```
-
-### Commit #6
-- **Hash completo:** `8db548eeddc4bcf8afa27636dc2993f5ef0f9bb0`
-- **Hash corto:** `8db548e`
-- **Fecha:** 2025-12-03 05:24:03 -0300
-- **Mensaje:** feat: Mejoras en diseño y funcionalidad de actividades tablet
-- **Descripción:**
-  - Aplicado diseño azul consistente de tokens en todas las actividades de tablet (Personalizacion, Presentacion, Minijuego, BubbleMap, Prototipo, FormularioPitch, PresentacionPitch, SeleccionarTemaDesafio, Resultados)
-  - Botón U-Bot con diseño rosado consistente en todas las actividades (mismo estilo que badge de tokens)
-  - Corregido display de tokens en FormularioPitch (cambio de `tokens` a `tokens_total`)
-  - Agregados modales U-Bot automáticos en Minijuego y Presentacion con mensajes específicos
-  - Creados nuevos componentes de modales U-Bot: UBotPresentacionModal, UBotMinijuegoModal
-  - Corregidos mensajes de U-Bot en Personalizacion (mensaje de registro), Presentacion (mensaje de 3 partes), Minijuego (mensaje de sincronización avanzada)
-  - Mejoradas alertas de tokens en preguntas de conocimiento general (toast verde para correcto, rojo para incorrecto)
-  - Actualizado mensaje de U-Bot en resultados finales (Etapa 4) con cantidad exacta de tokens para el ganador
-  - Removida sección 'Actividades Completadas' de pantalla Reflexion del profesor
-  - Mejorado mensaje de carga en Reflexion tablet (muestra "Cargando..." cuando totalEstudiantes es 0)
-- **Para volver aquí:**
-  ```bash
-  git checkout 8db548eeddc4bcf8afa27636dc2993f5ef0f9bb0
-  ```
-
 ---
 
-*Última actualización: 2025-12-03*
+*Última actualización: 2025-11-26*

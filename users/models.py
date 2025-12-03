@@ -9,6 +9,7 @@ from django.core.validators import RegexValidator
 class Administrator(models.Model):
     """
     Administrador del sistema (OneToOne con User)
+    Los administradores también son profesores automáticamente
     """
     user = models.OneToOneField(
         User,
@@ -31,8 +32,54 @@ class Administrator(models.Model):
             models.Index(fields=['user']),
         ]
 
+
     def __str__(self):
         return f"Administrador: {self.user.username}"
+
+
+class ProfessorAccessCode(models.Model):
+    """
+    Códigos de acceso pendientes para profesores
+    Se generan cuando el administrador invita a un profesor
+    """
+    email = models.EmailField(
+        unique=True,
+        verbose_name='Correo Electrónico',
+        help_text='Correo del profesor al que se envió el código'
+    )
+    access_code = models.CharField(
+        max_length=20,
+        unique=True,
+        verbose_name='Código de Acceso',
+        validators=[
+            RegexValidator(
+                regex=r'^\d+$',
+                message='El código de acceso debe contener solo números'
+            )
+        ]
+    )
+    is_used = models.BooleanField(
+        default=False,
+        verbose_name='Usado',
+        help_text='Indica si el código ya fue utilizado para registrarse'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    used_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'professor_access_codes'
+        verbose_name = 'Código de Acceso de Profesor'
+        verbose_name_plural = 'Códigos de Acceso de Profesores'
+        indexes = [
+            models.Index(fields=['email']),
+            models.Index(fields=['access_code']),
+            models.Index(fields=['is_used']),
+            # Índice compuesto para la consulta más común: buscar código no usado por email y código
+            models.Index(fields=['access_code', 'is_used', 'email'], name='prof_access_code_lookup_idx'),
+        ]
+
+    def __str__(self):
+        return f"Código {self.access_code} para {self.email}"
 
 
 class Professor(models.Model):

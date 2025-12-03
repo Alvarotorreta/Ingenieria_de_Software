@@ -150,6 +150,8 @@ export function ProfesorLobby() {
       if (currentStageNumber === 1) {
         if (normalizedActivityName.includes('video') || normalizedActivityName.includes('institucional')) {
           redirectUrl = `/profesor/etapa1/video-institucional/${sessionId}/`;
+        } else if (normalizedActivityName.includes('instructivo') || normalizedActivityName.includes('instrucciones')) {
+          redirectUrl = `/profesor/etapa1/instructivo/${sessionId}/`;
         } else if (normalizedActivityName.includes('personaliz')) {
           redirectUrl = `/profesor/etapa1/personalizacion/${sessionId}/`;
         } else if (normalizedActivityName.includes('presentaci')) {

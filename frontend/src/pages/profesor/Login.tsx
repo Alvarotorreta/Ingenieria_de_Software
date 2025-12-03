@@ -14,32 +14,21 @@ export function ProfesorLogin() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Verificar autenticación al cargar (igual que en login.html - líneas 452-468)
+  // Verificar autenticación al cargar
   useEffect(() => {
     const checkAuth = async () => {
       const token = localStorage.getItem('authToken');
       if (!token) return;
 
       try {
-        // Verificar si es administrador primero
-        try {
-          const adminProfile = await authAPI.getAdminProfile();
-          if (adminProfile) {
-            // Es administrador, redirigir al panel de admin
-            navigate('/admin/panel');
-            return;
-          }
-        } catch (adminError) {
-          // No es administrador, continuar verificando si es profesor
-        }
-        
+        // Intentar obtener perfil de profesor (funciona para profesores y administradores)
         const profile = await authAPI.getProfile();
         if (profile) {
-          // Ya está autenticado como profesor, redirigir al panel
+          // Ya está autenticado, redirigir al panel de profesor
           navigate('/profesor/panel');
         }
       } catch (error) {
-        // Token inválido, limpiar
+        // Token inválido o no tiene permisos, limpiar
         localStorage.removeItem('authToken');
         localStorage.removeItem('refreshToken');
       }
@@ -59,28 +48,78 @@ export function ProfesorLogin() {
     setLoading(true);
 
     try {
-      // Usa exactamente la misma API que tienes en login.html
-      const data = await authAPI.login(email, password);
+      // Intentar login (funciona para profesor y administrador)
+      const loginData = await authAPI.login(email, password);
       
-      // Guardar tokens (igual que en login.html)
-      localStorage.setItem('authToken', data.access);
-      localStorage.setItem('refreshToken', data.refresh);
+      // Guardar tokens ANTES de hacer cualquier otra petición
+      localStorage.setItem('authToken', loginData.access);
+      localStorage.setItem('refreshToken', loginData.refresh);
 
-      toast.success('¡Bienvenido! 🎉', {
-        description: 'Iniciando sesión...',
-      });
+      // Esperar un momento para asegurar que el token se guardó
+      await new Promise(resolve => setTimeout(resolve, 100));
 
-      // Redirigir al panel (igual que en login.html - línea 355)
-      setTimeout(() => {
-        navigate('/profesor/panel');
-      }, 1000);
+      // Intentar obtener perfil de profesor (funciona para ambos: profesores y administradores)
+      // El backend crea automáticamente el perfil de profesor si es administrador
+      try {
+        const profile = await authAPI.getProfile();
+        if (profile) {
+          toast.success('¡Sesión iniciada!', {
+            description: 'Redirigiendo al panel...',
+          });
+          // Esperar un poco antes de redirigir para que el usuario vea el mensaje
+          setTimeout(() => {
+            navigate('/profesor/panel');
+          }, 1000);
+          return;
+        }
+      } catch (profileError: any) {
+        // Si falla obtener perfil de profesor, mostrar error específico
+        console.error('Error obteniendo perfil de profesor:', profileError);
+        console.error('Response:', profileError.response);
+        console.error('Token guardado:', localStorage.getItem('authToken') ? 'Sí' : 'No');
+        
+        const errorMsg = profileError.response?.data?.error || 
+                        profileError.response?.data?.detail || 
+                        profileError.message || 
+                        'Error al verificar permisos';
+        
+        toast.error('Error de acceso', {
+          description: `No se pudo verificar el perfil: ${errorMsg}`,
+          duration: 8000, // Mostrar por más tiempo
+        });
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('refreshToken');
+        setLoading(false);
+        return;
+      }
     } catch (error: any) {
-      // Manejo de errores igual que en login.html
-      const errorMessage = error.response?.data?.detail || 'Error al iniciar sesión';
-      toast.error('Error', {
+      console.error('Error en login:', error);
+      console.error('Response:', error.response);
+      console.error('Response data:', JSON.stringify(error.response?.data, null, 2));
+      console.error('Response status:', error.response?.status);
+      
+      // Obtener mensaje de error más específico
+      const errorData = error.response?.data;
+      let errorMessage = 'Error al iniciar sesión';
+      
+      if (errorData) {
+        if (errorData.detail) {
+          errorMessage = errorData.detail;
+        } else if (errorData.error) {
+          errorMessage = errorData.error;
+        } else if (typeof errorData === 'string') {
+          errorMessage = errorData;
+        } else if (errorData.non_field_errors && Array.isArray(errorData.non_field_errors)) {
+          errorMessage = errorData.non_field_errors[0];
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast.error('Error de inicio de sesión', {
         description: errorMessage,
+        duration: 8000,
       });
-    } finally {
       setLoading(false);
     }
   };

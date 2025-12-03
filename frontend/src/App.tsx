@@ -5,7 +5,12 @@ import { ProfesorPanel } from './pages/profesor/Panel';
 import { AdminLogin } from './pages/admin/Login';
 import { AdminPanel } from './pages/admin/Panel';
 import { UpdateGame } from './pages/admin/UpdateGame';
+import { UpdateGameEtapa1 } from './pages/admin/UpdateGameEtapa1';
+import { UpdateGameEtapa2 } from './pages/admin/UpdateGameEtapa2';
+import { UpdateGameEtapa3 } from './pages/admin/UpdateGameEtapa3';
+import { UpdateGameEtapa4 } from './pages/admin/UpdateGameEtapa4';
 import { Dashboard } from './pages/admin/Dashboard';
+import { ManageProfessors } from './pages/admin/ManageProfessors';
 import { ProfesorLobby } from './pages/profesor/Lobby';
 import { ProfesorVideoInstitucional } from './pages/profesor/etapa1/VideoInstitucional';
 import { ProfesorInstructivo } from './pages/profesor/etapa1/Instructivo';
@@ -79,7 +84,12 @@ function App() {
       <Route path="/admin/login" element={<AdminLogin />} />
       <Route path="/admin/panel" element={<AdminPanel />} />
       <Route path="/admin/update-game" element={<UpdateGame />} />
+      <Route path="/admin/update-game/etapa1" element={<UpdateGameEtapa1 />} />
+      <Route path="/admin/update-game/etapa2" element={<UpdateGameEtapa2 />} />
+      <Route path="/admin/update-game/etapa3" element={<UpdateGameEtapa3 />} />
+      <Route path="/admin/update-game/etapa4" element={<UpdateGameEtapa4 />} />
       <Route path="/admin/dashboard" element={<Dashboard />} />
+      <Route path="/admin/professors" element={<ManageProfessors />} />
       <Route path="/admin/historial" element={<Historial />} />
       <Route path="/admin/historial/:sessionId" element={<DetalleSesion />} />
       <Route path="/admin/objetivos" element={<Objetivos />} />
@@ -89,7 +99,7 @@ function App() {
       <Route path="/tablet/lobby" element={<TabletLobby />} />
       <Route path="/tablet/loading" element={<TabletLoadingScreen />} />
       <Route path="/tablet/etapa1/video-institucional" element={<TabletVideoInstitucional />} />
-      <Route path="/tablet/etapa1/instructivo" element={<TabletInstructivo />} />
+      <Route path="/tablet/instructivo" element={<TabletInstructivo />} />
       <Route path="/tablet/etapa1/personalizacion" element={<TabletPersonalizacion />} />
       <Route path="/tablet/etapa1/presentacion" element={<TabletPresentacion />} />
       <Route path="/tablet/etapa1/minijuego" element={<TabletMinijuego />} />

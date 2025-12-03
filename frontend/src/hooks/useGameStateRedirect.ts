@@ -92,7 +92,11 @@ export function useGameStateRedirect(enabled: boolean = true) {
           const normalizedActivityName = currentActivityName.toLowerCase().trim();
 
           if (currentStageNumber === 1) {
-            if (normalizedActivityName.includes('personaliz')) {
+            if (normalizedActivityName.includes('video') || normalizedActivityName.includes('institucional')) {
+              correctUrl = `/profesor/etapa1/video-institucional/${sessionId}/`;
+            } else if (normalizedActivityName.includes('instructivo') || normalizedActivityName.includes('instrucciones')) {
+              correctUrl = `/profesor/etapa1/instructivo/${sessionId}/`;
+            } else if (normalizedActivityName.includes('personaliz')) {
               correctUrl = `/profesor/etapa1/personalizacion/${sessionId}/`;
             } else if (normalizedActivityName.includes('presentacion') || normalizedActivityName.includes('presentación')) {
               correctUrl = `/profesor/etapa1/presentacion/${sessionId}/`;

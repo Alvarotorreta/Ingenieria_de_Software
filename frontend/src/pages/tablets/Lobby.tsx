@@ -13,9 +13,11 @@ import {
   Briefcase,
   Map,
   Cog,
+  Bot,
 } from 'lucide-react';
 import { sessionsAPI, tabletConnectionsAPI } from '@/services';
 import { BackgroundMusic } from '@/components/BackgroundMusic';
+import { UBotWelcomeModal } from '@/components/UBotWelcomeModal';
 import { toast } from 'sonner';
 
 interface Student {
@@ -63,6 +65,7 @@ export function TabletLobby() {
   const [showLoadingScreen, setShowLoadingScreen] = useState(false);
   const [currentMessage, setCurrentMessage] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [showUBotModal, setShowUBotModal] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const activityCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -311,6 +314,17 @@ export function TabletLobby() {
 
       setLobbyData(data);
       setLoading(false);
+      
+      // Mostrar modal de U-Bot cuando se carga el lobby por primera vez
+      // Solo si hay equipos y el juego aún no ha comenzado
+      if (data.teams && data.teams.length > 0 && data.game_session.status === 'lobby') {
+        // Verificar si ya se mostró el modal antes (usando localStorage)
+        const hasSeenModal = localStorage.getItem(`ubot_modal_${connectionId}`);
+        if (!hasSeenModal) {
+          setShowUBotModal(true);
+          localStorage.setItem(`ubot_modal_${connectionId}`, 'true');
+        }
+      }
     } catch (error: any) {
       console.error('Error loading lobby:', error);
       toast.error('Error de conexión: ' + (error.message || 'Error desconocido'));
@@ -355,8 +369,10 @@ export function TabletLobby() {
       if (currentStageNumber === 1) {
         if (normalizedActivityName.includes('video') || normalizedActivityName.includes('institucional')) {
           redirectUrl = `/tablet/etapa1/video-institucional/?connection_id=${connectionId}`;
+        } else if (normalizedActivityName.includes('instructivo') || normalizedActivityName.includes('instrucciones')) {
+          redirectUrl = `/tablet/etapa1/instructivo?connection_id=${connectionId}`;
         } else if (normalizedActivityName.includes('personaliz')) {
-          redirectUrl = `/tablet/etapa1/personalizacion/?connection_id=${connectionId}`;
+          redirectUrl = `/tablet/loading?redirect=/tablet/etapa1/personalizacion&connection_id=${connectionId}`;
         } else if (normalizedActivityName.includes('presentaci')) {
           redirectUrl = `/tablet/etapa1/presentacion/?connection_id=${connectionId}`;
         }
@@ -643,66 +659,55 @@ export function TabletLobby() {
       </div>
 
       {/* Contenido */}
-      <div className="relative z-10 max-w-6xl mx-auto p-4 sm:p-6">
-        {/* Header Compacto */}
-        <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl p-4 sm:p-6 mb-4 sm:mb-6">
-          {/* Primera línea: Lobby de Sala (con código) a la izquierda, Conectado a la derecha */}
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <Gamepad2 className="w-6 h-6 sm:w-8 sm:h-8 text-[#f757ac] flex-shrink-0" />
-              <div>
-                <h1 className="text-xl sm:text-2xl font-bold text-[#093c92]">
-                  Lobby de Sala <span className="text-base sm:text-lg text-gray-600 font-normal">({game_session.room_code})</span>
-                </h1>
-              </div>
-            </div>
-            {myTeam && (
-              <div className="text-right">
-                <div
-                  className="inline-block px-3 py-1.5 rounded-full text-white text-sm sm:text-base font-semibold"
-                  style={{ backgroundColor: getTeamColorHex(myTeam.color) }}
-                >
-                  {myTeam.name}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Segunda línea: Mensaje de espera y estado de conexión */}
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-[#093c92] animate-pulse" />
-              <p className="text-[#093c92] text-base sm:text-lg font-semibold">
-                Esperando a que el profesor inicie el juego<span className="inline-block w-4">{loadingDots}</span>
+      <div className="relative z-10 max-w-7xl mx-auto p-4 sm:p-6">
+        {/* Header */}
+        <div className="bg-white rounded-lg sm:rounded-xl shadow-md p-4 sm:p-6 mb-5 sm:mb-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-[#093c92]">
+                Centro de Mando
+              </h1>
+              <p className="text-sm sm:text-base text-gray-500 font-medium mt-1">
+                Código: <span className="font-mono font-bold text-[#093c92]">{game_session.room_code}</span>
               </p>
             </div>
-            <div className="flex items-center gap-2 bg-green-100 text-green-800 px-3 py-1.5 rounded-full">
-              <div className="w-2.5 h-2.5 bg-green-500 rounded-full"></div>
-              <span className="text-xs sm:text-sm font-semibold">Conectado</span>
+            <div className="flex items-center gap-3">
+              {myTeam && (
+                <>
+                  <div
+                    className="px-4 py-2 rounded-full text-white text-sm sm:text-base font-semibold"
+                    style={{ backgroundColor: getTeamColorHex(myTeam.color) }}
+                  >
+                    {myTeam.name}
+                  </div>
+                  {/* Botón para reabrir modal de U-Bot */}
+                  <button
+                    onClick={() => setShowUBotModal(true)}
+                    className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 transition-all shadow-md hover:shadow-lg"
+                    title="Ver mensaje de U-Bot"
+                  >
+                    <Bot className="w-4 h-4" />
+                    <span className="hidden sm:inline text-sm font-medium">U-Bot</span>
+                  </button>
+                </>
+              )}
             </div>
           </div>
 
-          {/* Mensaje de reunión con el equipo */}
-          {myTeam && (
-            <div className="bg-blue-50 border-l-4 border-[#093c92] rounded-lg p-3">
-              <div className="flex items-center gap-2">
-                <Users className="w-4 h-4 sm:w-5 sm:h-5 text-[#093c92] flex-shrink-0" />
-                <p className="text-[#093c92] text-sm sm:text-base font-medium">
-                  Reúnete con tu equipo y prepárense para comenzar
-                </p>
-              </div>
-            </div>
-          )}
+          <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+            <p className="text-sm sm:text-base text-[#093c92] font-medium">
+              Sincronizando sistemas... Esperando autorización de lanzamiento{loadingDots}
+            </p>
+          </div>
         </div>
 
         {/* Equipos */}
-        <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl p-4 sm:p-6">
-          <h2 className="text-xl sm:text-2xl font-bold text-[#093c92] mb-4 sm:mb-6 flex items-center gap-2">
-            <Users className="w-5 h-5 sm:w-6 sm:h-6" />
-            Equipos ({teams.length})
+        <div className="bg-white rounded-lg sm:rounded-xl shadow-md p-4 sm:p-6">
+          <h2 className="text-xl sm:text-2xl font-bold text-[#093c92] mb-4 sm:mb-5">
+            Escuadrones Activos ({teams.length})
           </h2>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
             {teams
               .sort((a, b) => {
                 // Poner el equipo del usuario primero
@@ -710,89 +715,84 @@ export function TabletLobby() {
                 if (b.id === myTeamId) return 1;
                 return 0;
               })
-              .map((team) => {
+              .map((team, index) => {
               const tabletConnection = tablet_connections.find((tc) => tc.team === team.id);
               const isConnected = tabletConnection?.is_connected || false;
               const isMyTeam = team.id === myTeamId;
+              const teamColorHex = getTeamColorHex(team.color);
 
               return (
                 <motion.div
                   key={team.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className={`bg-gray-50 rounded-xl p-4 sm:p-5 shadow-lg border-l-4 ${
-                    isMyTeam ? 'ring-2 ring-[#093c92] ring-offset-2' : ''
+                  transition={{ delay: index * 0.1 }}
+                  className={`bg-white rounded-lg sm:rounded-xl shadow-md border-l-4 p-4 sm:p-5 ${
+                    isMyTeam ? 'ring-2 ring-offset-2' : ''
                   }`}
-                  style={{ borderLeftColor: getTeamColorHex(team.color) }}
+                  style={{ 
+                    borderLeftColor: teamColorHex,
+                    ringColor: isMyTeam ? teamColorHex : undefined
+                  }}
                 >
                   {/* Header del equipo */}
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-white text-lg sm:text-xl font-bold shadow-md"
-                        style={{ backgroundColor: getTeamColorHex(team.color) }}
-                      >
-                        {team.color.charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <h3
-                          className="text-base sm:text-lg font-bold"
-                          style={{ color: getTeamColorHex(team.color) }}
-                        >
-                          {team.name}
-                        </h3>
-                        <p className="text-xs sm:text-sm text-gray-600">
-                          {team.students_count} estudiante{team.students_count !== 1 ? 's' : ''}
-                        </p>
-                      </div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div
+                      className="px-3 py-1 rounded-full text-white text-xs sm:text-sm font-semibold"
+                      style={{ backgroundColor: teamColorHex }}
+                    >
+                      {team.name.includes('Start-up') || team.name.includes('División') ? team.name : `Start-up ${team.color}`}
                     </div>
 
-                    {/* Estado de tablet */}
-                    <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs sm:text-sm ${
+                    {/* Estado de conexión */}
+                    <div className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium ${
                       isConnected
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-red-100 text-red-800'
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-gray-100 text-gray-500'
                     }`}>
                       {isConnected ? (
-                        <CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                        <>
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span className="hidden sm:inline">En Línea</span>
+                        </>
                       ) : (
-                        <XCircle className="w-3 h-3 sm:w-4 sm:h-4" />
+                        <>
+                          <XCircle className="w-4 h-4" />
+                          <span className="hidden sm:inline">Offline</span>
+                        </>
                       )}
-                      <span className="hidden sm:inline">
-                        {isConnected ? 'Conectada' : 'Sin Tablet'}
-                      </span>
                     </div>
                   </div>
 
                   {/* Lista de estudiantes */}
                   <div className="space-y-2">
-                    <h4 className="text-xs sm:text-sm font-semibold text-gray-700 mb-2">Estudiantes:</h4>
-                    <div className="space-y-1.5">
-                      {team.students && team.students.length > 0 ? (
-                        team.students.map((student) => (
+                    <p className="text-xs sm:text-sm font-semibold text-gray-600 mb-2">
+                      Agentes: {team.students_count}
+                    </p>
+                    {team.students && team.students.length > 0 ? (
+                      <div className="space-y-2">
+                        {team.students.map((student) => (
                           <div
                             key={student.id}
-                            className="flex items-center gap-2 p-2 bg-white rounded-lg border border-gray-200"
+                            className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg"
                           >
-                            {/* Avatar circular con inicial */}
                             <div
-                              className="flex-shrink-0 w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-white text-[10px] sm:text-xs font-bold shadow-sm"
-                              style={{ backgroundColor: getTeamColorHex(team.color) }}
+                              className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                              style={{ backgroundColor: teamColorHex }}
                             >
                               {getInitials(student.full_name)}
                             </div>
-                            {/* Nombre del estudiante */}
-                            <span className="flex-1 text-xs sm:text-sm text-gray-700 truncate">
+                            <span className="text-sm text-gray-700 flex-1">
                               {getShortName(student.full_name)}
                             </span>
                           </div>
-                        ))
-                      ) : (
-                        <div className="text-center text-gray-400 py-4 text-xs sm:text-sm">
-                          Sin estudiantes
-                        </div>
-                      )}
-                    </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-400 text-center py-2">
+                        Sin estudiantes asignados
+                      </p>
+                    )}
                   </div>
                 </motion.div>
               );
@@ -803,6 +803,16 @@ export function TabletLobby() {
 
       {/* Música de fondo */}
       <BackgroundMusic storageKey="tablet_backgroundMusicEnabled" />
+      
+      {/* Modal de U-Bot */}
+      {myTeam && (
+        <UBotWelcomeModal
+          isOpen={showUBotModal}
+          onClose={() => setShowUBotModal(false)}
+          startupName={myTeam.name.includes('Start-up') || myTeam.name.includes('División') ? myTeam.name : `Start-up ${myTeam.color}`}
+          teamColor={myTeam.color}
+        />
+      )}
     </div>
   );
 }

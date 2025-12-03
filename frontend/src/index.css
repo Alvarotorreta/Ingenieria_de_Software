@@ -48,6 +48,34 @@
   .text-balance {
     text-wrap: balance;
   }
+  
+  /* Scrollbar moderno para el modal de U-Bot */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #a855f7 0%, #ec4899 100%);
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #9333ea 0%, #db2777 100%);
+    background-clip: padding-box;
+  }
+  
+  /* Para Firefox */
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #a855f7 rgba(0, 0, 0, 0.1);
+  }
 }
 
 

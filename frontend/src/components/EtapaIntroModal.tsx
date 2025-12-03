@@ -15,7 +15,7 @@ interface EtapaInfo {
 const etapasInfo: Record<number, EtapaInfo> = {
   1: {
     numero: 1,
-    titulo: 'Trabajo en Equipo',
+    titulo: 'TRABAJO EN EQUIPO',
     descripcion: 'En esta etapa desarrollaremos la capacidad de trabajar colaborativamente, comunicarnos efectivamente y construir relaciones sólidas dentro del equipo.',
     actividades: [
       'Personalizar el equipo y conocerse mejor',

@@ -44,9 +44,15 @@ api.interceptors.request.use(
       url.includes('/presentation_evaluation_progress/')
     );
     
-    // Si estamos en una ruta de tablet o haciendo petición a endpoint de tablet, 
+    // Verificar endpoints públicos que no requieren autenticación
+    const isPublicEndpoint = url.includes('/auth/token/') ||  // Login
+                             url.includes('/auth/token/refresh/') ||  // Refresh token
+                             url.includes('/auth/token/verify/') ||  // Verify token
+                             (url.includes('/auth/professors/') && config.method === 'post');  // Registro de profesor
+    
+    // Si estamos en una ruta de tablet o haciendo petición a endpoint de tablet o endpoint público, 
     // asegurarnos de que no se envíe el token (y limpiarlo si está presente en headers)
-    if (isTabletRoute || isTabletConnectionEndpoint || isTabletGameSessionEndpoint || isTabletAPIEndpoint || isTabletSessionStageEndpoint) {
+    if (isTabletRoute || isTabletConnectionEndpoint || isTabletGameSessionEndpoint || isTabletAPIEndpoint || isTabletSessionStageEndpoint || isPublicEndpoint) {
       delete config.headers.Authorization;
     } else {
       // Solo agregar token en rutas que no son de tablet

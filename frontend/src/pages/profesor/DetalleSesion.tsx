@@ -280,11 +280,29 @@ export function DetalleSesion() {
       // Cargar evaluaciones de reflexión
       try {
         const evaluationsData = await reflectionEvaluationsAPI.byRoom(sessionData.room_code);
-        const evaluationsArray = Array.isArray(evaluationsData) ? evaluationsData : [evaluationsData];
+        
+        // El endpoint devuelve: { count, total_evaluations, total_students, results }
+        let evaluationsArray: ReflectionEvaluation[] = [];
+        let responseCount = 0;
+        
+        if (evaluationsData && typeof evaluationsData === 'object') {
+          if ('results' in evaluationsData) {
+            // Estructura correcta con results
+            evaluationsArray = Array.isArray(evaluationsData.results) 
+              ? evaluationsData.results 
+              : [];
+            responseCount = evaluationsData.count || 0;
+          } else if (Array.isArray(evaluationsData)) {
+            // Fallback: si es un array directamente
+            evaluationsArray = evaluationsData;
+            responseCount = evaluationsData.length;
+          }
+        }
+        
         setReflectionEvaluations(evaluationsArray);
 
-        // Calcular % de respuestas
-        const responseRate = total > 0 ? (evaluationsArray.length / total) * 100 : 0;
+        // Calcular % de respuestas usando el count del backend (más confiable)
+        const responseRate = total > 0 ? (responseCount / total) * 100 : 0;
         setReflectionResponseRate(responseRate);
       } catch (error) {
         console.error('Error loading evaluations:', error);
@@ -362,6 +380,66 @@ export function DetalleSesion() {
       // Cargar transacciones de tokens
       const tokensList = await tokenTransactionsAPI.list({ game_session: sessionId });
       const tokensArray = Array.isArray(tokensList) ? tokensList : [tokensList];
+      
+      console.log('[DetalleSesion] Total transacciones de tokens:', tokensArray.length);
+      console.log('[DetalleSesion] Transacciones con stage_number:', tokensArray.filter((t: TokenTransaction) => t.stage_number).length);
+      console.log('[DetalleSesion] Transacciones sin stage_number:', tokensArray.filter((t: TokenTransaction) => !t.stage_number).length);
+      
+      // Log detallado de transacciones sin stage_number
+      const tokensWithoutStage = tokensArray.filter((t: TokenTransaction) => !t.stage_number);
+      if (tokensWithoutStage.length > 0) {
+        console.log('[DetalleSesion] Detalles de tokens sin stage_number:', tokensWithoutStage.map((t: TokenTransaction) => ({
+          id: t.id,
+          team: t.team_name,
+          amount: t.amount,
+          source_type: t.source_type,
+          stage_name: t.stage_name,
+          stage_number: t.stage_number,
+          reason: t.reason
+        })));
+      }
+      
+      // Log específico para tokens de "Parte 1 completada" y "caos" (actividad de Presentación)
+      const presentacionTokens = tokensArray.filter((t: TokenTransaction) => 
+        t.reason && (
+          t.reason.includes('Parte 1 completada') || 
+          t.reason.includes('caos') ||
+          t.reason.includes('Preguntas del caos')
+        )
+      );
+      if (presentacionTokens.length > 0) {
+        console.log('[DetalleSesion] 🔴 Tokens de Presentación (no se conocen):', presentacionTokens.map((t: TokenTransaction) => ({
+          id: t.id,
+          team: t.team_name,
+          amount: t.amount,
+          stage_number: t.stage_number,
+          stage_name: t.stage_name,
+          reason: t.reason
+        })));
+      }
+      
+      // Log de TODAS las transacciones del Equipo Azul (sin filtrar por etapa)
+      const equipoAzulAll = tokensArray.filter((t: TokenTransaction) => 
+        t.team_name === 'Equipo Azul' || t.team_name.includes('Azul')
+      );
+      const equipoAzulDetails = equipoAzulAll.map((t: TokenTransaction) => ({
+        id: t.id,
+        amount: t.amount,
+        stage_number: t.stage_number,
+        stage_name: t.stage_name,
+        reason: t.reason,
+        source_type: t.source_type
+      }));
+      console.log('[DetalleSesion] 🔵🔵 TODAS las transacciones del Equipo Azul (todas las etapas):', equipoAzulDetails);
+      console.log('[DetalleSesion] 🔵🔵 Resumen Equipo Azul:', {
+        total_transacciones: equipoAzulAll.length,
+        total_tokens: equipoAzulAll.reduce((sum, t) => sum + t.amount, 0),
+        por_etapa: equipoAzulAll.reduce((acc, t) => {
+          const stage = t.stage_number || 'sin_etapa';
+          acc[stage] = (acc[stage] || 0) + t.amount;
+          return acc;
+        }, {} as Record<number | string, number>)
+      });
 
       // Crear mapa de colores de equipos
       const teamColorMap = new Map<string, string>();
@@ -413,10 +491,97 @@ export function DetalleSesion() {
       }
       
       // Agregar los tokens reales por etapa
+      const tokensByStageDetail: Record<number, Array<{ team: string; amount: number; reason?: string }>> = {};
       tokensArray.forEach((t: TokenTransaction) => {
         if (t.stage_number) {
           const current = byStageMap.get(t.stage_number) || 0;
           byStageMap.set(t.stage_number, current + t.amount);
+          
+          // Guardar detalles para logging
+          if (!tokensByStageDetail[t.stage_number]) {
+            tokensByStageDetail[t.stage_number] = [];
+          }
+          tokensByStageDetail[t.stage_number].push({
+            team: t.team_name,
+            amount: t.amount,
+            reason: t.reason || t.source_type
+          });
+        }
+      });
+      
+      // Log resumen de tokens por etapa
+      console.log('[DetalleSesion] Tokens por etapa:', Array.from(byStageMap.entries()).map(([stage, tokens]) => ({
+        etapa: `Etapa ${stage}`,
+        tokens
+      })));
+      
+      // Log detallado de tokens por etapa (especialmente Etapa 1)
+      Object.keys(tokensByStageDetail).forEach((stageKey) => {
+        const stageNum = Number(stageKey);
+        const tokens = tokensByStageDetail[stageNum];
+        const total = tokens.reduce((sum, t) => sum + t.amount, 0);
+        
+        // Agrupar por equipo para ver el desglose
+        const byTeam = tokens.reduce((acc, t) => {
+          acc[t.team] = (acc[t.team] || 0) + t.amount;
+          return acc;
+        }, {} as Record<string, number>);
+        
+        // Agrupar por tipo de transacción para ver el desglose
+        const byReason = tokens.reduce((acc, t) => {
+          const reason = t.reason || 'sin_razon';
+          if (!acc[reason]) {
+            acc[reason] = { count: 0, total: 0, teams: {} as Record<string, number> };
+          }
+          acc[reason].count += 1;
+          acc[reason].total += t.amount;
+          acc[reason].teams[t.team] = (acc[reason].teams[t.team] || 0) + t.amount;
+          return acc;
+        }, {} as Record<string, { count: number; total: number; teams: Record<string, number> }>);
+        
+        console.log(`[DetalleSesion] Etapa ${stageNum} - Total: ${total} tokens`, {
+          transacciones: tokens.length,
+          porEquipo: byTeam,
+          porTipo: byReason,
+          detalle: tokens.map(t => ({ team: t.team, amount: t.amount, reason: t.reason }))
+        });
+        
+        // Log especial para Etapa 1 y Equipo Azul
+        if (stageNum === 1) {
+          const equipoAzulTokens = tokens.filter(t => t.team === 'Equipo Azul' || t.team.includes('Azul'));
+          const totalAzul = equipoAzulTokens.reduce((sum, t) => sum + t.amount, 0);
+          console.log(`[DetalleSesion] 🔵 Etapa 1 - Equipo Azul: ${totalAzul} tokens`, {
+            transacciones: equipoAzulTokens.length,
+            detalle: equipoAzulTokens.map(t => ({
+              amount: t.amount,
+              reason: t.reason,
+              team: t.team
+            }))
+          });
+          
+          // Log detallado de TODAS las transacciones del Equipo Azul en Etapa 1
+          const equipoAzulAllTransactions = tokensArray.filter((t: TokenTransaction) => 
+            t.stage_number === 1 && (t.team_name === 'Equipo Azul' || t.team_name.includes('Azul'))
+          );
+          const equipoAzulEtapa1Details = equipoAzulAllTransactions.map((t: TokenTransaction) => ({
+            id: t.id,
+            amount: t.amount,
+            reason: t.reason,
+            source_type: t.source_type,
+            stage_number: t.stage_number,
+            stage_name: t.stage_name,
+            team_name: t.team_name
+          }));
+          console.log(`[DetalleSesion] 🔵🔵 TODAS las transacciones del Equipo Azul en Etapa 1:`, equipoAzulEtapa1Details);
+          console.log(`[DetalleSesion] 🔵🔵 Resumen Equipo Azul Etapa 1:`, {
+            total_transacciones: equipoAzulAllTransactions.length,
+            total_tokens: equipoAzulAllTransactions.reduce((sum, t) => sum + t.amount, 0),
+            tokens_por_tipo: equipoAzulAllTransactions.reduce((acc, t) => {
+              const tipo = t.reason || t.source_type || 'desconocido';
+              acc[tipo] = (acc[tipo] || 0) + t.amount;
+              return acc;
+            }, {} as Record<string, number>)
+          });
         }
       });
       
@@ -455,6 +620,15 @@ export function DetalleSesion() {
           const teamMap = byStageAndTeamMap.get(t.stage_number)!;
           const current = teamMap.get(teamName) || 0;
           teamMap.set(teamName, current + t.amount);
+        } else {
+          // Log para debuggear tokens sin stage_number en agrupación por equipo
+          console.warn(`[DetalleSesion] Token sin stage_number (por equipo):`, {
+            id: t.id,
+            team: t.team_name,
+            amount: t.amount,
+            source_type: t.source_type,
+            stage_name: t.stage_name
+          });
         }
       });
       
@@ -614,7 +788,7 @@ export function DetalleSesion() {
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-xl shadow-xl p-6 mb-6"
+          className="bg-white/95 backdrop-blur rounded-xl shadow-xl p-6 mb-6"
         >
           <h1 className="text-2xl sm:text-3xl font-bold text-blue-900 mb-2">
             Sesión: {gameSession?.room_code}
@@ -622,44 +796,52 @@ export function DetalleSesion() {
           <p className="text-gray-600 mb-6">{gameSession?.course_name}</p>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
-              <div className="flex items-center gap-2 mb-2">
-                <Users className="w-5 h-5 text-blue-600" />
-                <span className="text-sm font-medium text-gray-700">Estudiantes</span>
+            <Card className="p-6 bg-white/95 backdrop-blur shadow-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600 mb-1">Estudiantes</p>
+                  <p className="text-3xl font-bold text-blue-900">{totalStudents}</p>
+                </div>
+                <Users className="w-12 h-12 text-blue-500" />
               </div>
-              <p className="text-2xl font-bold text-blue-900">{totalStudents}</p>
-            </div>
+            </Card>
 
-            <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200">
-              <div className="flex items-center gap-2 mb-2">
-                <CheckCircle2 className="w-5 h-5 text-purple-600" />
-                <span className="text-sm font-medium text-gray-700">Respuestas</span>
+            <Card className="p-6 bg-white/95 backdrop-blur shadow-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600 mb-1">Respuestas</p>
+                  <p className="text-3xl font-bold text-purple-900">
+                    {Math.round(reflectionResponseRate * totalStudents / 100) || reflectionEvaluations.length}
+                    <span className="text-sm font-normal text-gray-600 ml-1">
+                      ({reflectionResponseRate.toFixed(1)}%)
+                    </span>
+                  </p>
+                </div>
+                <CheckCircle2 className="w-12 h-12 text-purple-500" />
               </div>
-              <p className="text-2xl font-bold text-purple-900">
-                {reflectionEvaluations.length}
-                <span className="text-sm font-normal text-gray-600 ml-1">
-                  ({reflectionResponseRate.toFixed(1)}%)
-                </span>
-              </p>
-            </div>
+            </Card>
 
-            <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 p-4 rounded-lg border border-yellow-200">
-              <div className="flex items-center gap-2 mb-2">
-                <Trophy className="w-5 h-5 text-yellow-600" />
-                <span className="text-sm font-medium text-gray-700">Equipos</span>
+            <Card className="p-6 bg-white/95 backdrop-blur shadow-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600 mb-1">Equipos</p>
+                  <p className="text-3xl font-bold text-yellow-700">{teams.length}</p>
+                </div>
+                <Trophy className="w-12 h-12 text-yellow-600" />
               </div>
-              <p className="text-2xl font-bold text-yellow-900">{teams.length}</p>
-            </div>
+            </Card>
 
-            <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
-              <div className="flex items-center gap-2 mb-2">
-                <Award className="w-5 h-5 text-green-600" />
-                <span className="text-sm font-medium text-gray-700">Tokens Totales</span>
+            <Card className="p-6 bg-white/95 backdrop-blur shadow-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600 mb-1">Tokens Totales</p>
+                  <p className="text-3xl font-bold text-green-700">
+                    {tokenData.byTeam.reduce((sum, t) => sum + t.tokens, 0)}
+                  </p>
+                </div>
+                <Award className="w-12 h-12 text-green-600" />
               </div>
-              <p className="text-2xl font-bold text-green-900">
-                {tokenData.byTeam.reduce((sum, t) => sum + t.tokens, 0)}
-              </p>
-            </div>
+            </Card>
           </div>
         </motion.div>
 
@@ -669,7 +851,7 @@ export function DetalleSesion() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-white rounded-xl shadow-xl p-6 mb-6"
+            className="bg-white/95 backdrop-blur rounded-xl shadow-xl p-6 mb-6"
           >
             <h2 className="text-xl font-bold text-blue-900 mb-6 flex items-center gap-2">
               <TrendingUp className="w-6 h-6" />
@@ -679,8 +861,8 @@ export function DetalleSesion() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* Satisfacción - Donut Chart */}
               {satisfactionData.length > 0 && (
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-700 mb-4 text-center">
+                <Card className="p-6 bg-gradient-to-br from-blue-50 to-purple-50 border-2 border-blue-200">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4 text-center">
                     Satisfacción con la Actividad
                   </h3>
                   <ResponsiveContainer width="100%" height={350}>
@@ -704,10 +886,10 @@ export function DetalleSesion() {
                       </Pie>
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                          border: 'none',
+                          backgroundColor: 'white',
+                          border: '1px solid #e0e0e0',
                           borderRadius: '8px',
-                          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                          boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
                         }}
                       />
                       {/* Texto central */}
@@ -733,24 +915,24 @@ export function DetalleSesion() {
                   </ResponsiveContainer>
                   <div className="mt-4 flex flex-wrap justify-center gap-3">
                     {satisfactionData.map((item, index) => (
-                      <div key={index} className="flex items-center gap-2">
+                      <div key={index} className="flex items-center gap-2 bg-white/80 px-3 py-1.5 rounded-full shadow-sm">
                         <div
                           className="w-4 h-4 rounded-full"
                           style={{ backgroundColor: item.color }}
                         />
-                        <span className="text-sm text-gray-700">
+                        <span className="text-sm font-medium text-gray-700">
                           {item.name}: {item.value}
                         </span>
                       </div>
                     ))}
                   </div>
-                </div>
+                </Card>
               )}
 
               {/* Interés en Emprender - Donut Chart */}
               {entrepreneurshipData.length > 0 && (
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-700 mb-4 text-center">
+                <Card className="p-6 bg-gradient-to-br from-green-50 to-teal-50 border-2 border-green-200">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4 text-center">
                     Interés en Emprender
                   </h3>
                   <ResponsiveContainer width="100%" height={350}>
@@ -774,10 +956,10 @@ export function DetalleSesion() {
                       </Pie>
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                          border: 'none',
+                          backgroundColor: 'white',
+                          border: '1px solid #e0e0e0',
                           borderRadius: '8px',
-                          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                          boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
                         }}
                       />
                       <text
@@ -802,38 +984,38 @@ export function DetalleSesion() {
                   </ResponsiveContainer>
                   <div className="mt-4 flex flex-wrap justify-center gap-3">
                     {entrepreneurshipData.map((item, index) => (
-                      <div key={index} className="flex items-center gap-2">
+                      <div key={index} className="flex items-center gap-2 bg-white/80 px-3 py-1.5 rounded-full shadow-sm">
                         <div
                           className="w-4 h-4 rounded-full"
                           style={{ backgroundColor: item.color }}
                         />
-                        <span className="text-sm text-gray-700">
+                        <span className="text-sm font-medium text-gray-700">
                           {item.name}: {item.value}
                         </span>
                       </div>
                     ))}
                   </div>
-                </div>
+                </Card>
               )}
             </div>
 
             {/* Áreas de Valor - Bar Chart */}
             {valueAreasData.length > 0 && (
-              <div className="mt-8">
-                <h3 className="text-lg font-semibold text-gray-700 mb-4">
+              <Card className="mt-8 p-6 bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">
                   Áreas de Valor Más Seleccionadas
                 </h3>
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={valueAreasData} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis type="number" />
-                    <YAxis dataKey="name" type="category" width={150} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                    <XAxis type="number" stroke="#666" fontSize={12} />
+                    <YAxis dataKey="name" type="category" width={150} stroke="#666" fontSize={12} />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                        border: 'none',
+                        backgroundColor: 'white',
+                        border: '1px solid #e0e0e0',
                         borderRadius: '8px',
-                        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                        boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
                       }}
                     />
                     <Bar
@@ -848,7 +1030,7 @@ export function DetalleSesion() {
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
-              </div>
+              </Card>
             )}
           </motion.div>
         )}
@@ -859,7 +1041,7 @@ export function DetalleSesion() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-white rounded-xl shadow-xl p-6 mb-6"
+            className="bg-white/95 backdrop-blur rounded-xl shadow-xl p-6 mb-6"
           >
             <h2 className="text-xl font-bold text-blue-900 mb-6 flex items-center gap-2">
               <Trophy className="w-6 h-6" />
@@ -868,19 +1050,19 @@ export function DetalleSesion() {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* Tokens por Equipo */}
-              <div>
-                <h3 className="text-lg font-semibold text-gray-700 mb-4">Tokens por Equipo</h3>
+              <Card className="p-6 bg-gradient-to-br from-yellow-50 to-orange-50 border-2 border-yellow-200">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">Tokens por Equipo</h3>
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={tokenData.byTeam} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis type="number" />
-                    <YAxis dataKey="team" type="category" width={120} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                    <XAxis type="number" stroke="#666" fontSize={12} />
+                    <YAxis dataKey="team" type="category" width={120} stroke="#666" fontSize={12} />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                        border: 'none',
+                        backgroundColor: 'white',
+                        border: '1px solid #e0e0e0',
                         borderRadius: '8px',
-                        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                        boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
                       }}
                     />
                     <Bar dataKey="tokens" radius={[0, 8, 8, 0]} animationBegin={300} animationDuration={800}>
@@ -908,23 +1090,23 @@ export function DetalleSesion() {
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
-              </div>
+              </Card>
 
               {/* Tokens por Etapa - Gráfico de Barras Múltiples */}
               {tokenData.byStageAndTeam.length > 0 && (
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-700 mb-4">Tokens por Etapa</h3>
+                <Card className="p-6 bg-gradient-to-br from-indigo-50 to-blue-50 border-2 border-indigo-200">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">Tokens por Etapa</h3>
                   <ResponsiveContainer width="100%" height={300}>
                     <BarChart data={tokenData.byStageAndTeam}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                      <XAxis dataKey="stage" />
-                      <YAxis />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                      <XAxis dataKey="stage" stroke="#666" fontSize={12} />
+                      <YAxis stroke="#666" fontSize={12} />
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                          border: 'none',
+                          backgroundColor: 'white',
+                          border: '1px solid #e0e0e0',
                           borderRadius: '8px',
-                          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                          boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
                         }}
                       />
                       <Legend 
@@ -958,7 +1140,7 @@ export function DetalleSesion() {
                       })}
                     </BarChart>
                   </ResponsiveContainer>
-                </div>
+                </Card>
               )}
             </div>
           </motion.div>

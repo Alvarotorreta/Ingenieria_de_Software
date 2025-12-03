@@ -18,6 +18,7 @@ import {
   Play,
   HelpCircle,
   X,
+  Shield,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -94,6 +95,7 @@ export function ProfesorPanel() {
   const [currentSection, setCurrentSection] = useState<Section>(getSectionFromPath());
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ sessions: 0, students: 0 });
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Formulario crear sesión
   const [faculties, setFaculties] = useState<Faculty[]>([]);
@@ -199,27 +201,23 @@ export function ProfesorPanel() {
     }
 
     try {
-      // Verificar que sea profesor y no administrador
+      // Verificar que sea profesor o administrador
+      // El endpoint /professors/me/ ahora crea automáticamente el perfil de profesor para administradores
       const profile = await authAPI.getProfile();
       
-      // Verificar que no sea administrador intentando obtener perfil de admin
+      setProfessor(profile);
+      
+      // Verificar si es administrador
       try {
         await authAPI.getAdminProfile();
-        // Si llega aquí, es administrador, no permitir acceso
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('refreshToken');
-        toast.error('Acceso denegado', {
-          description: 'Los administradores deben usar el panel de administración',
-        });
-        navigate('/admin/login');
-        return;
-      } catch (adminError) {
-        // No es administrador, continuar como profesor
+        setIsAdmin(true);
+      } catch (error) {
+        // No es administrador, está bien
+        setIsAdmin(false);
       }
       
-      setProfessor(profile);
       await loadPanelData();
-    } catch (error) {
+    } catch (error: any) {
       localStorage.removeItem('authToken');
       localStorage.removeItem('refreshToken');
       navigate('/profesor/login');
@@ -410,12 +408,16 @@ export function ProfesorPanel() {
       const activityName = (session.current_activity_name || '').toLowerCase();
       
       if (stageNumber === 1) {
-        if (activityName.includes('personaliz')) {
+        if (activityName.includes('video') || activityName.includes('institucional')) {
+          return 'Etapa 1 - Video Institucional';
+        } else if (activityName.includes('instructivo') || activityName.includes('instrucciones')) {
+          return 'Etapa 1 - Instructivo';
+        } else if (activityName.includes('personaliz')) {
           return 'Etapa 1 - Personalización';
         } else if (activityName.includes('presentaci')) {
           return 'Etapa 1 - Presentación';
         } else {
-          return 'Etapa 1 - Personalización';
+          return 'Etapa 1 - Video Institucional';
         }
       } else if (stageNumber === 2) {
         if (activityName.includes('tema') || activityName.includes('seleccionar')) {
@@ -459,7 +461,11 @@ export function ProfesorPanel() {
 
       let redirectUrl = '';
       if (stageNumber === 1) {
-        if (activityName.includes('personaliz')) {
+        if (activityName.includes('video') || activityName.includes('institucional')) {
+          redirectUrl = `/profesor/etapa1/video-institucional/${activeSession.id}/`;
+        } else if (activityName.includes('instructivo') || activityName.includes('instrucciones')) {
+          redirectUrl = `/profesor/etapa1/instructivo/${activeSession.id}/`;
+        } else if (activityName.includes('personaliz')) {
           redirectUrl = `/profesor/etapa1/personalizacion/${activeSession.id}/`;
         } else if (activityName.includes('presentaci')) {
           redirectUrl = `/profesor/etapa1/presentacion/${activeSession.id}/`;
@@ -644,15 +650,29 @@ export function ProfesorPanel() {
       </div>
       
       <div className="max-w-6xl mx-auto w-full relative z-10 p-4 sm:p-5 font-sans flex-1 flex flex-col">
-        {/* Botón Cerrar Sesión - Arriba */}
-        <div className="flex justify-end mb-4">
-          <Button
-            onClick={handleLogout}
-            className="bg-white text-blue-900 hover:bg-gray-100 flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 rounded-lg shadow-md text-sm"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-            <span>Cerrar Sesión</span>
-          </Button>
+        {/* Botones de Header - Arriba */}
+        <div className="flex justify-between items-center mb-4">
+          {/* Botón Panel de Administrador (solo si es admin) */}
+          {isAdmin && (
+            <Button
+              onClick={() => navigate('/admin/panel')}
+              className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white hover:from-purple-600 hover:to-indigo-700 flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 rounded-lg shadow-md text-sm font-medium"
+            >
+              <Shield className="w-3.5 h-3.5" />
+              <span>Panel Admin</span>
+            </Button>
+          )}
+          
+          {/* Botón Cerrar Sesión */}
+          <div className={isAdmin ? '' : 'ml-auto'}>
+            <Button
+              onClick={handleLogout}
+              className="bg-white text-blue-900 hover:bg-gray-100 flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 rounded-lg shadow-md text-sm"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Cerrar Sesión</span>
+            </Button>
+          </div>
         </div>
 
         {/* Mensaje de Bienvenida */}

@@ -38,12 +38,18 @@ export function ProfesorRegistro() {
 
     try {
       // Usa exactamente la misma API que tienes en login.html
+      // Validar que el código de acceso esté presente
+      if (!formData.codigo || formData.codigo.trim() === '') {
+        toast.error('El código de acceso es requerido para registrarse');
+        return;
+      }
+
       await authAPI.register({
         email: formData.email,
         password: formData.password,
         first_name: formData.nombre,
         last_name: formData.apellidos,
-        access_code: formData.codigo || undefined, // Si está vacío, no enviar
+        access_code: formData.codigo.trim(), // Código obligatorio
       });
 
       toast.success('¡Cuenta creada exitosamente! 🎉', {
@@ -194,19 +200,23 @@ export function ProfesorRegistro() {
               <div className="space-y-1">
                 <Label htmlFor="codigo" className="flex items-center gap-1 text-xs">
                   <Key className="w-3 h-3 text-[#093c92]" />
-                  <span className="text-[10px]">Código de Acceso (Opcional)</span>
+                  <span className="text-[10px]">Código de Acceso <span className="text-red-500">*</span></span>
                 </Label>
                 <div className="relative">
                   <Key className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
                   <Input
                     id="codigo"
-                    placeholder="Código de profesor"
+                    placeholder="Ingresa el código de acceso recibido"
                     value={formData.codigo}
                     onChange={(e) => setFormData({ ...formData, codigo: e.target.value })}
                     className="pl-8 h-9 text-xs"
+                    required
                     disabled={loading}
                   />
                 </div>
+                <p className="text-[10px] text-gray-500 mt-1">
+                  El código de acceso es requerido para registrarse como profesor
+                </p>
               </div>
 
               <div className="grid grid-cols-2 gap-2">

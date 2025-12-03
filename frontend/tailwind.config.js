@@ -34,6 +34,15 @@ export default {
         md: '0.75rem',
         sm: '0.5rem',
       },
+      keyframes: {
+        shimmer: {
+          '0%': { transform: 'translateX(-100%)' },
+          '100%': { transform: 'translateX(100%)' },
+        },
+      },
+      animation: {
+        shimmer: 'shimmer 3s infinite',
+      },
     },
   },
   plugins: [],

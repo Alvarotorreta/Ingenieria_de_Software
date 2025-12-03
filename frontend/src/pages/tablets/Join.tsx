@@ -120,7 +120,7 @@ export function TabletJoin() {
             className="inline-flex items-center justify-center mb-4"
           >
             <img
-              src="/images/mascota.svg"
+              src="/images/mascotaprueba.svg"
               alt="Mascota Misión Emprende"
               className="w-24 h-24 sm:w-32 sm:h-32 drop-shadow-lg"
               style={{

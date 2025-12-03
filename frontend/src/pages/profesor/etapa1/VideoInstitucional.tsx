@@ -128,6 +128,8 @@ export function ProfesorVideoInstitucional() {
           // Si es video institucional, no redirigir (ya estamos aquí)
           console.log('✅ Actividad es Video Institucional, no redirigir');
           return;
+        } else if (normalizedActivityName.includes('instructivo') || normalizedActivityName.includes('instrucciones')) {
+          redirectUrl = `/profesor/etapa1/instructivo/${sessionId}/`;
         } else if (normalizedActivityName.includes('personaliz')) {
           redirectUrl = `/profesor/etapa1/personalizacion/${sessionId}/`;
         } else if (normalizedActivityName.includes('presentaci')) {
@@ -181,19 +183,39 @@ export function ProfesorVideoInstitucional() {
 
     setAdvancing(true);
     try {
-      // Iniciar la Etapa 1 directamente después del video (sin instructivo)
-      const data = await sessionsAPI.startStage1(sessionId);
-
-      console.log('✅ Etapa 1 iniciada:', data);
-      toast.success('Video completado. Iniciando Etapa 1...');
+      // Usar directamente set_instructivo_activity que establece Instructivo como actividad actual
+      // Este endpoint ya maneja la creación de la actividad si no existe
+      const data = await sessionsAPI.setInstructivoActivity(sessionId);
       
-      // Redirigir directamente a Personalización (el modal se mostrará automáticamente)
-      setTimeout(() => {
-        window.location.href = `/profesor/etapa1/personalizacion/${sessionId}/`;
-      }, 500);
+      console.log('✅ Actividad Instructivo establecida:', data);
+      
+      // Verificar que la actividad se estableció correctamente
+      if (data.current_activity_name && data.current_activity_name.toLowerCase().includes('instructivo')) {
+        toast.success('Actividad Instructivo establecida correctamente');
+        
+        // Actualizar el estado local para reflejar el cambio
+        if (data.id) {
+          const updatedSession: GameSession = {
+            ...gameSession,
+            current_activity_name: data.current_activity_name,
+            current_stage_number: data.current_stage_number || undefined,
+          };
+          setGameSession(updatedSession);
+        }
+        
+        // Redirigir a Instructivo después de un breve delay para asegurar que el backend guardó
+        setTimeout(() => {
+          window.location.href = `/profesor/etapa1/instructivo/${sessionId}/`;
+        }, 300);
+      } else {
+        console.warn('⚠️ La actividad no se estableció correctamente:', data);
+        toast.error('Error: La actividad no se estableció correctamente');
+        setAdvancing(false);
+      }
     } catch (error: any) {
-      console.error('Error al iniciar Etapa 1:', error);
-      toast.error(error.response?.data?.error || 'Error al iniciar la Etapa 1');
+      console.error('Error avanzando a Instructivo:', error);
+      const errorMessage = error.response?.data?.error || error.message || 'Error al avanzar a Instructivo';
+      toast.error(errorMessage);
       setAdvancing(false);
     }
   };
